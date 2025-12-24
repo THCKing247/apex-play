@@ -2,66 +2,224 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Idle Clicker | Apex Play</title>
+  <meta name="description" content="Idle Clicker — click, upgrade, and earn while idle." />
 
-  <meta name="description" content="Idle Clicker – earn currency by clicking and upgrading over time." />
+  <!-- Use the SAME styling as your main-domain look -->
+  <link rel="stylesheet" href="/assets/site.css" />
 
-  <link rel="stylesheet" href="style.css" />
+  <!-- Small game-specific tweaks -->
+  <style>
+    .game-wrap { margin-top: 14px; display:grid; gap:14px; }
+    .hud { display:grid; grid-template-columns: repeat(3,1fr); gap:14px; }
+    .hud .mini { text-align:left; }
+    .hud .v { font-size: 22px; }
+
+    .play-area{
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap:14px;
+      align-items:start;
+    }
+
+    .big-click{
+      width:100%;
+      padding: 18px 18px;
+      border-radius: 22px;
+      font-weight: 900;
+      font-size: 22px;
+      letter-spacing:.2px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: linear-gradient(135deg, rgba(124,92,255,.98), rgba(34,211,238,.88));
+      color: rgba(255,255,255,.95);
+      cursor:pointer;
+      box-shadow: var(--shadow);
+      transition: transform .08s ease, filter .12s ease;
+      user-select:none;
+    }
+    .big-click:hover{ filter: brightness(1.06); }
+    .big-click:active{ transform: scale(.985); }
+
+    .toast {
+      font-size:12px;
+      color: var(--muted);
+      margin-top: 8px;
+      opacity: .9;
+    }
+
+    .upgrade-list{ display:grid; gap:12px; }
+    .upgrade-btn{
+      width:100%;
+      text-align:left;
+      border-radius: 20px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+      color: rgba(255,255,255,.92);
+      padding: 14px;
+      cursor:pointer;
+      box-shadow: 0 14px 40px rgba(0,0,0,.35);
+      transition: transform .10s ease, filter .12s ease;
+    }
+    .upgrade-btn:hover{ transform: translateY(-1px); filter: brightness(1.03); }
+    .upgrade-btn:disabled{ opacity:.55; cursor:not-allowed; transform:none; filter:none; }
+
+    .u-title{ font-weight: 900; margin-bottom: 4px; }
+    .u-desc{ font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+    .u-row{ display:flex; gap:10px; flex-wrap:wrap; }
+    .u-chip{
+      font-size:12px;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.16);
+      color: rgba(255,255,255,.86);
+    }
+
+    .danger{
+      background: rgba(255, 86, 86, .10);
+      border: 1px solid rgba(255, 86, 86, .25);
+    }
+
+    @media (max-width: 980px){
+      .play-area{ grid-template-columns:1fr; }
+      .hud{ grid-template-columns:1fr; }
+    }
+  </style>
 </head>
 
 <body>
-  <main class="wrap">
-    <header class="top">
-      <h1>⚡ Idle Clicker</h1>
-      <p class="sub">Click, upgrade, and earn while idle.</p>
+  <div class="bg-animated" aria-hidden="true">
+    <div class="bg-grid"></div>
+    <canvas id="particles"></canvas>
+  </div>
+
+  <div class="wrap">
+    <header class="site-header">
+      <a class="brand-link" href="/">
+        <div class="brand-mark">⚡</div>
+        <div class="brand-title">
+          <strong>Idle Clicker</strong>
+          <span>Click, upgrade, earn while idle.</span>
+        </div>
+      </a>
+
+      <nav class="nav">
+        <a href="/">Home</a>
+        <a href="/privacy.html">Privacy</a>
+        <a href="/terms.html">Terms</a>
+      </nav>
     </header>
 
-    <!-- AD SLOT (SAFE LOCATION – ADD ADSENSE LATER)
-    <div class="ad-slot"></div>
-    -->
+    <section class="hero">
+      <div class="hero-inner">
+        <div>
+          <h1>Build coins fast.</h1>
+          <p>
+            Click to earn. Buy upgrades to increase your click power and idle income.
+            Your progress saves locally in your browser.
+          </p>
 
-    <section class="stats">
-      <div class="stat">
-        <span class="label">Coins</span>
-        <span id="coins">0</span>
-      </div>
-      <div class="stat">
-        <span class="label">Per Click</span>
-        <span id="perClick">1</span>
-      </div>
-      <div class="stat">
-        <span class="label">Per Second</span>
-        <span id="perSecond">0</span>
+          <div class="actions">
+            <a class="btn" href="#play">Start playing ↓</a>
+            <a class="btn" href="#upgrades">Upgrades</a>
+          </div>
+
+          <div class="chips">
+            <span class="chip">💾 Auto-save</span>
+            <span class="chip">🕒 Offline earnings</span>
+            <span class="chip">⚡ Fast</span>
+          </div>
+        </div>
+
+        <aside class="feature">
+          <div class="pills">
+            <span class="pill">GAME</span>
+            <span class="pill alt">SINGLE PLAYER</span>
+          </div>
+          <h3>Tips</h3>
+          <p>Idle income keeps earning every second. Come back later for a big boost.</p>
+          <div class="mini-grid">
+            <div class="mini"><div class="k">Best early</div><div class="v">Click Power</div></div>
+            <div class="mini"><div class="k">Best later</div><div class="v">Idle Income</div></div>
+            <div class="mini"><div class="k">Save</div><div class="v">Local</div></div>
+          </div>
+        </aside>
       </div>
     </section>
 
-    <section class="click-area">
-      <button id="clickBtn">CLICK</button>
+    <section id="play" class="game-wrap">
+      <div class="doc">
+        <div class="hud">
+          <div class="mini">
+            <div class="k">Coins</div>
+            <div class="v" id="coins">0</div>
+          </div>
+          <div class="mini">
+            <div class="k">Per Click</div>
+            <div class="v" id="perClick">1</div>
+          </div>
+          <div class="mini">
+            <div class="k">Per Second</div>
+            <div class="v" id="perSecond">0</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="play-area">
+        <div class="doc">
+          <button id="clickBtn" class="big-click">CLICK</button>
+          <div class="toast" id="status">Saved locally</div>
+        </div>
+
+        <div id="upgrades" class="doc">
+          <h2 style="margin:0 0 10px;">Upgrades</h2>
+          <div class="upgrade-list">
+            <button class="upgrade-btn" id="upgradeClick">
+              <div class="u-title">Increase Click Power</div>
+              <div class="u-desc">+1 coin per click</div>
+              <div class="u-row">
+                <span class="u-chip">Cost: <strong><span id="clickCost">10</span></strong></span>
+                <span class="u-chip">Level: <strong><span id="clickLevel">0</span></strong></span>
+              </div>
+            </button>
+
+            <button class="upgrade-btn" id="upgradeIdle">
+              <div class="u-title">Increase Idle Income</div>
+              <div class="u-desc">+1 coin per second</div>
+              <div class="u-row">
+                <span class="u-chip">Cost: <strong><span id="idleCost">25</span></strong></span>
+                <span class="u-chip">Level: <strong><span id="idleLevel">0</span></strong></span>
+              </div>
+            </button>
+
+            <button class="upgrade-btn danger" id="resetBtn">
+              <div class="u-title">Reset Save</div>
+              <div class="u-desc">Clears your local progress on this device.</div>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <footer class="footer">
+        <span>© <span id="year"></span> Apex Play</span>
+        <span class="dot">•</span>
+        <a href="/">Back to Arcade</a>
+      </footer>
     </section>
+  </div>
 
-    <section class="upgrades">
-      <h2>Upgrades</h2>
+  <script>
+    document.getElementById("year").textContent = new Date().getFullYear();
+  </script>
 
-      <button class="upgrade" id="upgradeClick">
-        Increase Click Power<br>
-        Cost: <span id="clickCost">10</span>
-      </button>
+  <!-- particles -->
+  <script src="/assets/site.js"></script>
 
-      <button class="upgrade" id="upgradeIdle">
-        Increase Idle Income<br>
-        Cost: <span id="idleCost">25</span>
-      </button>
-    </section>
-
-    <!-- AD SLOT (BOTTOM – SAFE)
-    <div class="ad-slot"></div>
-    -->
-
-    <footer class="footer">
-      <a href="/">← Back to Apex Play</a>
-    </footer>
-  </main>
+  <!-- game logic -->
+  <script src="./game.js"></script>
+</body>
+</html>
 
   <script src="game.js"></script>
 </body>
