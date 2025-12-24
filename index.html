@@ -5,154 +5,91 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Apex Play</title>
   <meta name="description" content="Apex Play is a browser-based arcade featuring simple, fast, and addictive games you can play instantly." />
-
-  <!-- IMPORTANT: this must be /style.css in repo root -->
-  <link rel="stylesheet" href="/style.css" />
+  <link rel="stylesheet" href="/assets/site.css" />
 </head>
 
 <body>
-  <div class="bg" aria-hidden="true"></div>
+  <div class="bg-animated" aria-hidden="true">
+    <div class="bg-grid"></div>
+    <canvas id="particles"></canvas>
+  </div>
 
-  <header class="topbar">
-    <a class="brand" href="/">
-      <div class="logo">A</div>
-      <div class="brand-text">
-        <div class="brand-title">Apex Play</div>
-        <div class="brand-sub">Instant browser games. No downloads.</div>
-      </div>
-    </a>
-
-    <nav class="nav">
-      <a href="/privacy.html">Privacy</a>
-      <a href="/terms.html">Terms</a>
-    </nav>
-  </header>
-
-  <main class="container">
-    <section class="hero">
-      <div class="hero-left">
-        <h1>Play fast. Build score. Come back tomorrow.</h1>
-        <p>
-          A growing arcade of lightweight browser games. No accounts. Progress saves locally in your browser.
-        </p>
-
-        <div class="hero-actions">
-          <a class="btn primary" href="/idle-clicker/">Play Idle Clicker</a>
-          <a class="btn ghost" href="#games">Browse games</a>
-        </div>
-
-        <div class="trust">
-          <span class="chip">⚡ Fast</span>
-          <span class="chip">🧠 Simple</span>
-          <span class="chip">💾 Saves locally</span>
-        </div>
-      </div>
-
-      <div class="hero-right">
-        <div class="hero-card">
-          <div class="hero-card-top">
-            <span class="pill">FEATURED</span>
-            <span class="pill alt">NEW</span>
-          </div>
-          <div class="hero-card-title">Idle Clicker</div>
-          <div class="hero-card-sub">Click, upgrade, earn while idle.</div>
-          <div class="hero-card-stats">
-            <div class="mini">
-              <div class="mini-label">Mode</div>
-              <div class="mini-value">Idle</div>
-            </div>
-            <div class="mini">
-              <div class="mini-label">Style</div>
-              <div class="mini-value">Casual</div>
-            </div>
-            <div class="mini">
-              <div class="mini-label">Save</div>
-              <div class="mini-value">Local</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Ad slot space (keep for later AdSense placement) -->
-    <div class="ad-slot" aria-label="Advertisement space"></div>
-
-    <section id="games" class="section-head">
-      <h2>Games</h2>
-      <p>More games coming soon. Each game gets its own page and can be monetized with ads.</p>
-    </section>
-
-    <section class="grid">
-      <a class="card" href="/idle-clicker/">
-        <div class="thumb">
-          <!-- Inline SVG thumbnail (no external image needed) -->
-          <svg viewBox="0 0 400 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Idle Clicker thumbnail">
-            <defs>
-              <linearGradient id="g1" x1="0" x2="1" y1="0" y2="1">
-                <stop offset="0" stop-color="#7c5cff"/>
-                <stop offset="1" stop-color="#22d3ee"/>
-              </linearGradient>
-              <filter id="blur" x="-20%" y="-20%" width="140%" height="140%">
-                <feGaussianBlur stdDeviation="18"/>
-              </filter>
-            </defs>
-            <rect width="400" height="220" fill="#0b1020"/>
-            <circle cx="90" cy="70" r="60" fill="url(#g1)" filter="url(#blur)" opacity="0.9"/>
-            <circle cx="320" cy="150" r="70" fill="#34d399" filter="url(#blur)" opacity="0.55"/>
-            <rect x="26" y="28" width="348" height="164" rx="18" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.12)"/>
-            <text x="52" y="90" font-size="28" fill="white" font-family="system-ui, -apple-system, Segoe UI, Roboto" font-weight="800">⚡ Idle Clicker</text>
-            <text x="52" y="125" font-size="14" fill="rgba(255,255,255,0.75)" font-family="system-ui, -apple-system, Segoe UI, Roboto">
-              Click → Upgrade → Earn
-            </text>
-            <text x="52" y="160" font-size="13" fill="rgba(255,255,255,0.75)" font-family="system-ui, -apple-system, Segoe UI, Roboto">
-              Progress saves locally
-            </text>
-          </svg>
-        </div>
-
-        <div class="card-body">
-          <div class="card-top">
-            <span class="pill">NEW</span>
-            <span class="pill alt">IDLE</span>
-          </div>
-
-          <h3>Idle Clicker</h3>
-          <p>Click, upgrade, and earn while idle. Simple progression with satisfying growth.</p>
-
-          <div class="tags">
-            <span>Idle</span>
-            <span>Single Player</span>
-            <span>Fast</span>
-          </div>
-
-          <div class="cta">Play Now →</div>
+  <div class="wrap">
+    <header class="site-header">
+      <a class="brand-link" href="/">
+        <div class="brand-mark">A</div>
+        <div class="brand-title">
+          <strong>Apex Play</strong>
+          <span>Instant browser games. No downloads.</span>
         </div>
       </a>
 
-      <!-- Future cards go here -->
-      <div class="card placeholder" aria-hidden="true">
-        <div class="thumb ph"></div>
-        <div class="card-body">
-          <div class="card-top">
-            <span class="pill">SOON</span>
-            <span class="pill alt">PUZZLE</span>
+      <nav class="nav">
+        <a href="/privacy.html">Privacy</a>
+        <a href="/terms.html">Terms</a>
+      </nav>
+    </header>
+
+    <section class="hero">
+      <div class="hero-inner">
+        <div>
+          <h1>Play fast. Build score. Come back tomorrow.</h1>
+          <p>
+            A growing arcade of lightweight browser games. No accounts required.
+            Progress saves locally in your browser.
+          </p>
+
+          <div class="actions">
+            <a class="btn primary" href="/idle-clicker/">Play Idle Clicker</a>
+            <a class="btn" href="#games">Browse games</a>
           </div>
-          <h3>Next Game</h3>
-          <p>Drop in a new folder and add a card here. We’ll do this next.</p>
-          <div class="tags">
-            <span>Coming</span><span>Soon</span><span>Free</span>
+
+          <div class="chips">
+            <span class="chip">⚡ Fast</span>
+            <span class="chip">🧠 Simple</span>
+            <span class="chip">💾 Saves locally</span>
           </div>
         </div>
+
+        <aside class="feature">
+          <div class="pills">
+            <span class="pill">FEATURED</span>
+            <span class="pill alt">NEW</span>
+          </div>
+
+          <h3>Idle Clicker</h3>
+          <p>Click, upgrade, and earn while idle.</p>
+
+          <div class="mini-grid">
+            <div class="mini"><div class="k">Mode</div><div class="v">Idle</div></div>
+            <div class="mini"><div class="k">Style</div><div class="v">Casual</div></div>
+            <div class="mini"><div class="k">Save</div><div class="v">Local</div></div>
+          </div>
+        </aside>
       </div>
     </section>
 
-    <section class="panel">
-      <h2>About Apex Play</h2>
-      <p>
-        Apex Play is a growing collection of lightweight browser games designed to be fast, accessible, and fun.
-        All games run directly in your browser with no downloads or accounts required.
-      </p>
-      <p>New games are added regularly. Bookmark this page and check back often.</p>
+    <section class="section" id="games">
+      <h2>Games</h2>
+      <p>More games coming soon. Each game gets its own page and can be monetized with ads.</p>
+
+      <div class="grid">
+        <a class="card" href="/idle-clicker/">
+          <div class="thumb"></div>
+          <div class="card-body">
+            <div class="card-top">
+              <span class="pill">NEW</span>
+              <span class="pill alt">IDLE</span>
+            </div>
+            <h3>Idle Clicker</h3>
+            <p>Click, upgrade, and earn while idle. Simple progression with satisfying growth.</p>
+            <div class="tags">
+              <span>Idle</span><span>Single Player</span><span>Fast</span>
+            </div>
+            <div class="cta">Play Now →</div>
+          </div>
+        </a>
+      </div>
     </section>
 
     <footer class="footer">
@@ -162,10 +99,11 @@
       <span class="dot">•</span>
       <a href="/terms.html">Terms</a>
     </footer>
-  </main>
+  </div>
 
   <script>
     document.getElementById("year").textContent = new Date().getFullYear();
   </script>
+  <script src="/assets/site.js"></script>
 </body>
 </html>
