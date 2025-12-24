@@ -89,3 +89,83 @@
           <svg viewBox="0 0 400 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Idle Clicker thumbnail">
             <defs>
               <linearGradient id="g1" x1="0" x2="1" y1="0" y2="1">
+                <stop offset="0" stop-color="#7c5cff"/>
+                <stop offset="1" stop-color="#22d3ee"/>
+              </linearGradient>
+              <filter id="blur" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="18"/>
+              </filter>
+            </defs>
+            <rect width="400" height="220" fill="#0b1020"/>
+            <circle cx="90" cy="70" r="60" fill="url(#g1)" filter="url(#blur)" opacity="0.9"/>
+            <circle cx="320" cy="150" r="70" fill="#34d399" filter="url(#blur)" opacity="0.55"/>
+            <rect x="26" y="28" width="348" height="164" rx="18" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.12)"/>
+            <text x="52" y="90" font-size="28" fill="white" font-family="system-ui, -apple-system, Segoe UI, Roboto" font-weight="800">⚡ Idle Clicker</text>
+            <text x="52" y="125" font-size="14" fill="rgba(255,255,255,0.75)" font-family="system-ui, -apple-system, Segoe UI, Roboto">
+              Click → Upgrade → Earn
+            </text>
+            <text x="52" y="160" font-size="13" fill="rgba(255,255,255,0.75)" font-family="system-ui, -apple-system, Segoe UI, Roboto">
+              Progress saves locally
+            </text>
+          </svg>
+        </div>
+
+        <div class="card-body">
+          <div class="card-top">
+            <span class="pill">NEW</span>
+            <span class="pill alt">IDLE</span>
+          </div>
+
+          <h3>Idle Clicker</h3>
+          <p>Click, upgrade, and earn while idle. Simple progression with satisfying growth.</p>
+
+          <div class="tags">
+            <span>Idle</span>
+            <span>Single Player</span>
+            <span>Fast</span>
+          </div>
+
+          <div class="cta">Play Now →</div>
+        </div>
+      </a>
+
+      <!-- Future cards go here -->
+      <div class="card placeholder" aria-hidden="true">
+        <div class="thumb ph"></div>
+        <div class="card-body">
+          <div class="card-top">
+            <span class="pill">SOON</span>
+            <span class="pill alt">PUZZLE</span>
+          </div>
+          <h3>Next Game</h3>
+          <p>Drop in a new folder and add a card here. We’ll do this next.</p>
+          <div class="tags">
+            <span>Coming</span><span>Soon</span><span>Free</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>About Apex Play</h2>
+      <p>
+        Apex Play is a growing collection of lightweight browser games designed to be fast, accessible, and fun.
+        All games run directly in your browser with no downloads or accounts required.
+      </p>
+      <p>New games are added regularly. Bookmark this page and check back often.</p>
+    </section>
+
+    <footer class="footer">
+      <span>© <span id="year"></span> Apex Play</span>
+      <span class="dot">•</span>
+      <a href="/privacy.html">Privacy Policy</a>
+      <span class="dot">•</span>
+      <a href="/terms.html">Terms</a>
+    </footer>
+  </main>
+
+  <script>
+    document.getElementById("year").textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
