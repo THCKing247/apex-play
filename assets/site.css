@@ -47,6 +47,13 @@ body{
   filter: blur(12px);
   opacity:.9;
 }
+/* Ensure background layers NEVER block clicks */
+.bg-animated,
+.bg-animated::before,
+.bg-grid,
+#particles {
+  pointer-events: none !important;
+}
 
 /* subtle grid */
 .bg-grid{
