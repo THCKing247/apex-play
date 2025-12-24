@@ -5,16 +5,21 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Apex Play</title>
   <meta name="description" content="Apex Play is a browser-based arcade featuring simple, fast, and addictive games you can play instantly." />
+
+  <!-- IMPORTANT: this must be /style.css in repo root -->
   <link rel="stylesheet" href="/style.css" />
 </head>
+
 <body>
+  <div class="bg" aria-hidden="true"></div>
+
   <header class="topbar">
     <a class="brand" href="/">
-      <span class="brand-badge">🎮</span>
-      <span class="brand-text">
-        <span class="brand-title">Apex Play</span>
-        <span class="brand-sub">Instant browser games. No downloads.</span>
-      </span>
+      <div class="logo">A</div>
+      <div class="brand-text">
+        <div class="brand-title">Apex Play</div>
+        <div class="brand-sub">Instant browser games. No downloads.</div>
+      </div>
     </a>
 
     <nav class="nav">
@@ -24,44 +29,63 @@
   </header>
 
   <main class="container">
-    <!-- Ad slot (safe placement) -->
+    <section class="hero">
+      <div class="hero-left">
+        <h1>Play fast. Build score. Come back tomorrow.</h1>
+        <p>
+          A growing arcade of lightweight browser games. No accounts. Progress saves locally in your browser.
+        </p>
+
+        <div class="hero-actions">
+          <a class="btn primary" href="/idle-clicker/">Play Idle Clicker</a>
+          <a class="btn ghost" href="#games">Browse games</a>
+        </div>
+
+        <div class="trust">
+          <span class="chip">⚡ Fast</span>
+          <span class="chip">🧠 Simple</span>
+          <span class="chip">💾 Saves locally</span>
+        </div>
+      </div>
+
+      <div class="hero-right">
+        <div class="hero-card">
+          <div class="hero-card-top">
+            <span class="pill">FEATURED</span>
+            <span class="pill alt">NEW</span>
+          </div>
+          <div class="hero-card-title">Idle Clicker</div>
+          <div class="hero-card-sub">Click, upgrade, earn while idle.</div>
+          <div class="hero-card-stats">
+            <div class="mini">
+              <div class="mini-label">Mode</div>
+              <div class="mini-value">Idle</div>
+            </div>
+            <div class="mini">
+              <div class="mini-label">Style</div>
+              <div class="mini-value">Casual</div>
+            </div>
+            <div class="mini">
+              <div class="mini-label">Save</div>
+              <div class="mini-value">Local</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Ad slot space (keep for later AdSense placement) -->
     <div class="ad-slot" aria-label="Advertisement space"></div>
+
+    <section id="games" class="section-head">
+      <h2>Games</h2>
+      <p>More games coming soon. Each game gets its own page and can be monetized with ads.</p>
+    </section>
 
     <section class="grid">
       <a class="card" href="/idle-clicker/">
-        <div class="card-top">
-          <span class="pill">NEW</span>
-          <span class="emoji">⚡</span>
-        </div>
-        <h2>Idle Clicker</h2>
-        <p>Click, upgrade, and earn while idle. Simple progression with satisfying growth.</p>
-        <div class="tags">
-          <span>Idle</span><span>Single Player</span><span>Fast</span>
-        </div>
-        <div class="cta">Play Now →</div>
-      </a>
-
-      <!-- Add more games later by copying the card -->
-    </section>
-
-    <section class="panel">
-      <h2>About Apex Play</h2>
-      <p>
-        Apex Play is a growing collection of lightweight browser games designed to be fast,
-        accessible, and fun. All games run directly in your browser with no downloads or accounts required.
-      </p>
-      <p>New games are added regularly. Bookmark this page and check back often.</p>
-    </section>
-
-    <footer class="footer">
-      <span>© <span id="year"></span> Apex Play</span>
-      <span class="dot">•</span>
-      <a href="/privacy.html">Privacy Policy</a>
-    </footer>
-  </main>
-
-  <script>
-    document.getElementById("year").textContent = new Date().getFullYear();
-  </script>
-</body>
-</html>
+        <div class="thumb">
+          <!-- Inline SVG thumbnail (no external image needed) -->
+          <svg viewBox="0 0 400 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Idle Clicker thumbnail">
+            <defs>
+              <linearGradient id="g1" x1="0" x2="1" y1="0" y2="1">
