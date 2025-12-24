@@ -1,1 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Idle Clicker | Apex Play</title>
+
+  <meta name="description" content="Idle Clicker – earn currency by clicking and upgrading over time." />
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <main class="wrap">
+    <header class="top">
+      <h1>⚡ Idle Clicker</h1>
+      <p class="sub">Click, upgrade, and earn while idle.</p>
+    </header>
+
+    <!-- AD SLOT (SAFE LOCATION – ADD ADSENSE LATER)
+    <div class="ad-slot"></div>
+    -->
+
+    <section class="stats">
+      <div class="stat">
+        <span class="label">Coins</span>
+        <span id="coins">0</span>
+      </div>
+      <div class="stat">
+        <span class="label">Per Click</span>
+        <span id="perClick">1</span>
+      </div>
+      <div class="stat">
+        <span class="label">Per Second</span>
+        <span id="perSecond">0</span>
+      </div>
+    </section>
+
+    <section class="click-area">
+      <button id="clickBtn">CLICK</button>
+    </section>
+
+    <section class="upgrades">
+      <h2>Upgrades</h2>
+
+      <button class="upgrade" id="upgradeClick">
+        Increase Click Power<br>
+        Cost: <span id="clickCost">10</span>
+      </button>
+
+      <button class="upgrade" id="upgradeIdle">
+        Increase Idle Income<br>
+        Cost: <span id="idleCost">25</span>
+      </button>
+    </section>
+
+    <!-- AD SLOT (BOTTOM – SAFE)
+    <div class="ad-slot"></div>
+    -->
+
+    <footer class="footer">
+      <a href="/">← Back to Apex Play</a>
+    </footer>
+  </main>
+
+  <script src="game.js"></script>
+</body>
+</html>
 
