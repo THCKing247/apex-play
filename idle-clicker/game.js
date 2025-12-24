@@ -1,80 +1,195 @@
-let coins = 0;
-let perClick = 1;
-let perSecond = 0;
+(() => {
+  const SAVE_KEY = "apex_play_idle_clicker_v1";
 
-let clickCost = 10;
-let idleCost = 25;
+  // ----- helpers -----
+  const now = () => Date.now();
 
-// Load saved data
-function loadGame() {
-  const saved = JSON.parse(localStorage.getItem("idleClickerSave"));
-  if (!saved) return;
+  const fmt = (n) => {
+    const x = Math.floor(n);
+    if (x >= 1e12) return (x / 1e12).toFixed(2) + "T";
+    if (x >= 1e9)  return (x / 1e9).toFixed(2) + "B";
+    if (x >= 1e6)  return (x / 1e6).toFixed(2) + "M";
+    if (x >= 1e3)  return (x / 1e3).toFixed(2) + "K";
+    return String(x);
+  };
 
-  coins = saved.coins;
-  perClick = saved.perClick;
-  perSecond = saved.perSecond;
-  clickCost = saved.clickCost;
-  idleCost = saved.idleCost;
-}
+  const clampNum = (v, fallback = 0) => (Number.isFinite(v) ? v : fallback);
 
-// Save game
-function saveGame() {
-  localStorage.setItem(
-    "idleClickerSave",
-    JSON.stringify({
-      coins,
-      perClick,
-      perSecond,
-      clickCost,
-      idleCost,
-    })
-  );
-}
+  // ----- state -----
+  let state = {
+    coins: 0,
+    perClick: 1,
+    perSecond: 0,
 
-function updateUI() {
-  document.getElementById("coins").textContent = Math.floor(coins);
-  document.getElementById("perClick").textContent = perClick;
-  document.getElementById("perSecond").textContent = perSecond;
-  document.getElementById("clickCost").textContent = clickCost;
-  document.getElementById("idleCost").textContent = idleCost;
+    clickCost: 10,
+    idleCost: 25,
 
-  document.getElementById("upgradeClick").disabled = coins < clickCost;
-  document.getElementById("upgradeIdle").disabled = coins < idleCost;
-}
+    clickLevel: 0,
+    idleLevel: 0,
 
-// Click action
-document.getElementById("clickBtn").onclick = () => {
-  coins += perClick;
-  updateUI();
-  saveGame();
-};
+    lastSeen: now()
+  };
 
-// Upgrade click power
-document.getElementById("upgradeClick").onclick = () => {
-  if (coins < clickCost) return;
-  coins -= clickCost;
-  perClick += 1;
-  clickCost = Math.floor(clickCost * 1.6);
-  updateUI();
-  saveGame();
-};
+  function load() {
+    try {
+      const raw = localStorage.getItem(SAVE_KEY);
+      if (!raw) return;
 
-// Upgrade idle income
-document.getElementById("upgradeIdle").onclick = () => {
-  if (coins < idleCost) return;
-  coins -= idleCost;
-  perSecond += 1;
-  idleCost = Math.floor(idleCost * 1.7);
-  updateUI();
-  saveGame();
-};
+      const saved = JSON.parse(raw);
+      if (!saved || typeof saved !== "object") return;
 
-// Idle loop
-setInterval(() => {
-  coins += perSecond;
-  updateUI();
-  saveGame();
-}, 1000);
+      // merge / sanitize
+      state = { ...state, ...saved };
+      state.coins = clampNum(state.coins, 0);
+      state.perClick = Math.max(1, clampNum(state.perClick, 1));
+      state.perSecond = Math.max(0, clampNum(state.perSecond, 0));
+
+      state.clickCost = Math.max(1, clampNum(state.clickCost, 10));
+      state.idleCost = Math.max(1, clampNum(state.idleCost, 25));
+
+      state.clickLevel = Math.max(0, clampNum(state.clickLevel, 0));
+      state.idleLevel = Math.max(0, clampNum(state.idleLevel, 0));
+
+      const last = clampNum(state.lastSeen, now());
+      const elapsedSec = Math.floor(Math.max(0, now() - last) / 1000);
+
+      // offline earnings
+      if (elapsedSec > 0 && state.perSecond > 0) {
+        state.coins += elapsedSec * state.perSecond;
+      }
+
+      state.lastSeen = now();
+    } catch {
+      // ignore corrupted saves
+    }
+  }
+
+  function save() {
+    state.lastSeen = now();
+    localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+  }
+
+  // ----- DOM -----
+  document.addEventListener("DOMContentLoaded", () => {
+    const elCoins = document.getElementById("coins");
+    const elPerClick = document.getElementById("perClick");
+    const elPerSecond = document.getElementById("perSecond");
+
+    const elClickCost = document.getElementById("clickCost");
+    const elIdleCost = document.getElementById("idleCost");
+
+    const elClickLevel = document.getElementById("clickLevel");
+    const elIdleLevel = document.getElementById("idleLevel");
+
+    const btnClick = document.getElementById("clickBtn");
+    const btnUpClick = document.getElementById("upgradeClick");
+    const btnUpIdle = document.getElementById("upgradeIdle");
+    const btnReset = document.getElementById("resetBtn");
+
+    const status = document.getElementById("status");
+
+    if (!btnClick || !btnUpClick || !btnUpIdle) {
+      console.error("Idle Clicker: Missing elements. Check ids & file paths.");
+      return;
+    }
+
+    const setStatus = (msg) => {
+      if (!status) return;
+      status.textContent = msg;
+      status.style.opacity = "1";
+      clearTimeout(setStatus._t);
+      setStatus._t = setTimeout(() => (status.style.opacity = "0.85"), 700);
+    };
+
+    const update = () => {
+      elCoins.textContent = fmt(state.coins);
+      elPerClick.textContent = fmt(state.perClick);
+      elPerSecond.textContent = fmt(state.perSecond);
+
+      elClickCost.textContent = fmt(state.clickCost);
+      elIdleCost.textContent = fmt(state.idleCost);
+
+      elClickLevel.textContent = fmt(state.clickLevel);
+      elIdleLevel.textContent = fmt(state.idleLevel);
+
+      btnUpClick.disabled = state.coins < state.clickCost;
+      btnUpIdle.disabled = state.coins < state.idleCost;
+    };
+
+    // init
+    load();
+    update();
+    setStatus("Loaded ✔ (auto-saves)");
+
+    // click
+    btnClick.addEventListener("click", () => {
+      state.coins += state.perClick;
+      update();
+      save();
+      setStatus("Saved locally");
+    });
+
+    // upgrades
+    btnUpClick.addEventListener("click", () => {
+      if (state.coins < state.clickCost) return;
+      state.coins -= state.clickCost;
+
+      state.clickLevel += 1;
+      state.perClick += 1;
+
+      // scaling
+      state.clickCost = Math.floor(state.clickCost * 1.60 + 1);
+
+      update();
+      save();
+      setStatus("Click Power upgraded ✔");
+    });
+
+    btnUpIdle.addEventListener("click", () => {
+      if (state.coins < state.idleCost) return;
+      state.coins -= state.idleCost;
+
+      state.idleLevel += 1;
+      state.perSecond += 1;
+
+      // scaling
+      state.idleCost = Math.floor(state.idleCost * 1.70 + 1);
+
+      update();
+      save();
+      setStatus("Idle Income upgraded ✔");
+    });
+
+    // reset
+    btnReset?.addEventListener("click", () => {
+      const ok = confirm("Reset your save? This clears local progress on this device.");
+      if (!ok) return;
+      localStorage.removeItem(SAVE_KEY);
+      state = {
+        coins: 0, perClick: 1, perSecond: 0,
+        clickCost: 10, idleCost: 25,
+        clickLevel: 0, idleLevel: 0,
+        lastSeen: now()
+      };
+      update();
+      save();
+      setStatus("Save reset ✔");
+    });
+
+    // idle tick
+    setInterval(() => {
+      if (state.perSecond > 0) {
+        state.coins += state.perSecond;
+        update();
+        save();
+      } else {
+        // keep lastSeen fresh even with 0 idle
+        save();
+      }
+    }, 1000);
+  });
+})();
+
 
 // Init
 loadGame();
