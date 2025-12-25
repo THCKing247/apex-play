@@ -291,11 +291,11 @@
 
         <!-- CHANGE THIS if your game URL is different -->
         <script>
-          window.APEX_GAME_URL = "./kingdoms/"; // <-- put your game folder here
+          window.APEX_GAME_URL = "./apex-kingdoms/"; // <-- put your game folder here
         </script>
 
         <div class="cta">
-          <a class="btn primary" id="playNow" href="./kingdoms/">▶ Play Apex Kingdoms</a>
+          <a class="btn primary" id="playNow" href="./apex-kingdoms/">▶ Play Apex Kingdoms</a>
           <a class="btn" href="#games">Browse games</a>
         </div>
 
@@ -327,7 +327,7 @@
             <div class="pill"><small>Save</small><b>Cloud</b></div>
           </div>
 
-          <a class="btn primary" href="./kingdoms/">Play now</a>
+          <a class="btn primary" href="./apex-kingdoms/">Play now</a>
         </div>
       </aside>
     </section>
@@ -351,7 +351,7 @@
           </p>
           <div class="play" style="margin-top:12px;">
             <span style="color:rgba(255,255,255,.55);font-size:12px;">Updated</span>
-            <a href="./kingdoms/">Play Now →</a>
+            <a href="./apex-kingdoms/">Play Now →</a>
           </div>
         </div>
       </article>
@@ -400,8 +400,8 @@
   <script>
     // Keep the Play buttons in sync with APEX_GAME_URL if you edit it.
     (function(){
-      const url = window.APEX_GAME_URL || "./kingdoms/";
-      const links = document.querySelectorAll('a[href="./kingdoms/"]');
+      const url = window.APEX_GAME_URL || "./apex-kingdoms/";
+      const links = document.querySelectorAll('a[href="./apex-kingdoms/"]');
       links.forEach(a => a.setAttribute("href", url));
       document.getElementById("y").textContent = new Date().getFullYear();
     })();
