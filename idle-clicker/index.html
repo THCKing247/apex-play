@@ -1,107 +1,106 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
+<meta charset="UTF-8">
 <title>Apex Play – Idle Clicker</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
 :root{
-  --bg:#0b1020;
-  --panel:#121a35;
-  --card:#161f42;
+  --bg0:#070b1a;
+  --bg1:#0b1026;
+  --glass:rgba(255,255,255,.06);
+  --stroke:rgba(255,255,255,.12);
   --accent:#7c5cff;
   --text:#e5e7eb;
   --muted:#9ca3af;
 }
 
+/* RESET */
 *{box-sizing:border-box}
 body{
   margin:0;
   font-family:system-ui,-apple-system,Segoe UI,Roboto;
-  background:radial-gradient(circle at top,var(--accent),transparent 40%),var(--bg);
   color:var(--text);
+  background:
+    radial-gradient(1200px 600px at 60% -10%, #7c5cff55, transparent 60%),
+    linear-gradient(180deg,var(--bg0),var(--bg1));
+  min-height:100vh;
 }
 
-/* BACKGROUND (VISUAL ONLY) */
+/* BACKGROUND FX (VISUAL ONLY) */
 .bg-animated,
-.bg-animated *,
+.bg-animated::before,
+.bg-grid,
 canvas{
   pointer-events:none !important;
 }
 
-/* LAYOUT */
 .wrap{
-  max-width:1100px;
+  max-width:1200px;
   margin:auto;
-  padding:24px;
+  padding:32px;
   position:relative;
-  z-index:5;
+  z-index:2;
 }
 
-h1,h2,h3{margin:0 0 12px}
-button,select,input{
-  background:#0f172a;
-  color:var(--text);
-  border:1px solid #2a3570;
-  border-radius:10px;
-  padding:10px;
-  cursor:pointer;
-}
-button.primary{
-  background:var(--accent);
-  border:none;
-  color:#fff;
-}
-button:disabled{opacity:.5}
+h1,h2,h3{margin:0 0 16px}
 
-/* GAME */
+/* GLASS CARDS */
+.card{
+  background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.02));
+  border:1px solid var(--stroke);
+  border-radius:24px;
+  padding:24px;
+  backdrop-filter:blur(12px);
+  box-shadow:0 30px 80px rgba(0,0,0,.45);
+}
+
+/* GAME GRID */
 .game{
   display:grid;
   grid-template-columns:1fr 420px;
-  gap:24px;
-  pointer-events:auto;
+  gap:28px;
 }
 
-.card{
-  background:linear-gradient(180deg,var(--card),#0b122f);
-  border-radius:20px;
-  padding:20px;
-  box-shadow:0 10px 40px rgba(0,0,0,.4);
+/* BUTTONS */
+button,select,input{
+  background:rgba(0,0,0,.35);
+  color:var(--text);
+  border:1px solid var(--stroke);
+  border-radius:12px;
+  padding:10px 12px;
+}
+button.primary{
+  background:linear-gradient(135deg,#7c5cff,#5f4cff);
+  border:none;
+  font-size:18px;
+  padding:16px;
 }
 
-.click-btn{
-  font-size:22px;
-  padding:18px;
-  width:100%;
-  margin:16px 0;
+/* CONTROLS */
+.controls{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
+}
+label{
+  font-size:12px;
+  color:var(--muted);
 }
 
 /* AVATAR */
 .avatar-box{
-  background:#060b1e;
-  border-radius:18px;
-  padding:16px;
+  height:420px;
+  border-radius:20px;
+  background:radial-gradient(circle at top,#0b1026,#050814);
   display:flex;
   align-items:center;
   justify-content:center;
-  height:360px;
 }
-
 .avatar-svg,
 .avatar-svg svg{
   pointer-events:none;
-}
-
-.controls{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:12px;
-}
-
-label{
-  font-size:12px;
-  color:var(--muted);
 }
 
 /* FOOTER */
@@ -120,80 +119,87 @@ label{
 
   <div class="game">
 
-    <!-- LEFT: GAME -->
-    <div class="card">
-      <h2>Coins: <span id="coins">0</span></h2>
-      <button class="click-btn primary" id="clickBtn">Click to Earn</button>
+    <!-- LEFT -->
+    <div class="card game">
+      <div>
+        <h2>Coins: <span id="coins">0</span></h2>
+        <button id="clickBtn" class="primary" style="width:100%;margin-bottom:20px">
+          Click to Earn
+        </button>
 
-      <h3>Avatar Builder</h3>
-      <div class="controls">
-        <label>Base
-          <select id="base">
-            <option value="human">Human</option>
-            <option value="robot">Robot</option>
-          </select>
-        </label>
+        <h3>Avatar Builder</h3>
 
-        <label>Hair
-          <select id="hair">
-            <option value="none">None</option>
-            <option value="short">Short</option>
-            <option value="bun">Bun</option>
-          </select>
-        </label>
+        <div class="controls">
+          <label>Base
+            <select id="base">
+              <option value="human">Human</option>
+              <option value="robot">Robot</option>
+            </select>
+          </label>
 
-        <label>Hair Color
-          <input type="color" id="hairColor" value="#2d2d2d">
-        </label>
+          <label>Hair
+            <select id="hair">
+              <option value="none">None</option>
+              <option value="short">Short</option>
+              <option value="bun">Bun</option>
+            </select>
+          </label>
 
-        <label>Eyes
-          <select id="eyes">
-            <option value="default">Default</option>
-            <option value="happy">Happy</option>
-            <option value="sad">Sad</option>
-          </select>
-        </label>
+          <label>Hair Color
+            <input type="color" id="hairColor" value="#2d2d2d">
+          </label>
 
-        <label>Mouth
-          <select id="mouth">
-            <option value="smile">Smile</option>
-            <option value="neutral">Neutral</option>
-            <option value="frown">Frown</option>
-          </select>
-        </label>
+          <label>Eyes
+            <select id="eyes">
+              <option value="default">Default</option>
+              <option value="happy">Happy</option>
+              <option value="sad">Sad</option>
+            </select>
+          </label>
 
-        <label>Skin
-          <input type="color" id="skin" value="#f1c27d">
-        </label>
+          <label>Mouth
+            <select id="mouth">
+              <option value="smile">Smile</option>
+              <option value="neutral">Neutral</option>
+              <option value="frown">Frown</option>
+            </select>
+          </label>
 
-        <label>Shirt
-          <select id="shirt">
-            <option value="tee">Tee</option>
-            <option value="jacket">Jacket</option>
-          </select>
-        </label>
+          <label>Skin
+            <input type="color" id="skin" value="#f1c27d">
+          </label>
 
-        <label>Shirt Color
-          <input type="color" id="shirtColor" value="#7c5cff">
-        </label>
+          <label>Shirt
+            <select id="shirt">
+              <option value="tee">Tee</option>
+              <option value="jacket">Jacket</option>
+            </select>
+          </label>
 
-        <label>Pants
-          <select id="pants">
-            <option value="jeans">Jeans</option>
-            <option value="shorts">Shorts</option>
-          </select>
-        </label>
+          <label>Shirt Color
+            <input type="color" id="shirtColor" value="#7c5cff">
+          </label>
 
-        <label>Pants Color
-          <input type="color" id="pantsColor" value="#111827">
-        </label>
+          <label>Pants
+            <select id="pants">
+              <option value="jeans">Jeans</option>
+              <option value="shorts">Shorts</option>
+            </select>
+          </label>
+
+          <label>Pants Color
+            <input type="color" id="pantsColor" value="#111827">
+          </label>
+        </div>
+
+        <div style="margin-top:16px;display:flex;gap:12px">
+          <button id="saveAvatar">Save Avatar</button>
+          <button id="reset">Reset Save</button>
+        </div>
       </div>
-
-      <button id="saveAvatar">Save Avatar</button>
-      <button id="reset">Reset Save</button>
     </div>
 
-    <!-- RIGHT: AVATAR -->
+    <!-- RIGHT -->
     <div class="card">
       <h3>Preview</h3>
       <div class="avatar-box">
@@ -209,8 +215,8 @@ label{
 </div>
 
 <script>
-/* SAVE */
 const save = JSON.parse(localStorage.getItem("apexSave")||"{}");
+let coins = save.coins || 0;
 
 const avatar = save.avatar || {
   base:"human",
@@ -225,22 +231,30 @@ const avatar = save.avatar || {
   pantsColor:"#111827"
 };
 
-let coins = save.coins || 0;
-
 const $ = id=>document.getElementById(id);
 
-/* AVATAR SVG */
 function svgAvatar(a){
-  const skin = a.base==="robot"?"#cbd5e1":a.skin;
+  const skin = a.base==="robot" ? "#cbd5e1" : a.skin;
   return `
-<svg viewBox="0 0 120 180" width="180">
-<ellipse cx="60" cy="46" rx="30" ry="34" fill="${skin}"/>
-${a.hair!=="none"?`<path d="M26 40 C28 18 92 18 94 40 Z" fill="${a.hairColor}"/>`:""}
-<circle cx="48" cy="48" r="4"/><circle cx="72" cy="48" r="4"/>
-<path d="M48 64c6 6 18 6 24 0" stroke="#000" stroke-width="2" fill="none"/>
-<rect x="30" y="82" width="60" height="40" rx="20" fill="${a.shirtColor}"/>
-<rect x="42" y="124" width="14" height="40" rx="7" fill="${a.pantsColor}"/>
-<rect x="64" y="124" width="14" height="40" rx="7" fill="${a.pantsColor}"/>
+<svg viewBox="0 0 120 180" width="200">
+  <ellipse cx="60" cy="46" rx="30" ry="34" fill="${skin}"/>
+  ${a.hair!=="none"?`
+    <path d="
+      M26 38
+      C28 18,92 18,94 38
+      C88 32,78 30,60 30
+      C42 30,32 32,26 38
+      Z
+    " fill="${a.hairColor}"/>
+    ${a.hair==="bun"?`<circle cx="60" cy="14" r="9" fill="${a.hairColor}"/>`:""}
+  `:""}
+  <circle cx="48" cy="48" r="4"/><circle cx="72" cy="48" r="4"/>
+  ${a.mouth==="smile"?`<path d="M48 64c6 6 18 6 24 0" stroke="#000" stroke-width="2" fill="none"/>`:
+    a.mouth==="frown"?`<path d="M48 70c6-6 18-6 24 0" stroke="#000" stroke-width="2" fill="none"/>`:
+    `<line x1="48" y1="66" x2="72" y2="66" stroke="#000" stroke-width="2"/>`}
+  <rect x="30" y="82" width="60" height="40" rx="20" fill="${a.shirtColor}"/>
+  <rect x="42" y="124" width="14" height="40" rx="7" fill="${a.pantsColor}"/>
+  <rect x="64" y="124" width="14" height="40" rx="7" fill="${a.pantsColor}"/>
 </svg>`;
 }
 
@@ -249,18 +263,24 @@ function render(){
   $("avatar").innerHTML = svgAvatar(avatar);
 }
 
-/* BIND */
+/* BINDINGS */
 ["base","hair","eyes","mouth","shirt","pants"].forEach(k=>{
-  $(k).onchange=e=>{avatar[k]=e.target.value;render();}
+  $(k).addEventListener("change",e=>{
+    avatar[k]=e.target.value;
+    render();
+  });
 });
 ["hairColor","skin","shirtColor","pantsColor"].forEach(k=>{
-  $(k).oninput=e=>{avatar[k]=e.target.value;render();}
+  $(k).addEventListener("input",e=>{
+    avatar[k]=e.target.value;
+    render();
+  });
 });
 
 /* GAME */
-$("clickBtn").onclick=()=>{coins++;render();}
+$("clickBtn").onclick=()=>{coins++;render();};
 $("saveAvatar").onclick=()=>{
-  localStorage.setItem("apexSave",JSON.stringify({avatar,coins}));
+  localStorage.setItem("apexSave",JSON.stringify({coins,avatar}));
 };
 $("reset").onclick=()=>{
   localStorage.removeItem("apexSave");
