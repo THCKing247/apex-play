@@ -113,6 +113,7 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
   display:none;
   max-width:290px;
 }
+
 .minimap{
   position:absolute;
   right:12px; bottom:12px;
@@ -122,8 +123,38 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
   background:rgba(0,0,0,.35);
   overflow:hidden;
   box-shadow:0 20px 50px rgba(0,0,0,.35);
+  cursor:pointer;
 }
-.minimap canvas{width:100%;height:100%;display:block;opacity:.95}
+.minimap.expanded{
+  width:520px; height:320px;
+}
+.minimap canvas{width:100%;height:100%;display:block;opacity:.97}
+.miniHud{
+  position:absolute;
+  left:8px; top:8px;
+  display:flex;
+  gap:8px;
+  align-items:center;
+  padding:6px 8px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(0,0,0,.40);
+  z-index:3;
+  pointer-events:auto;
+}
+.miniLabel{font-size:11px;color:var(--muted);letter-spacing:.02em}
+.miniBtn{
+  width:26px;height:26px;
+  border-radius:10px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.08);
+  color:var(--text);
+  cursor:pointer;
+  display:grid;place-items:center;
+  padding:0;
+}
+.miniBtn:hover{background:rgba(255,255,255,.12)}
+
 .youAreHere{
   position:absolute;
   left:12px; bottom:12px;
@@ -322,10 +353,18 @@ input, select{
           <div style="line-height:1.15">
             <div style="font-weight:700">You are here</div>
             <div class="smallMuted" id="youAreHereText">—</div>
+            <div class="row" style="margin-top:8px">
+              <button class="small secondary" id="centerBtn" title="Center camera on your location">Center</button>
+              <button class="small secondary" id="fitBtn" title="Zoom to fit the whole world">Fit</button>
+            </div>
           </div>
         </div>
 
-        <div class="minimap">
+        <div class="minimap" id="miniWrap" title="Click to jump • Use ⤢ to expand">
+          <div class="miniHud">
+            <div class="miniLabel">Mini Map</div>
+            <button class="miniBtn" id="miniToggle" title="Expand / collapse">⤢</button>
+          </div>
           <canvas id="minimap"></canvas>
         </div>
       </div>
@@ -4132,32 +4171,69 @@ function renderLog(){
 /* =========================
    Canvas: World + Dungeon rendering, pan/zoom, minimap, tooltip
 ========================= */
-let view = { x: 0, y: 0, zoom: 0.055, dragging:false, lastX:0, lastY:0 };
+let view = { x: 0, y: 0, zoom: 0.05, minZoom: 0.012, maxZoom: 0.22, dragging:false, lastX:0, lastY:0 };
 
 function resizeCanvases(){
   const wrap = $("mapWrap");
   const rect = wrap.getBoundingClientRect();
   mapCanvas.width  = Math.floor(rect.width * devicePixelRatio);
   mapCanvas.height = Math.floor(rect.height * devicePixelRatio);
-  miniCanvas.width  = Math.floor(180 * devicePixelRatio);
-  miniCanvas.height = Math.floor(110 * devicePixelRatio);
+
+  const miniWrap = $("miniWrap");
+  const mrect = miniWrap.getBoundingClientRect();
+  miniCanvas.width  = Math.floor(mrect.width * devicePixelRatio);
+  miniCanvas.height = Math.floor(mrect.height * devicePixelRatio);
+
+  // dynamic zoom bounds (pixels per world unit)
+  const fit = Math.min(mapCanvas.width / WORLD_W, mapCanvas.height / WORLD_H);
+  view.minZoom = Math.max(0.004, fit * 0.30);   // ~3.3x zoomed-out from fit
+  view.maxZoom = Math.min(0.65,  fit * 7.0);    // strong zoom-in
+  if(!Number.isFinite(view.zoom) || view.zoom<=0) view.zoom = fit * 0.9;
+  view.zoom = clamp(view.zoom, view.minZoom, view.maxZoom);
 }
 window.addEventListener("resize", ()=>{ resizeCanvases(); draw(); });
 
 function worldToScreen(wx, wy){
-  const cx = (wx - view.x) * view.zoom;
-  const cy = (wy - view.y) * view.zoom;
-  const sx = (cx + 0.5) * mapCanvas.width;
-  const sy = (cy + 0.5) * mapCanvas.height;
+  // view.x/view.y are the world-space center of the camera
+  const sx = (wx - view.x) * view.zoom + (mapCanvas.width/2);
+  const sy = (wy - view.y) * view.zoom + (mapCanvas.height/2);
   return {sx, sy};
 }
 function screenToWorld(sx, sy){
-  const cx = (sx / mapCanvas.width) - 0.5;
-  const cy = (sy / mapCanvas.height) - 0.5;
-  const wx = (cx / view.zoom) + view.x;
-  const wy = (cy / view.zoom) + view.y;
+  const wx = ((sx - (mapCanvas.width/2)) / view.zoom) + view.x;
+  const wy = ((sy - (mapCanvas.height/2)) / view.zoom) + view.y;
   return {wx, wy};
 }
+
+
+function hash2i(ix, iy){
+  // deterministic 2D hash -> [0,1)
+  let n = (ix|0) * 374761393 + (iy|0) * 668265263;
+  n = (n ^ (n >> 13)) >>> 0;
+  n = Math.imul(n, 1274126177) >>> 0;
+  n = (n ^ (n >> 16)) >>> 0;
+  return (n >>> 0) / 4294967296;
+}
+function shadeColor(r,g,b, amt){
+  // amt in [-1..1], adjusts brightness
+  const f = (x)=>clamp(Math.round(x + (amt*50)), 0, 255);
+  return `rgb(${f(r)},${f(g)},${f(b)})`;
+}
+const BIOME_COLORS = {
+  grasslands:[28,129,76],
+  woodland:[18,96,58],
+  desert:[196,164,84],
+  tundra:[104,130,140],
+  arctic:[180,210,235],
+  snow:[210,223,235]
+};
+const SEA_COLORS = {deep:[17,42,110], shallow:[24,72,160]};
+const KINGDOM_TINT = {
+  Valoria:"rgba(124,92,255,.18)",
+  Kragmire:"rgba(251,113,133,.16)",
+  Eldwyn:"rgba(52,211,153,.14)",
+  SableCoast:"rgba(59,130,246,.14)"
+};
 
 function centerOnNode(nodeId){
   const n = nodeById[nodeId];
@@ -4169,50 +4245,136 @@ function centerOnNode(nodeId){
 function drawWorld(){
   ctx.clearRect(0,0,mapCanvas.width,mapCanvas.height);
 
-  // background sea/land
-  // sample grid for big map shading
-  const step = Math.max(260, Math.floor(540 / view.zoom)); // adaptive
-  for(let wy=view.y - (0.55/view.zoom); wy<view.y + (0.55/view.zoom); wy+=step){
-    for(let wx=view.x - (0.55/view.zoom); wx<view.x + (0.55/view.zoom); wx+=step){
-      const land = isLand(wx,wy);
-      const b = biomeAt(wx,wy);
-      const tint = (BIOMES.find(x=>x.id===b)?.tint) || "rgba(255,255,255,.06)";
-      const {sx,sy} = worldToScreen(wx,wy);
-      const {sx:sx2,sy:sy2} = worldToScreen(wx+step, wy+step);
-      const w = (sx2-sx), h=(sy2-sy);
-      if (land) {
-  // add terrain tint + soft noise shading
-  const shade = 0.08 + 0.05*Math.random();
-  ctx.fillStyle = `rgba(72,255,146,${shade})`; // greenish land tint
-} else {
-  const shade = 0.05 + 0.04*Math.random();
-  ctx.fillStyle = `rgba(36,92,200,${shade})`; // blue ocean tint
-}
-ctx.fillRect(sx,sy,w,h);
+  // keep camera within world bounds (with a little padding)
+  const pad = 0;
+  view.x = clamp(view.x, -pad, WORLD_W+pad);
+  view.y = clamp(view.y, -pad, WORLD_H+pad);
+
+  const halfW = mapCanvas.width/(2*view.zoom);
+  const halfH = mapCanvas.height/(2*view.zoom);
+  const minX = view.x - halfW;
+  const maxX = view.x + halfW;
+  const minY = view.y - halfH;
+  const maxY = view.y + halfH;
+
+  // --- Background: terrain + kingdoms (coarse tiles, stable noise) ---
+  const stepPx = 90 * devicePixelRatio;          // ~screen pixels per tile
+  const stepW  = stepPx / view.zoom;             // world units per tile
+  const startX = Math.floor(minX/stepW) * stepW;
+  const startY = Math.floor(minY/stepW) * stepW;
+
+  for(let wx=startX; wx<=maxX; wx+=stepW){
+    for(let wy=startY; wy<=maxY; wy+=stepW){
+      const cxW = wx + stepW/2;
+      const cyW = wy + stepW/2;
+
+      const land = isLand(cxW, cyW);
+      const h = hash2i(Math.floor(cxW/320), Math.floor(cyW/320));
+      const amt = (h - 0.5) * 0.9;
+
+      // base fill
+      if(land){
+        const biome = biomeAt(cxW, cyW);
+        const rgb = BIOME_COLORS[biome] || BIOME_COLORS.grasslands;
+        ctx.fillStyle = shadeColor(rgb[0], rgb[1], rgb[2], amt);
+      } else {
+        const deep = SEA_COLORS.deep, sh = SEA_COLORS.shallow;
+        const t = clamp((cyW / WORLD_H), 0, 1);
+        const r = Math.round(deep[0]*(1-t) + sh[0]*t);
+        const g = Math.round(deep[1]*(1-t) + sh[1]*t);
+        const b = Math.round(deep[2]*(1-t) + sh[2]*t);
+        ctx.fillStyle = shadeColor(r,g,b, (amt*0.7));
+      }
+
+      const A = worldToScreen(wx, wy);
+      const B = worldToScreen(wx+stepW, wy+stepW);
+      ctx.fillRect(A.sx, A.sy, (B.sx-A.sx), (B.sy-A.sy));
+
+      // kingdoms tint overlay on land
+      if(land){
+        const k = kingdomAt(cxW, cyW);
+        if(k){
+          ctx.fillStyle = KINGDOM_TINT[k] || "rgba(255,255,255,.06)";
+          ctx.fillRect(A.sx, A.sy, (B.sx-A.sx), (B.sy-A.sy));
+        }
+      }
     }
   }
 
-  // kingdom overlays (very lightweight)
-  for(const k of KINGDOMS){
-    // draw label only
-    const {sx,sy} = worldToScreen(k.labelX, k.labelY);
-    ctx.font = `${Math.max(12, 16*devicePixelRatio)}px system-ui`;
-    ctx.fillStyle = "rgba(229,231,235,.75)";
-    ctx.fillText(k.id, sx, sy);
+  // --- Borders: kingdom lines + coastline accents ---
+  ctx.lineWidth = Math.max(1, 1.6*devicePixelRatio);
+  for(let wx=startX; wx<=maxX; wx+=stepW){
+    for(let wy=startY; wy<=maxY; wy+=stepW){
+      const c1x = wx + stepW/2, c1y = wy + stepW/2;
+      const land1 = isLand(c1x, c1y);
+      const k1 = land1 ? kingdomAt(c1x, c1y) : null;
+
+      // right edge
+      if(wx + stepW <= maxX){
+        const c2x = c1x + stepW, c2y = c1y;
+        const land2 = isLand(c2x, c2y);
+        const k2 = land2 ? kingdomAt(c2x, c2y) : null;
+
+        if(land1 && land2 && k1 && k2 && k1!==k2){
+          ctx.strokeStyle = "rgba(255,255,255,.22)";
+          const P1 = worldToScreen(wx+stepW, wy);
+          const P2 = worldToScreen(wx+stepW, wy+stepW);
+          ctx.beginPath(); ctx.moveTo(P1.sx, P1.sy); ctx.lineTo(P2.sx, P2.sy); ctx.stroke();
+        } else if(land1 !== land2){
+          ctx.strokeStyle = "rgba(255,255,255,.12)";
+          const P1 = worldToScreen(wx+stepW, wy);
+          const P2 = worldToScreen(wx+stepW, wy+stepW);
+          ctx.beginPath(); ctx.moveTo(P1.sx, P1.sy); ctx.lineTo(P2.sx, P2.sy); ctx.stroke();
+        }
+      }
+
+      // bottom edge
+      if(wy + stepW <= maxY){
+        const c2x = c1x, c2y = c1y + stepW;
+        const land2 = isLand(c2x, c2y);
+        const k2 = land2 ? kingdomAt(c2x, c2y) : null;
+
+        if(land1 && land2 && k1 && k2 && k1!==k2){
+          ctx.strokeStyle = "rgba(255,255,255,.22)";
+          const P1 = worldToScreen(wx, wy+stepW);
+          const P2 = worldToScreen(wx+stepW, wy+stepW);
+          ctx.beginPath(); ctx.moveTo(P1.sx, P1.sy); ctx.lineTo(P2.sx, P2.sy); ctx.stroke();
+        } else if(land1 !== land2){
+          ctx.strokeStyle = "rgba(255,255,255,.12)";
+          const P1 = worldToScreen(wx, wy+stepW);
+          const P2 = worldToScreen(wx+stepW, wy+stepW);
+          ctx.beginPath(); ctx.moveTo(P1.sx, P1.sy); ctx.lineTo(P2.sx, P2.sy); ctx.stroke();
+        }
+      }
+    }
   }
 
-  // edges
+  // --- Kingdom labels (only when zoomed out enough) ---
+  const labelScale = clamp(view.zoom / (Math.min(mapCanvas.width/WORLD_W, mapCanvas.height/WORLD_H)), 0.75, 1.35);
+  ctx.save();
+  ctx.font = `${Math.round(18*devicePixelRatio*labelScale)}px system-ui`;
+  ctx.textBaseline="middle";
+  ctx.shadowColor="rgba(0,0,0,.55)";
+  ctx.shadowBlur=10*devicePixelRatio;
+  for(const k of KINGDOMS){
+    const {sx,sy} = worldToScreen(k.labelX, k.labelY);
+    ctx.fillStyle = "rgba(229,231,235,.78)";
+    ctx.fillText(k.id, sx, sy);
+  }
+  ctx.restore();
+
+  // --- Routes (roads/sea lanes) ---
   ctx.lineWidth = Math.max(1, 2*devicePixelRatio);
   for(const e of world.edges){
     const a=nodeById[e.a], b=nodeById[e.b];
     if(!a||!b) continue;
     const A=worldToScreen(a.x,a.y), B=worldToScreen(b.x,b.y);
 
-    // skip if far offscreen
-    if((A.sx< -200 && B.sx< -200) || (A.sx>mapCanvas.width+200 && B.sx>mapCanvas.width+200)) continue;
+    // quick reject offscreen
+    if((A.sx< -240 && B.sx< -240) || (A.sx>mapCanvas.width+240 && B.sx>mapCanvas.width+240)) continue;
+    if((A.sy< -240 && B.sy< -240) || (A.sy>mapCanvas.height+240 && B.sy>mapCanvas.height+240)) continue;
 
     ctx.beginPath();
-    // subtle curve
     const mx = (A.sx+B.sx)/2;
     const my = (A.sy+B.sy)/2;
     const bend = e.kind==="sea" ? 0.14 : 0.09;
@@ -4222,48 +4384,47 @@ ctx.fillRect(sx,sy,w,h);
     ctx.quadraticCurveTo(cx,cy,B.sx,B.sy);
 
     if(e.kind==="sea"){
-      ctx.strokeStyle = "rgba(59,130,246,.35)";
+      ctx.strokeStyle = "rgba(59,130,246,.55)";
       ctx.setLineDash([10*devicePixelRatio, 10*devicePixelRatio]);
     } else {
       ctx.setLineDash([]);
-      ctx.strokeStyle = e.war ? "rgba(251,113,133,.40)" : "rgba(255,255,255,.16)";
+      ctx.strokeStyle = e.war ? "rgba(251,113,133,.55)" : "rgba(255,255,255,.22)";
     }
     ctx.stroke();
   }
   ctx.setLineDash([]);
 
-  // nodes
+  // --- Nodes ---
+  const showLabels = view.zoom > (Math.min(mapCanvas.width/WORLD_W, mapCanvas.height/WORLD_H) * 0.9);
   for(const n of world.nodes){
     const {sx,sy} = worldToScreen(n.x,n.y);
-    if(sx< -50 || sy< -50 || sx>mapCanvas.width+50 || sy>mapCanvas.height+50) continue;
+    if(sx< -60 || sy< -60 || sx>mapCanvas.width+60 || sy>mapCanvas.height+60) continue;
 
     const isHere = (n.id===state.currentNode) && state.mode!=="dungeon";
-    const r = n.type==="capital" ? 10 : n.type==="city" ? 8 : n.type==="port" ? 7 : n.type==="town" ? 6 : n.type==="camp" ? 5 : n.type==="landmark" ? 9 : 5;
+    const base = n.type==="capital" ? 10 : n.type==="city" ? 8 : n.type==="port" ? 7 : n.type==="town" ? 6 : n.type==="camp" ? 5 : n.type==="landmark" ? 9 : 5;
+    const r = base * devicePixelRatio;
 
     ctx.beginPath();
-    ctx.arc(sx,sy, r*devicePixelRatio, 0, Math.PI*2);
+    ctx.arc(sx,sy, r, 0, Math.PI*2);
 
     const k = n.kingdom;
-    const fill = (k==="Valoria") ? "rgba(124,92,255,.85)" :
-                 (k==="Kragmire")? "rgba(251,113,133,.85)" :
-                 (k==="Eldwyn") ? "rgba(52,211,153,.85)" :
-                 "rgba(59,130,246,.85)";
-    ctx.fillStyle = isHere ? "rgba(251,191,36,.95)" : fill;
+    const fill = (k==="Valoria") ? "rgba(124,92,255,.92)" :
+                 (k==="Kragmire")? "rgba(251,113,133,.92)" :
+                 (k==="Eldwyn") ? "rgba(52,211,153,.92)" :
+                 "rgba(59,130,246,.92)";
+    ctx.fillStyle = isHere ? "rgba(251,191,36,.98)" : fill;
+    ctx.shadowColor = isHere ? "rgba(255,255,180,.9)" : "rgba(0,0,0,0)";
+    ctx.shadowBlur = isHere ? 18*devicePixelRatio : 0;
     ctx.fill();
-if (isHere) {
-  ctx.shadowColor = "rgba(255,255,150,0.8)";
-  ctx.shadowBlur = 15;
-} else {
-  ctx.shadowBlur = 0;
-}
-    ctx.lineWidth = 2*devicePixelRatio;
-    ctx.strokeStyle = isHere ? "rgba(251,191,36,.95)" : "rgba(255,255,255,.20)";
-    ctx.stroke();
 
-    // tiny label for capitals/cities
-    if(n.type==="capital" || n.type==="city"){
-      ctx.font = `${Math.max(10, 12*devicePixelRatio)}px system-ui`;
-      ctx.fillStyle = "rgba(229,231,235,.75)";
+    ctx.lineWidth = 2*devicePixelRatio;
+    ctx.strokeStyle = isHere ? "rgba(251,191,36,.98)" : "rgba(255,255,255,.26)";
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    if(showLabels && (n.type==="capital" || n.type==="city")){
+      ctx.font = `${Math.round(12*devicePixelRatio)}px system-ui`;
+      ctx.fillStyle = "rgba(229,231,235,.82)";
       ctx.fillText(n.name.split(" ")[0], sx+10*devicePixelRatio, sy-8*devicePixelRatio);
     }
   }
@@ -4324,41 +4485,99 @@ function drawDungeon(){
 function drawMinimapWorld(){
   mctx.clearRect(0,0,miniCanvas.width,miniCanvas.height);
 
-  // background
-  mctx.fillStyle="rgba(0,0,0,.25)";
-  mctx.fillRect(0,0,miniCanvas.width,miniCanvas.height);
+  // Terrain + kingdoms (coarse)
+  const stepPx = Math.max(2, Math.floor(5*devicePixelRatio));
+  for(let x=0; x<miniCanvas.width; x+=stepPx){
+    for(let y=0; y<miniCanvas.height; y+=stepPx){
+      const wx = (x / miniCanvas.width) * WORLD_W;
+      const wy = (y / miniCanvas.height) * WORLD_H;
+      const land = isLand(wx, wy);
+      const h = hash2i(Math.floor(wx/420), Math.floor(wy/420));
+      const amt = (h-0.5)*0.8;
 
-  // nodes simplified
+      if(land){
+        const biome = biomeAt(wx,wy);
+        const rgb = BIOME_COLORS[biome] || BIOME_COLORS.grasslands;
+        mctx.fillStyle = shadeColor(rgb[0],rgb[1],rgb[2], amt);
+      } else {
+        const deep = SEA_COLORS.deep, sh = SEA_COLORS.shallow;
+        const t = clamp((wy / WORLD_H), 0, 1);
+        const r = Math.round(deep[0]*(1-t) + sh[0]*t);
+        const g = Math.round(deep[1]*(1-t) + sh[1]*t);
+        const b = Math.round(deep[2]*(1-t) + sh[2]*t);
+        mctx.fillStyle = shadeColor(r,g,b, (amt*0.6));
+      }
+      mctx.fillRect(x,y,stepPx+0.5,stepPx+0.5);
+
+      if(land){
+        const k = kingdomAt(wx,wy);
+        if(k){
+          mctx.fillStyle = KINGDOM_TINT[k] || "rgba(255,255,255,.05)";
+          mctx.fillRect(x,y,stepPx+0.5,stepPx+0.5);
+        }
+      }
+    }
+  }
+
+  // Routes (faint)
+  mctx.lineWidth = Math.max(1, 1.1*devicePixelRatio);
+  for(const e of world.edges){
+    const a=nodeById[e.a], b=nodeById[e.b];
+    if(!a||!b) continue;
+    const ax = (a.x / WORLD_W) * miniCanvas.width;
+    const ay = (a.y / WORLD_H) * miniCanvas.height;
+    const bx = (b.x / WORLD_W) * miniCanvas.width;
+    const by = (b.y / WORLD_H) * miniCanvas.height;
+    mctx.beginPath();
+    mctx.moveTo(ax,ay); mctx.lineTo(bx,by);
+    if(e.kind==="sea"){
+      mctx.strokeStyle="rgba(59,130,246,.32)";
+    } else {
+      mctx.strokeStyle= e.war ? "rgba(251,113,133,.28)" : "rgba(255,255,255,.18)";
+    }
+    mctx.stroke();
+  }
+
+  // Nodes
   for(const n of world.nodes){
-    // compress world coords
     const x = (n.x / WORLD_W) * miniCanvas.width;
     const y = (n.y / WORLD_H) * miniCanvas.height;
-    const r = (n.type==="capital"?3:2) * devicePixelRatio;
+    const base = (n.type==="capital"?3.2:n.type==="city"?2.6:2.0) * devicePixelRatio;
     mctx.beginPath();
-    mctx.arc(x,y,r,0,Math.PI*2);
-    mctx.fillStyle="rgba(255,255,255,.18)";
+    mctx.arc(x,y,base,0,Math.PI*2);
+    const k = n.kingdom;
+    const fill = (k==="Valoria") ? "rgba(124,92,255,.65)" :
+                 (k==="Kragmire")? "rgba(251,113,133,.62)" :
+                 (k==="Eldwyn") ? "rgba(52,211,153,.58)" :
+                 "rgba(59,130,246,.58)";
+    mctx.fillStyle=fill;
     mctx.fill();
   }
 
-  // current pos
+  // Current position
   const cur = nodeById[state.currentNode];
   if(cur){
     const x = (cur.x / WORLD_W) * miniCanvas.width;
     const y = (cur.y / WORLD_H) * miniCanvas.height;
     mctx.beginPath();
-    mctx.arc(x,y,3.6*devicePixelRatio,0,Math.PI*2);
-    mctx.fillStyle="rgba(251,191,36,.95)";
+    mctx.arc(x,y,4.2*devicePixelRatio,0,Math.PI*2);
+    mctx.fillStyle="rgba(251,191,36,.98)";
     mctx.fill();
+    mctx.lineWidth=1.6*devicePixelRatio;
+    mctx.strokeStyle="rgba(0,0,0,.35)";
+    mctx.stroke();
   }
 
-  // viewport rectangle
-  const left = ((view.x - (0.5/view.zoom)) / WORLD_W) * miniCanvas.width;
-  const right= ((view.x + (0.5/view.zoom)) / WORLD_W) * miniCanvas.width;
-  const top  = ((view.y - (0.5/view.zoom)) / WORLD_H) * miniCanvas.height;
-  const bot  = ((view.y + (0.5/view.zoom)) / WORLD_H) * miniCanvas.height;
+  // Viewport rectangle
+  const halfW = mapCanvas.width/(2*view.zoom);
+  const halfH = mapCanvas.height/(2*view.zoom);
+  const left = ((view.x - halfW) / WORLD_W) * miniCanvas.width;
+  const right= ((view.x + halfW) / WORLD_W) * miniCanvas.width;
+  const top  = ((view.y - halfH) / WORLD_H) * miniCanvas.height;
+  const bot  = ((view.y + halfH) / WORLD_H) * miniCanvas.height;
 
-  mctx.strokeStyle="rgba(251,191,36,.60)";
-  mctx.lineWidth=1.2*devicePixelRatio;
+  mctx.strokeStyle="rgba(251,191,36,.75)";
+  mctx.lineWidth=1.4*devicePixelRatio;
   mctx.strokeRect(left,top,(right-left),(bot-top));
 }
 
@@ -4392,14 +4611,15 @@ function draw(){
 }
 
 function getHoveredNode(wx, wy){
-  // find nearest within threshold
+  // find nearest within a screen-pixel threshold (converted to world units)
+  const thresholdWorld = (18*devicePixelRatio) / view.zoom; // ~18px
   let best=null, bd=Infinity;
   for(const n of world.nodes){
     const dx=n.x-wx, dy=n.y-wy;
     const d = Math.sqrt(dx*dx+dy*dy);
     if(d < bd){ bd=d; best=n; }
   }
-  if(best && bd < (650 / view.zoom)) return best;
+  if(best && bd <= thresholdWorld) return best;
   return null;
 }
 
@@ -4414,7 +4634,7 @@ $("mapWrap").addEventListener("wheel", (e)=>{
   const sy = (e.clientY - rect.top)  * devicePixelRatio;
 
   const before = screenToWorld(sx,sy);
-  view.zoom = clamp(view.zoom * factor, 0.008, 0.18);
+  view.zoom = clamp(view.zoom * factor, view.minZoom, view.maxZoom);
   const after = screenToWorld(sx,sy);
 
   // keep point under cursor stable
@@ -4440,8 +4660,8 @@ window.addEventListener("mousemove", (e)=>{
     view.lastX = e.clientX;
     view.lastY = e.clientY;
     // convert pixels to world delta
-    view.x -= (dx*devicePixelRatio) / (mapCanvas.width*view.zoom);
-    view.y -= (dy*devicePixelRatio) / (mapCanvas.height*view.zoom);
+    view.x -= (dx*devicePixelRatio) / view.zoom;
+    view.y -= (dy*devicePixelRatio) / view.zoom;
     draw();
     return;
   }
@@ -4495,6 +4715,43 @@ $("mapWrap").addEventListener("click", (e)=>{
   }
   travelTo(n.id);
 });
+
+
+// --- Mini map interactions ---
+function fitWorld(){
+  const fit = Math.min(mapCanvas.width / WORLD_W, mapCanvas.height / WORLD_H);
+  view.zoom = clamp(fit * 0.9, view.minZoom, view.maxZoom);
+  view.x = WORLD_W/2;
+  view.y = WORLD_H/2;
+  draw();
+}
+function centerOnPlayer(){
+  centerOnNode(state.currentNode);
+  draw();
+}
+
+$("miniToggle").addEventListener("click", (e)=>{
+  e.stopPropagation();
+  const wrap = $("miniWrap");
+  wrap.classList.toggle("expanded");
+  // update icon
+  $("miniToggle").textContent = wrap.classList.contains("expanded") ? "⤡" : "⤢";
+  resizeCanvases();
+  draw();
+});
+
+$("miniWrap").addEventListener("click", (e)=>{
+  if(state.mode==="dungeon") return;
+  const rect = $("miniWrap").getBoundingClientRect();
+  const sx = (e.clientX - rect.left) / rect.width;
+  const sy = (e.clientY - rect.top)  / rect.height;
+  view.x = clamp(sx * WORLD_W, 0, WORLD_W);
+  view.y = clamp(sy * WORLD_H, 0, WORLD_H);
+  draw();
+});
+
+$("centerBtn").addEventListener("click", (e)=>{ e.stopPropagation(); centerOnPlayer(); });
+$("fitBtn").addEventListener("click", (e)=>{ e.stopPropagation(); fitWorld(); });
 
 /* =========================
    Keyboard controls (Dungeon)
@@ -4600,7 +4857,7 @@ function initAfterLoad(forceCenter=false){
     state.currentNode = slug("Aurelia (Capital)");
     state.lastSafeNode = state.currentNode;
   }
-centerOnNode(state.currentNode);
+
   // refresh spell slots and spells list sanity
   if(state.characterCreated){
     refreshSpellSlotsToMax();
@@ -4614,7 +4871,16 @@ centerOnNode(state.currentNode);
   }
 
   resizeCanvases();
-  if(forceCenter) centerOnNode(state.currentNode);
+
+  // camera defaults
+  centerOnNode(state.currentNode);
+  const fit = Math.min(mapCanvas.width / WORLD_W, mapCanvas.height / WORLD_H);
+  if(forceCenter){
+    view.zoom = clamp(fit * 0.9, view.minZoom, view.maxZoom);
+  } else {
+    // keep existing zoom but clamp to bounds
+    view.zoom = clamp(view.zoom, view.minZoom, view.maxZoom);
+  }
 }
 initAfterLoad(true);
 render();
