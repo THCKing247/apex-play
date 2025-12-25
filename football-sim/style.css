@@ -1,0 +1,66 @@
+:root{
+  --bg:#0b1020;
+  --card:rgba(255,255,255,.07);
+  --border:rgba(255,255,255,.14);
+  --text:#e7e9ee;
+  --muted:rgba(231,233,238,.7);
+  --accent:#7c5cff;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  color:var(--text);
+  background:radial-gradient(1200px 700px at 20% 0%, #1a1f3f 0%, var(--bg) 55%);
+  min-height:100vh;
+}
+.app{max-width:980px;margin:0 auto;padding:24px}
+header{margin-bottom:16px}
+h1{margin:0 0 6px}
+.muted{color:var(--muted)}
+.card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:16px;
+  margin:14px 0;
+  backdrop-filter: blur(10px);
+}
+.hidden{display:none}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+label{display:flex;flex-direction:column;gap:6px;min-width:220px}
+input,select{
+  padding:10px 12px;
+  border-radius:12px;
+  border:1px solid var(--border);
+  background:rgba(0,0,0,.25);
+  color:var(--text);
+  outline:none;
+}
+button{
+  padding:10px 12px;
+  border-radius:12px;
+  border:1px solid var(--border);
+  background:rgba(124,92,255,.18);
+  color:var(--text);
+  cursor:pointer;
+}
+button:hover{border-color:rgba(124,92,255,.6)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:860px){.grid{grid-template-columns:1fr}}
+.statbox{
+  padding:12px;
+  border-radius:12px;
+  border:1px solid var(--border);
+  background:rgba(0,0,0,.22);
+}
+.log{
+  height:220px;
+  overflow:auto;
+  background:rgba(0,0,0,.25);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:12px;
+}
+footer{margin-top:18px}
