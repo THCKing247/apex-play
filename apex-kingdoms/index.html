@@ -459,7 +459,7 @@ input, select{
             <button class="small secondary" id="ovHomeBtn" title="Go to your birth capital">Home</button>
           </div>
           <div class="row" style="margin-top:10px">
-            <button class="small secondary" id="ovCostsBtn" title="Show/hide gold costs on routes">Costs: Off</button>
+            <button class="small secondary" id="ovCostsBtn" title="Show/hide travel costs on routes">Costs: Off</button>
             <button class="small secondary" id="ovRegionsBtn" title="Show/hide kingdom regions">Regions: On</button>
             <button class="small secondary" id="ovMiniBtn" title="Show/hide minimap">Minimap: On</button>
                       <button class="small secondary" id="ovLegendBtn" title="Show/hide map legend">Legend: On</button>
@@ -560,7 +560,7 @@ input, select{
       </div>
 
       <div class="kv" style="margin-top:10px">
-        <div class="tile" style="grid-column:span 2">🪙 Gold<br><strong id="gold">0</strong><div class="sub">Cash on hand</div></div>
+        <div class="tile" style="grid-column:span 2">🪙 Coins<br><strong id="gold">0g 0s 0c</strong><div class="sub">Gold / Silver / Copper</div></div>
         <div class="tile" style="grid-column:span 2">🏦 Bank<br><strong id="bank">0</strong><div class="sub">Interest daily • fee to withdraw</div></div>
       </div>
 
@@ -881,7 +881,7 @@ const defaultState = () => ({
   atkBase: 2,
   defBase: 1,
 
-  gold: 15,
+  coins: {gp: 15, sp: 0, cp: 0},
   bank: 0,
   keys: 0,
 
@@ -939,7 +939,77 @@ const defaultState = () => ({
   log: []
 });
 
-let state = JSON.parse(localStorage.getItem(SAVE_KEY) || "null") || defaultState();
+/* =========================
+   COINS (Gold/Silver/Copper)
+   - 1g = 10s, 1s = 10c (1g = 100c)
+   - We store coins as {gp, sp, cp} but do all math in copper.
+========================= */
+const COIN = { CP_PER_SP: 10, CP_PER_GP: 100 };
+
+function coinsToCopper(coins){
+  coins = coins || {gp:0, sp:0, cp:0};
+  return (Math.floor(coins.gp||0) * COIN.CP_PER_GP) +
+         (Math.floor(coins.sp||0) * COIN.CP_PER_SP) +
+         (Math.floor(coins.cp||0));
+}
+function copperToCoins(total){
+  total = Math.max(0, Math.floor(total||0));
+  const gp = Math.floor(total / COIN.CP_PER_GP);
+  total = total % COIN.CP_PER_GP;
+  const sp = Math.floor(total / COIN.CP_PER_SP);
+  const cp = total % COIN.CP_PER_SP;
+  return {gp, sp, cp};
+}
+function walletCopper(){
+  return coinsToCopper(state.coins);
+}
+function setWalletCopper(total){
+  state.coins = copperToCoins(total);
+}
+function addCopper(cp){ setWalletCopper(walletCopper() + (Math.floor(cp)||0)); }
+function addSilver(sp){ addCopper((Math.floor(sp)||0) * COIN.CP_PER_SP); }
+function addGold(gp){ addCopper((Math.floor(gp)||0) * COIN.CP_PER_GP); }
+
+function canAffordCopper(cp){ return walletCopper() >= (Math.floor(cp)||0); }
+function canAffordSilver(sp){ return walletCopper() >= (Math.floor(sp)||0) * COIN.CP_PER_SP; }
+function canAffordGold(gp){ return walletCopper() >= (Math.floor(gp)||0) * COIN.CP_PER_GP; }
+
+function payCopper(cp){
+  cp = Math.floor(cp)||0;
+  if(cp<=0) return true;
+  if(!canAffordCopper(cp)) return false;
+  setWalletCopper(walletCopper() - cp);
+  return true;
+}
+function payGold(gp){ return payCopper((Math.floor(gp)||0) * COIN.CP_PER_GP); }
+function formatCoins(coins){
+  coins = coins || {gp:0, sp:0, cp:0};
+  return `${coins.gp}g ${coins.sp}s ${coins.cp}c`;
+}
+
+// migrate older saves (gold-only -> coins)
+function migrateState(s){
+  if(!s) s = defaultState();
+  // legacy gold-only saves
+  if(!s.coins){
+    const legacyGold = (typeof s.gold === "number") ? s.gold : 0;
+    const legacySilver = (typeof s.silver === "number") ? s.silver : 0;
+    const legacyCopper = (typeof s.copper === "number") ? s.copper : 0;
+    s.coins = {gp: legacyGold, sp: legacySilver, cp: legacyCopper};
+  }
+  // normalize to base-10 (avoid weird values)
+  const total = coinsToCopper(s.coins);
+  s.coins = copperToCoins(total);
+
+  // drop old fields if present
+  if("gold" in s) delete s.gold;
+  if("silver" in s) delete s.silver;
+  if("copper" in s) delete s.copper;
+
+  return s;
+}
+
+let state = migrateState(JSON.parse(localStorage.getItem(SAVE_KEY) || "null") || defaultState());
 
 /* =========================
    DOM helpers
@@ -1016,7 +1086,7 @@ function deepMerge(defaults, loaded){
 }
 
 function applyLoadedState(loaded){
-  state = deepMerge(defaultState(), loaded);
+  state = migrateState(deepMerge(defaultState(), loaded));
   save();   // keep local save in sync
   render(); // refresh UI and map
 }
@@ -2063,7 +2133,7 @@ function tryDeliverQuest(){
   if(!st.accepted || st.completed) return false;
   if(state.currentNode===q.to && hasQuestItem(q.item.name)){
     removeQuestItem(q.item.name);
-    state.gold += q.reward.gold||0;
+    addGold(q.reward.gold||0);
     state.keys += q.reward.key||0;
     awardXP(q.reward.xp||0);
     setQuestStatus(q.id, {completed:true});
@@ -2183,7 +2253,7 @@ function startNewDay(){
     if(p.incomePerDay) income += p.incomePerDay;
   }
   if(income>0){
-    state.gold += income;
+    addGold(income);
     pushLog(`<span style="color:var(--good)">🏠 Income collected: +${income}g</span>`);
   }
 
@@ -2257,12 +2327,21 @@ function travelTo(toId){
 
   const cost = (e.kind==="sea") ? (e.fare||e.cost||0) : (e.cost||0);
   if(cost>0){
-    if(state.gold < cost){
-      pushLog(`🚫 Travel cost: <b>${cost}g</b>. You only have <b>${state.gold}g</b>.`);
-      render(); return;
+    if(e.kind==="sea"){
+      // Sea travel costs GOLD
+      if(!payGold(cost)){
+        pushLog(`🚫 Sea travel cost: <b>${cost}g</b>. You have <b>${formatCoins(state.coins)}</b>.`);
+        render(); return;
+      }
+      pushLog(`⛴️ Paid <b>${cost}g</b> to travel (sea).`);
+    } else {
+      // Road travel costs COPPER
+      if(!payCopper(cost)){
+        pushLog(`🚫 Road travel cost: <b>${cost}c</b>. You have <b>${formatCoins(state.coins)}</b>.`);
+        render(); return;
+      }
+      pushLog(`🛣️ Paid <b>${cost}c</b> to travel (road).`);
     }
-    state.gold -= cost;
-    pushLog(`${e.kind==="sea"?"⛴️":"🛣️"} Paid <b>${cost}g</b> to travel (${e.kind}).`);
   }
 
   const minutes = travelTimeMinutes(state.currentNode,toId, e.kind);
@@ -2381,8 +2460,8 @@ function useAreaLoot(){
   const loot = randomLootByBiome(n.biome);
 
   if(loot.kind==="gold"){
-    state.gold+=loot.amount;
-    pushLog(`🧺 You find <b>${loot.amount}</b> gold.`);
+    addGold(loot.amount);
+    pushLog(`🧺 You find <b>${loot.amount}g</b>.`);
   } else if(loot.kind==="key"){
     state.keys += loot.amount;
     pushLog(`🧺 You find <b>${loot.amount}</b> key.`);
@@ -2668,7 +2747,7 @@ function openChestAt(x,y){
 
   let gained=[];
   for(const item of c.contents){
-    if(item.type==="gold"){ state.gold += item.amount; gained.push(`${item.amount}g`); }
+    if(item.type==="gold"){ addGold(item.amount); gained.push(`${item.amount}g`); }
     if(item.type==="gear"){ if(addToBag(item.item)) gained.push(fmtItem(item.item)); }
     if(item.type==="consumable"){ if(addToBag(item.item)) gained.push(item.item.name); }
     if(item.type==="key"){ state.keys += item.amount; gained.push(`${item.amount} key`); }
@@ -2683,7 +2762,7 @@ function dungeonSearch(){
   revealAround(d,d.px,d.py,3);
   pushLog("🕯️ You search carefully and reveal more of the area.");
   if(roll(100)<=18){
-    const g=roll(12)+3; state.gold+=g;
+    const g=roll(12)+3; addGold(g);
     pushLog(`✨ Hidden find: <b>${g}g</b>`);
   }
   render();
@@ -2822,7 +2901,7 @@ function endCombat(victory){
   const meta=state.enemyMeta||{};
   if(victory){
     const gold=roll(16)+6;
-    state.gold+=gold;
+    addGold(gold);
     const xp = 40 + roll(20);
     awardXP(xp);
     pushLog(`✅ Victory! You gain <b>${gold}g</b>.`);
@@ -3208,7 +3287,7 @@ function searchExplore(){
   }
 
   if(r<=18){
-    const g=roll(16)+4; state.gold+=g; pushLog(`🔎 Found <b>${g}g</b>.`);
+    const g=roll(16)+4; addGold(g); pushLog(`🔎 Found <b>${g}g</b>.`);
     awardXP(10);
   } else if(r<=32){
     const loot = pickShopItem(["weapon","armor","misc"]).item;
@@ -3265,10 +3344,10 @@ function canBuyHere(){
 }
 function buyRation(){
   if(!canBuyHere()){ pushLog("🛒 Buy rations in settlements/camps."); render(); return; }
-  if(state.gold<5){ pushLog("🛒 Not enough gold for a ration."); render(); return; }
+  if(!canAffordGold(5)){ pushLog(`🛒 Not enough coins for a ration (cost 5g). You have <b>${formatCoins(state.coins)}</b>.`); render(); return; }
   const ok = addToBag({type:"consumable", name:"Ration", kind:"food", qty:1, weight:0.5});
   if(!ok){ render(); return; }
-  state.gold -= 5;
+  payGold(5);
   pushLog("🛒 Bought <b>1 Ration</b> for 5g.");
   render();
 }
@@ -3371,7 +3450,7 @@ function openVisit(){
         <div style="font-weight:800;font-size:18px">${n.name}</div>
         ${kLine}
       </div>
-      <div class="muted">Cash: <b>${state.gold}g</b> • Bank: <b>${state.bank}g</b> • Carry: <b>${carryNow()}/${carryMax()}</b></div>
+      <div class="muted">Coins: <b>${formatCoins(state.coins)}</b> • Bank: <b>${state.bank}g</b> • Carry: <b>${carryNow()}/${carryMax()}</b></div>
     </div>
     <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
   `;
@@ -3423,11 +3502,11 @@ function openShop(node, shopType){
   })[shopType] || "Shop";
 
   const stock = ITEMS.filter(it=>it.shop===shopType);
-  let html = `<div class="muted">You browse the ${title.toLowerCase()} in <b>${node.name}</b>. Carry: <b>${carryNow()}/${carryMax()}</b> • Gold: <b>${state.gold}g</b></div>`;
+  let html = `<div class="muted">You browse the ${title.toLowerCase()} in <b>${node.name}</b>. Carry: <b>${carryNow()}/${carryMax()}</b> • Coins: <b>${formatCoins(state.coins)}</b></div>`;
   html += `<div style="margin-top:10px;display:grid;gap:10px">`;
 
   for(const it of stock){
-    const canBuy = state.gold >= it.cost;
+    const canBuy = canAffordGold(it.cost);
     const allowed = (it.type==="consumable" || canEquip(it));
     html += `
       <div class="panel" style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
@@ -3449,7 +3528,7 @@ function openShop(node, shopType){
 window.buyItem = function(itemName, shopType){
   const it = ITEMS.find(x=>x.name===itemName && x.shop===shopType);
   if(!it) return;
-  if(state.gold < it.cost){ return; }
+  if(!canAffordGold(it.cost)){ return; }
   if(it.type!=="consumable" && !canEquip(it)){
     pushLog(`<span style="color:var(--warn)">⛔ Your class cannot use ${it.name}.</span>`);
     closeModal(); render(); return;
@@ -3457,7 +3536,7 @@ window.buyItem = function(itemName, shopType){
   const item = {...it};
   const ok = addToBag(item.type==="consumable" ? { ...item, qty:1 } : item);
   if(!ok){ closeModal(); render(); return; }
-  state.gold -= it.cost;
+  payGold(it.cost);
   pushLog(`🛒 Bought <b>${it.name}</b> for ${it.cost}g.`);
   closeModal();
   render();
@@ -3472,7 +3551,7 @@ function openBank(node){
   const html = `
     <div class="muted">Welcome to the Bank of <b>${node.name}</b>. Deposits earn daily interest. Withdrawals cost a 5% fee.</div>
     <div class="panel" style="margin-top:10px">
-      <div>Cash: <b>${state.gold}g</b> • Bank Balance: <b>${state.bank}g</b></div>
+      <div>Coins: <b>${formatCoins(state.coins)}</b> • Bank Balance: <b>${state.bank}g</b></div>
       <div class="row" style="margin-top:10px">
         <button class="secondary small" onclick="bankDeposit(25)">Deposit 25g</button>
         <button class="secondary small" onclick="bankDeposit(100)">Deposit 100g</button>
@@ -3491,16 +3570,17 @@ function openBank(node){
 window.bankDeposit = function(amount){
   amount = Math.floor(amount);
   if(amount<=0) return;
-  if(state.gold < amount) return;
-  state.gold -= amount;
+  if(!canAffordGold(amount)) return;
+  payGold(amount);
   state.bank += amount;
   pushLog(`🏦 Deposited ${amount}g.`);
   closeModal(); render();
 };
 window.bankDepositAll = function(){
-  const amount = state.gold;
+  // deposit all whole gold (bank only tracks gold pieces)
+  const amount = Math.floor(walletCopper()/COIN.CP_PER_GP);
   if(amount<=0) return;
-  state.gold = 0;
+  if(!payGold(amount)) return;
   state.bank += amount;
   pushLog(`🏦 Deposited ${amount}g.`);
   closeModal(); render();
@@ -3512,7 +3592,7 @@ window.bankWithdraw = function(amount){
   const fee = Math.max(1, Math.floor(amount * 0.05));
   const net = Math.max(0, amount - fee);
   state.bank -= amount;
-  state.gold += net;
+  addGold(net);
   pushLog(`🏦 Withdrew ${net}g (fee ${fee}g).`);
   closeModal(); render();
 };
@@ -3522,7 +3602,7 @@ window.bankWithdrawAll = function(){
   const fee = Math.max(1, Math.floor(amount * 0.05));
   const net = Math.max(0, amount - fee);
   state.bank = 0;
-  state.gold += net;
+  addGold(net);
   pushLog(`🏦 Withdrew ${net}g (fee ${fee}g).`);
   closeModal(); render();
 };
@@ -3532,7 +3612,7 @@ function openStable(node){
     <div class="muted">Stable in <b>${node.name}</b>. Mounts increase travel speed and carry capacity.</div>
     <div class="panel" style="margin-top:10px">
       <div>Current Mount: <b>${state.mount ? state.mount.name : "None"}</b></div>
-      <div class="muted">Gold: <b>${state.gold}g</b></div>
+      <div class="muted">Coins: <b>${formatCoins(state.coins)}</b></div>
     </div>
     <div style="margin-top:10px;display:grid;gap:10px">
       ${MOUNTS.map(m=>`
@@ -3541,7 +3621,7 @@ function openStable(node){
             <b>${m.name}</b>
             <div class="muted">Speed ×${m.speedMult} • Carry +${m.carryBonus} • Cost ${m.cost}g</div>
           </div>
-          <button class="small ${state.gold>=m.cost ? "" : "secondary"}" ${state.gold>=m.cost ? "" : "disabled"} onclick="buyMount('${m.type}')">Buy</button>
+          <button class="small ${canAffordGold(m.cost) ? "" : "secondary"}" ${canAffordGold(m.cost) ? "" : "disabled"} onclick="buyMount('${m.type}')">Buy</button>
         </div>
       `).join("")}
       ${state.mount ? `<button class="secondary small" onclick="sellMount()">Sell Mount (60% refund)</button>` : ""}
@@ -3552,8 +3632,8 @@ function openStable(node){
 window.buyMount = function(type){
   const m = MOUNTS.find(x=>x.type===type);
   if(!m) return;
-  if(state.gold < m.cost) return;
-  state.gold -= m.cost;
+  if(!canAffordGold(m.cost)) return;
+  payGold(m.cost);
   state.mount = {...m};
   pushLog(`🐴 Purchased <b>${m.name}</b>. Travel is faster now.`);
   closeModal(); render();
@@ -3561,7 +3641,7 @@ window.buyMount = function(type){
 window.sellMount = function(){
   if(!state.mount) return;
   const refund = Math.floor(state.mount.cost * 0.60);
-  state.gold += refund;
+  addGold(refund);
   pushLog(`🐴 Sold mount for ${refund}g.`);
   state.mount = null;
   closeModal(); render();
@@ -3587,7 +3667,7 @@ function openPropertyOffice(node){
     {type:"business", name:"Guild Hall Business", cost: base*9, incomePerDay: 20},
   ];
 
-  let html = `<div class="muted">Property office in <b>${node.name}</b> • Gold: <b>${state.gold}g</b></div>`;
+  let html = `<div class="muted">Property office in <b>${node.name}</b> • Coins: <b>${formatCoins(state.coins)}</b></div>`;
   html += `<div style="margin-top:10px;display:grid;gap:10px">`;
   for(const o of options){
     html += `
@@ -3596,7 +3676,7 @@ function openPropertyOffice(node){
           <b>${o.name}</b>
           <div class="muted">${o.type.toUpperCase()} • Income ${o.incomePerDay}g/day • Location ${node.kingdom}</div>
         </div>
-        <button class="small ${state.gold>=o.cost ? "" : "secondary"}" ${state.gold>=o.cost ? "" : "disabled"} onclick="buyProperty('${o.name}', ${o.cost}, ${o.incomePerDay}, '${o.type}')">Buy (${o.cost}g)</button>
+        <button class="small ${canAffordGold(o.cost) ? "" : "secondary"}" ${canAffordGold(o.cost) ? "" : "disabled"} onclick="buyProperty('${o.name}', ${o.cost}, ${o.incomePerDay}, '${o.type}')">Buy (${o.cost}g)</button>
       </div>
     `;
   }
@@ -3611,8 +3691,8 @@ function openPropertyOffice(node){
   openModal("Property Office", html);
 }
 window.buyProperty = function(name, cost, income, type){
-  if(state.gold < cost) return;
-  state.gold -= cost;
+  if(!canAffordGold(cost)) return;
+  payGold(cost);
   state.properties.push({type, name, kingdom: nodeById[state.currentNode].kingdom, nodeId: state.currentNode, incomePerDay: income, boughtDay: state.day});
   pushLog(`🏠 Purchased <b>${name}</b> in ${nodeById[state.currentNode].name}.`);
   closeModal(); render();
@@ -3636,7 +3716,7 @@ function openJobs(node){
 window.workJob = function(pay, xp){
   closeModal();
   passTime(8*60, "Work shift");
-  state.gold += pay;
+  addGold(pay);
   awardXP(xp);
   state.char.jobsCompleted += 1;
   pushLog(`<span style="color:var(--good)">🛠️ Worked a shift: +${pay}g</span>`);
@@ -3650,18 +3730,18 @@ function openInn(node){
   const html = `
     <div class="muted">Inn rooms restore more HP for a fee.</div>
     <div class="panel" style="margin-top:10px">
-      <div>Cost: <b>${cost}g</b> • Gold: <b>${state.gold}g</b></div>
+      <div>Cost: <b>${cost}g</b> • Coins: <b>${formatCoins(state.coins)}</b></div>
       <div class="muted">Rest to morning 08:00 and heal + extra.</div>
       <div class="row" style="margin-top:10px">
-        <button class="small ${state.gold>=cost ? "" : "secondary"}" ${state.gold>=cost ? "" : "disabled"} onclick="rentRoom(${cost})">Rent Room</button>
+        <button class="small ${canAffordGold(cost) ? "" : "secondary"}" ${canAffordGold(cost) ? "" : "disabled"} onclick="rentRoom(${cost})">Rent Room</button>
       </div>
     </div>
   `;
   openModal("Inn", html);
 }
 window.rentRoom = function(cost){
-  if(state.gold<cost) return;
-  state.gold -= cost;
+  if(!canAffordGold(cost)) return;
+  payGold(cost);
   closeModal();
   sleep();
   // bonus heal
@@ -3725,15 +3805,15 @@ function openChurch(node){
       <b>Donate</b>
       <div class="muted">Donate ${donate}g to gain a small heal and XP.</div>
       <div class="row" style="margin-top:10px">
-        <button class="small ${state.gold>=donate ? "" : "secondary"}" ${state.gold>=donate ? "" : "disabled"} onclick="donateChurch(${donate})">Donate</button>
+        <button class="small ${canAffordGold(donate) ? "" : "secondary"}" ${canAffordGold(donate) ? "" : "disabled"} onclick="donateChurch(${donate})">Donate</button>
       </div>
     </div>
   `;
   openModal("Church", html);
 }
 window.donateChurch = function(amount){
-    if(state.gold < amount) return;
-    state.gold -= amount;
+    if(!canAffordGold(amount)) return;
+    payGold(amount);
     closeModal();
     passTime(40, "Church donation");
     const heal = 6 + roll(6);
@@ -3832,12 +3912,12 @@ function openTraderModal(edge, toId){
   const html = `
     <div class="muted">A roadside trader flags you down. Some deals are good — some are suspicious.</div>
     <div class="panel" style="margin-top:10px">
-      <div class="muted">Gold: <b>${state.gold}g</b> • Carry: <b>${carryNow()}/${carryMax()}</b></div>
+      <div class="muted">Coins: <b>${formatCoins(state.coins)}</b> • Carry: <b>${carryNow()}/${carryMax()}</b></div>
     </div>
     <div style="margin-top:10px;display:grid;gap:10px">
       ${offers.map(o=>{
         const allowed = canEquip(o.it);
-        const canBuy = state.gold >= o.cost && (o.it.type==="accessory" || allowed);
+        const canBuy = canAffordGold(o.cost) && (o.it.type==="accessory" || allowed);
         return `
           <div class="panel" style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
             <div>
@@ -3868,14 +3948,14 @@ function openTraderModal(edge, toId){
 window.buyTrader = function(itemName, cost, toId){
   const it = ITEMS.find(x=>x.name===itemName);
   if(!it) return;
-  if(state.gold < cost) return;
+  if(!canAffordGold(cost)) return;
   if(it.type!=="consumable" && !canEquip(it)){
     pushLog(`<span style="color:var(--warn)">⛔ Your class cannot use ${it.name}.</span>`);
     closeModal(); render(); return;
   }
   const ok = addToBag({...it});
   if(!ok){ closeModal(); render(); return; }
-  state.gold -= cost;
+  payGold(cost);
   pushLog(`🧳 Trader deal: bought <b>${it.name}</b> for ${cost}g.`);
   closeModal();
   // continue travel after trading
@@ -4258,7 +4338,7 @@ function render(){
   $("energyMax").textContent = state.energyMax;
   $("hunger").textContent = state.hunger;
 
-  $("gold").textContent = state.gold;
+  $("gold").textContent = formatCoins(state.coins);
   $("bank").textContent = state.bank;
 
   $("carry").textContent = `${carryNow()}/${carryMax()}`;
@@ -5440,7 +5520,7 @@ function drawWorld(){
       const cost = (e.cost||e.fare||0);
       if(!cost) continue;
 
-      const label = `${cost}g`;
+      const label = (e.kind==="sea") ? `${cost}g` : `${cost}c`;
       const padX = 8*devicePixelRatio, padY = 4*devicePixelRatio;
       const tw = ctx.measureText(label).width;
       const w = tw + padX*2;
@@ -6003,7 +6083,7 @@ function renderCharacterPanel(){
   $("energy").textContent = String(state.energy);
   $("energyMax").textContent = String(state.energyMax);
   $("hunger").textContent = String(state.hunger);
-  $("gold").textContent = String(state.gold);
+  $("gold").textContent = String(formatCoins(state.coins));
   $("bank").textContent = String(state.bank);
   $("carry").textContent = `${carryNow()}/${carryMax()}`;
   $("mount").textContent = state.mount ? state.mount.name : "None";
