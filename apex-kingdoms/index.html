@@ -197,6 +197,47 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
 .kdot{width:10px;height:10px;border-radius:999px}
 
 
+
+/* Map search */
+.mapSearchWrap{margin-top:10px}
+.mapSearchInput{
+  width:100%;
+  padding:8px 10px;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(0,0,0,.35);
+  color:var(--text);
+  outline:none;
+}
+.mapSearchInput:focus{
+  border-color:rgba(124,92,255,.55);
+  box-shadow:0 0 0 2px rgba(124,92,255,.15);
+}
+.mapSearchResults{
+  margin-top:8px;
+  display:none;
+  flex-direction:column;
+  gap:6px;
+  max-height:220px;
+  overflow:auto;
+  padding-right:2px;
+}
+.mapSearchItem{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:8px 10px;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(0,0,0,.28);
+  cursor:pointer;
+  user-select:none;
+}
+.mapSearchItem:hover{background:rgba(255,255,255,.08)}
+.mapSearchName{font-weight:800;font-size:13px}
+.mapSearchMeta{font-size:11px;color:var(--muted)}
+
 /* Inventory */
 .inventory{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
 .slot{
@@ -371,6 +412,7 @@ input, select{
 }
 
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 
 <body>
@@ -422,6 +464,13 @@ input, select{
             <button class="small secondary" id="ovMiniBtn" title="Show/hide minimap">Minimap: On</button>
                       <button class="small secondary" id="ovLegendBtn" title="Show/hide map legend">Legend: On</button>
 </div>
+
+<div class="mapSearchWrap">
+  <div class="smallMuted">Search locations</div>
+  <input id="mapSearchInput" class="mapSearchInput" placeholder="Start typing… (e.g., Aurelia, cave, Valoria)" autocomplete="off" />
+  <div class="mapSearchResults" id="mapSearchResults"></div>
+</div>
+
           <div class="smallMuted" style="margin-top:10px">
             Tip: Hover a connected node to see travel time + cost. Click a connected node to travel.
           </div>
@@ -532,7 +581,26 @@ input, select{
         </div>
       </div>
 
-      <h3 style="margin:16px 0 10px">Spells</h3>
+      
+<h3 style="margin:16px 0 10px">Active Quest</h3>
+<div class="panel" id="activeQuestPanel">
+  <div class="muted" id="activeQuestNone">No active quest. Visit a town/city/capital/camp and check the Quest Board.</div>
+
+  <div id="activeQuestContent" style="display:none">
+    <div style="font-weight:800" id="activeQuestTitle">—</div>
+    <div class="muted" id="activeQuestText" style="margin-top:6px">—</div>
+
+    <div class="smallMuted" style="margin-top:10px">Destination: <b id="activeQuestTo">—</b></div>
+    <div class="smallMuted">Reward: <b id="activeQuestReward">—</b></div>
+
+    <div class="row" style="margin-top:10px">
+      <button class="small secondary" id="questCenterBtn" title="Center map on the quest destination">Center Destination</button>
+      <button class="small secondary" id="questAbandonBtn" title="Abandon this quest">Abandon</button>
+    </div>
+  </div>
+</div>
+
+<h3 style="margin:16px 0 10px">Spells</h3>
       <div class="panel">
         <div class="smallMuted" id="spellInfo">No spells.</div>
         <div class="row" style="margin-top:10px" id="spellSlotsRow"></div>
@@ -554,6 +622,38 @@ input, select{
 
       <h3 style="margin:16px 0 10px">Backpack</h3>
       <div class="bagGrid" id="bag"></div>
+
+      <h3 style="margin:16px 0 10px">Cloud Save</h3>
+      <div class="panel" id="cloudPanel">
+        <div class="smallMuted" id="cloudStatus">Cloud save not configured.</div>
+
+        <div class="row" style="margin-top:10px">
+          <div style="flex:1;min-width:180px">
+            <div class="smallMuted">Email</div>
+            <input id="cloudEmail" type="email" placeholder="you@email.com" autocomplete="email" />
+          </div>
+          <div style="flex:1;min-width:180px">
+            <div class="smallMuted">Password</div>
+            <input id="cloudPass" type="password" placeholder="••••••••" autocomplete="current-password" />
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:10px">
+          <button class="small secondary" id="cloudSignUpBtn">Create Account</button>
+          <button class="small secondary" id="cloudSignInBtn">Sign In</button>
+          <button class="small secondary" id="cloudSignOutBtn" disabled>Sign Out</button>
+        </div>
+
+        <div class="row" style="margin-top:10px">
+          <button class="small" id="cloudSaveBtn" disabled>Save to Cloud</button>
+          <button class="small secondary" id="cloudLoadBtn" disabled>Load from Cloud</button>
+          <span class="badge" id="cloudMeta" style="display:none">—</span>
+        </div>
+
+        <div class="smallMuted" style="margin-top:8px">
+          Tip: after signing in, use <b>Save to Cloud</b>. On another computer, sign in and click <b>Load from Cloud</b>.
+        </div>
+      </div>
 
       <hr>
       <div class="row">
@@ -851,6 +951,232 @@ const miniCanvas = $("minimap");
 const mctx = miniCanvas.getContext("2d");
 
 function save(){ localStorage.setItem(SAVE_KEY, JSON.stringify(state)); }
+
+/* =========================
+   CLOUD SAVE (Supabase)
+   - Cross-device saves via login
+   - Stores the same "state" object you already save locally
+========================= */
+/*
+  SETUP (once):
+  1) Create a free Supabase project.
+  2) Enable Email/Password auth.
+  3) Create table + RLS policies (SQL below in the chat message).
+  4) Paste your Project URL + Anon key here.
+
+  IMPORTANT: Use ONLY the Anon/Publishable key (never the service role key).
+*/
+const SUPABASE_URL = "https://smzvvzaxmqzcgvnoxpgy.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_bUqzQrQDrn6_sD5uz94_xQ_zqBO2NRj";
+const CLOUD_SLOT = "main"; // you can add multiple save slots later
+
+let sb = null;
+let cloudSession = null;
+
+function cloudConfigured(){
+  return (
+    typeof SUPABASE_URL === "string" &&
+    SUPABASE_URL.startsWith("https://") &&
+    !SUPABASE_URL.includes("YOUR_PROJECT") &&
+    typeof SUPABASE_ANON_KEY === "string" &&
+    SUPABASE_ANON_KEY.length > 30 &&
+    !SUPABASE_ANON_KEY.includes("YOUR_SUPABASE")
+  );
+}
+
+function setCloudStatus(text, isGood=false, isBad=false){
+  const el = $("cloudStatus");
+  if(!el) return;
+  el.textContent = text;
+  el.style.color = isBad ? "var(--bad)" : (isGood ? "var(--good)" : "var(--muted)");
+}
+
+function setCloudEnabled(signedIn){
+  const saveBtn = $("cloudSaveBtn");
+  const loadBtn = $("cloudLoadBtn");
+  const outBtn = $("cloudSignOutBtn");
+  if(saveBtn) saveBtn.disabled = !signedIn;
+  if(loadBtn) loadBtn.disabled = !signedIn;
+  if(outBtn) outBtn.disabled = !signedIn;
+}
+
+function deepMerge(defaults, loaded){
+  if(Array.isArray(defaults)) return Array.isArray(loaded) ? loaded : defaults;
+  if(defaults && typeof defaults === "object"){
+    const out = {...defaults};
+    if(loaded && typeof loaded === "object"){
+      for(const k of Object.keys(loaded)){
+        if(k in defaults) out[k] = deepMerge(defaults[k], loaded[k]);
+        else out[k] = loaded[k];
+      }
+    }
+    return out;
+  }
+  return (loaded === undefined || loaded === null) ? defaults : loaded;
+}
+
+function applyLoadedState(loaded){
+  state = deepMerge(defaultState(), loaded);
+  save();   // keep local save in sync
+  render(); // refresh UI and map
+}
+
+async function initCloudSave(){
+  if(!$("cloudPanel")) return;
+
+  if(!cloudConfigured()){
+    setCloudStatus("Cloud save not configured. Paste your Supabase URL + Anon key in the code.", false, true);
+    setCloudEnabled(false);
+    return;
+  }
+  if(!window.supabase || !window.supabase.createClient){
+    setCloudStatus("Cloud library missing (Supabase). Check the CDN script include.", false, true);
+    setCloudEnabled(false);
+    return;
+  }
+
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // initial session
+  const { data, error } = await sb.auth.getSession();
+  if(error) console.warn(error);
+  cloudSession = data?.session || null;
+
+  // listen for changes
+  sb.auth.onAuthStateChange((_event, session) => {
+    cloudSession = session || null;
+    updateCloudUI();
+  });
+
+  updateCloudUI();
+}
+
+function updateCloudUI(meta){
+  const user = cloudSession?.user;
+  if(user){
+    setCloudStatus(`Signed in as ${user.email}`, true, false);
+    setCloudEnabled(true);
+  } else {
+    setCloudStatus("Not signed in.", false, false);
+    setCloudEnabled(false);
+  }
+
+  const chip = $("cloudMeta");
+  if(chip){
+    if(meta?.updated_at){
+      const d = new Date(meta.updated_at);
+      chip.style.display = "";
+      chip.textContent = `Last cloud save: ${d.toLocaleString()}`;
+    } else {
+      chip.style.display = "none";
+      chip.textContent = "";
+    }
+  }
+}
+
+async function cloudSignUp(){
+  if(!sb) return;
+  const email = ($("cloudEmail")?.value || "").trim();
+  const password = $("cloudPass")?.value || "";
+  if(!email || password.length < 6){
+    showModal("Cloud Save", "Enter a valid email and a password (6+ characters).");
+    return;
+  }
+  const { data, error } = await sb.auth.signUp({ email, password });
+  if(error){
+    showModal("Cloud Save", `Sign up failed: ${error.message}`);
+    return;
+  }
+  // Depending on your Supabase Auth settings, email confirmation may be required.
+  if(data?.user && !data?.session){
+    showModal("Cloud Save", "Account created! Check your email to confirm your account, then sign in here.");
+  } else {
+    showModal("Cloud Save", "Account created and signed in.");
+  }
+  updateCloudUI();
+}
+
+async function cloudSignIn(){
+  if(!sb) return;
+  const email = ($("cloudEmail")?.value || "").trim();
+  const password = $("cloudPass")?.value || "";
+  if(!email || !password){
+    showModal("Cloud Save", "Enter your email and password.");
+    return;
+  }
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  if(error){
+    showModal("Cloud Save", `Sign in failed: ${error.message}`);
+    return;
+  }
+  cloudSession = data?.session || null;
+  updateCloudUI();
+}
+
+async function cloudSignOut(){
+  if(!sb) return;
+  const { error } = await sb.auth.signOut();
+  if(error) showModal("Cloud Save", `Sign out failed: ${error.message}`);
+  cloudSession = null;
+  updateCloudUI();
+}
+
+async function cloudSaveNow(){
+  if(!sb || !cloudSession?.user) return;
+  $("cloudSaveBtn").disabled = true;
+
+  try{
+    const payload = {
+      user_id: cloudSession.user.id,
+      slot: CLOUD_SLOT,
+      save: state,
+      updated_at: new Date().toISOString()
+    };
+
+    const { error } = await sb
+      .from("saves")
+      .upsert(payload, { onConflict: "user_id,slot" });
+
+    if(error) throw error;
+
+    showModal("Cloud Save", "Saved to cloud ✅");
+    updateCloudUI({ updated_at: payload.updated_at });
+  }catch(err){
+    console.error(err);
+    showModal("Cloud Save", `Cloud save failed: ${err.message || err}`);
+  }finally{
+    $("cloudSaveBtn").disabled = false;
+  }
+}
+
+async function cloudLoadNow(){
+  if(!sb || !cloudSession?.user) return;
+  $("cloudLoadBtn").disabled = true;
+
+  try{
+    const { data, error } = await sb
+      .from("saves")
+      .select("save, updated_at")
+      .eq("user_id", cloudSession.user.id)
+      .eq("slot", CLOUD_SLOT)
+      .single();
+
+    if(error) throw error;
+    if(!data?.save){
+      showModal("Cloud Save", "No cloud save found yet. Click “Save to Cloud” first.");
+      return;
+    }
+
+    applyLoadedState(data.save);
+    showModal("Cloud Save", "Loaded from cloud ✅");
+    updateCloudUI({ updated_at: data.updated_at });
+  }catch(err){
+    console.error(err);
+    showModal("Cloud Save", `Cloud load failed: ${err.message || err}`);
+  }finally{
+    $("cloudLoadBtn").disabled = false;
+  }
+}
 function clamp(n,min,max){ return Math.max(min, Math.min(max, n)); }
 function roll(s){ return Math.floor(Math.random()*s)+1; }
 function fmtTime(mins){
@@ -1655,6 +1981,54 @@ function activeQuest(){
   if(!state.activeQuestId) return null;
   return QUESTS.find(q=>q.id===state.activeQuestId) || null;
 }
+
+function renderActiveQuestPanel(){
+  const none = $("activeQuestNone");
+  const content = $("activeQuestContent");
+  if(!none || !content) return;
+
+  const q = activeQuest();
+  if(!q){
+    none.style.display = "";
+    content.style.display = "none";
+    return;
+  }
+
+  const dest = nodeById[q.to];
+  none.style.display = "none";
+  content.style.display = "";
+
+  $("activeQuestTitle").textContent = q.title;
+  $("activeQuestText").textContent  = q.text;
+  $("activeQuestTo").textContent    = dest ? dest.name : q.to;
+  $("activeQuestReward").textContent = `${q.rewardGold||0}g${q.rewardItem ? ` + ${q.rewardItem.name}` : ""}`;
+
+  $("questCenterBtn").disabled = !dest;
+}
+
+function centerOnQuestDestination(){
+  const q = activeQuest();
+  if(!q) return;
+  jumpToNode(q.to, true);
+}
+
+function abandonActiveQuest(){
+  const q = activeQuest();
+  if(!q) return;
+  if(!confirm(`Abandon quest: "${q.title}"?`)) return;
+
+  // Remove quest item from bag
+  state.bag = state.bag.filter(it => !(it && it.kind==="quest" && it.qid===q.id));
+
+  // Reset status so it can be accepted again
+  setQuestStatus(q.id, { accepted:false, completed:false });
+  state.activeQuestId = null;
+
+  pushLog(`🗑️ You abandoned the quest: ${q.title}.`);
+  render();
+}
+
+
 function hasQuestItem(name){
   return state.bag.some(x=>x.type==="quest" && x.name===name);
 }
@@ -3792,6 +4166,7 @@ $("ccConfirmBtn").addEventListener("click", ()=>{
 
   // starting node
   indexWorld();
+  buildMapSearchIndex();
   const startNode = setStartingNodeFromBirth(state.char.birthKingdom);
   state.currentNode = startNode;
   state.lastSafeNode = startNode;
@@ -3831,6 +4206,7 @@ $("resetBtn").addEventListener("click", ()=>{
   ccRolled = null;
   world = { nodes: genNodes(), edges: [] };
   indexWorld();
+  buildMapSearchIndex();
   buildEdges();
   pushLog("🧼 Save wiped.");
   save();
@@ -3847,6 +4223,7 @@ function render(){
     // pick a safe default node for preview
     if(!state.currentNode){
       indexWorld();
+  buildMapSearchIndex();
       state.currentNode = world.nodes.find(n=>n.type==="capital")?.id || world.nodes[0].id;
       state.lastSafeNode = state.currentNode;
     }
@@ -3856,6 +4233,7 @@ function render(){
   }
 
   indexWorld();
+  buildMapSearchIndex();
 
   // badges
   const n = nodeById[state.currentNode];
@@ -5084,6 +5462,13 @@ function drawWorld(){
   }
 
 
+// highlight expiry
+if(highlightNodeId && performance.now() > highlightUntil){
+  highlightNodeId = null;
+}
+
+
+
   // --- Nodes ---
   const showLabels = view.zoom > (Math.min(mapCanvas.width/WORLD_W, mapCanvas.height/WORLD_H) * 1.05);
   for(const n of world.nodes){
@@ -5091,7 +5476,22 @@ function drawWorld(){
     if(sx< -80 || sy< -80 || sx>mapCanvas.width+80 || sy>mapCanvas.height+80) continue;
 
     const isHere = (n.id===state.currentNode) && state.mode!=="dungeon";
-    drawNodeGlyph(n, sx, sy, isHere);
+
+drawNodeGlyph(n, sx, sy, isHere);
+
+// highlight ring (search / quest)
+if(highlightNodeId && n.id===highlightNodeId && performance.now() < highlightUntil){
+  const left = clamp((highlightUntil - performance.now()) / 2000, 0, 1);
+  ctx.save();
+  ctx.globalAlpha = Math.max(0.25, left);
+  ctx.strokeStyle = "rgba(251,191,36,.95)";
+  ctx.lineWidth = 3*devicePixelRatio;
+  ctx.beginPath();
+  ctx.arc(sx, sy, 22*devicePixelRatio, 0, Math.PI*2);
+  ctx.stroke();
+  ctx.restore();
+}
+
 
     if(showLabels && (n.type==="capital" || n.type==="city" || n.type==="castle")){
       ctx.font = `${Math.round(12*devicePixelRatio)}px system-ui`;
@@ -5428,7 +5828,144 @@ $("ovLegendBtn").addEventListener("click", (e)=>{
   showLegend = !showLegend;
   syncOverlayToggles();
 });
+
+// --- Map search + highlights ---
+let mapSearchIndex = [];
+let highlightNodeId = null;
+let highlightUntil = 0;
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, (m)=>({
+    "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"
+  }[m]));
+}
+
+function buildMapSearchIndex(){
+  mapSearchIndex = (world?.nodes || []).map(n=>{
+    const meta = `${n.name} ${n.type} ${prettyType(n.type)} ${n.kingdom}`.toLowerCase();
+    return { id:n.id, name:n.name, type:n.type, kingdom:n.kingdom, meta };
+  });
+}
+
+function setHighlight(nodeId, ms=2000){
+  highlightNodeId = nodeId;
+  highlightUntil = performance.now() + ms;
+}
+
+function jumpToNode(nodeId, withHighlight=true){
+  centerOnNode(nodeId);
+  if(withHighlight) setHighlight(nodeId);
+  draw();
+}
+
+function renderMapSearch(query){
+  const results = $("mapSearchResults");
+  if(!results) return;
+
+  const q = (query||"").trim().toLowerCase();
+  if(q.length < 2){
+    results.style.display = "none";
+    results.innerHTML = "";
+    return;
+  }
+
+  const parts = q.split(/\s+/).filter(Boolean);
+  const matches = [];
+  for(const it of mapSearchIndex){
+    let ok = true;
+    for(const p of parts){
+      if(!it.meta.includes(p)){ ok = false; break; }
+    }
+    if(ok) matches.push(it);
+  }
+
+  matches.sort((a,b)=>{
+    const as = a.name.toLowerCase().startsWith(q) ? 0 : 1;
+    const bs = b.name.toLowerCase().startsWith(q) ? 0 : 1;
+    if(as !== bs) return as - bs;
+    return a.name.localeCompare(b.name);
+  });
+
+  const top = matches.slice(0, 8);
+  results.style.display = "flex";
+
+  if(top.length === 0){
+    results.innerHTML = `<div class="smallMuted" style="padding:8px 6px">No matches.</div>`;
+    return;
+  }
+
+  results.innerHTML = top.map(it=>`
+    <div class="mapSearchItem" data-node="${escapeHtml(it.id)}">
+      <div>
+        <div class="mapSearchName">${escapeHtml(it.name)}</div>
+        <div class="mapSearchMeta">${escapeHtml(prettyType(it.type))} • ${escapeHtml(it.kingdom||"—")}</div>
+      </div>
+      <div class="smallMuted">Go</div>
+    </div>
+  `).join("");
+}
+
+(function wireMapSearch(){
+  const input = $("mapSearchInput");
+  const results = $("mapSearchResults");
+  if(!input || !results) return;
+
+  input.addEventListener("input", (e)=>{
+    renderMapSearch(input.value);
+  });
+
+  input.addEventListener("keydown", (e)=>{
+    if(e.key === "Escape"){
+      input.value = "";
+      renderMapSearch("");
+      input.blur();
+      return;
+    }
+    if(e.key === "Enter"){
+      const first = results.querySelector(".mapSearchItem");
+      if(first){
+        jumpToNode(first.getAttribute("data-node"), true);
+        input.blur();
+        results.style.display = "none";
+      }
+    }
+  });
+
+  results.addEventListener("click", (e)=>{
+    const item = e.target.closest(".mapSearchItem");
+    if(!item) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const nodeId = item.getAttribute("data-node");
+    if(nodeId) jumpToNode(nodeId, true);
+    input.blur();
+    results.style.display = "none";
+  });
+
+  // Keyboard shortcut: "/" focuses map search while exploring
+  window.addEventListener("keydown", (e)=>{
+    if(e.key === "/" && state.mode === "world" && !e.ctrlKey && !e.metaKey && !e.altKey){
+      const tag = (document.activeElement?.tagName||"").toLowerCase();
+      if(tag === "input" || tag === "textarea") return;
+      e.preventDefault();
+      input.focus();
+      input.select();
+    }
+  });
+})();
+
 syncOverlayToggles();
+
+
+// --- Active quest panel buttons ---
+$("questCenterBtn")?.addEventListener("click", (e)=>{
+  e.preventDefault(); e.stopPropagation();
+  centerOnQuestDestination();
+});
+$("questAbandonBtn")?.addEventListener("click", (e)=>{
+  e.preventDefault(); e.stopPropagation();
+  abandonActiveQuest();
+});
 
 
 /* =========================
@@ -5508,6 +6045,7 @@ function render(){
 
   renderBadges();
   renderCharacterPanel();
+  renderActiveQuestPanel();
   renderEquipmentSlots();
   renderBag();
   renderSpellsPanel();
@@ -5529,6 +6067,7 @@ function render(){
 ========================= */
 function initAfterLoad(forceCenter=false){
   indexWorld();
+  buildMapSearchIndex();
 
   // validate current node
   if(!state.currentNode || !nodeById[state.currentNode]){
@@ -5563,6 +6102,21 @@ function initAfterLoad(forceCenter=false){
 }
 initAfterLoad(true);
 render();
+
+// Cloud save UI wiring
+(function(){
+  const w = () => {
+    if($("cloudSignUpBtn")) $("cloudSignUpBtn").addEventListener("click", cloudSignUp);
+    if($("cloudSignInBtn")) $("cloudSignInBtn").addEventListener("click", cloudSignIn);
+    if($("cloudSignOutBtn")) $("cloudSignOutBtn").addEventListener("click", cloudSignOut);
+    if($("cloudSaveBtn")) $("cloudSaveBtn").addEventListener("click", cloudSaveNow);
+    if($("cloudLoadBtn")) $("cloudLoadBtn").addEventListener("click", cloudLoadNow);
+    initCloudSave();
+  };
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", w);
+  else w();
+})();
+
 </script>
 
 </body>
