@@ -15,7 +15,6 @@
   --text:#e5e7eb;
   --muted:#9ca3af;
 }
-
 *{box-sizing:border-box}
 body{
   margin:0;
@@ -26,16 +25,9 @@ body{
   color:var(--text);
   min-height:100vh;
 }
-
-.wrap{
-  max-width:1200px;
-  margin:auto;
-  padding:32px;
-}
-
-h1{margin-bottom:6px}
-h2,h3{margin:16px 0 8px}
-
+.wrap{max-width:1200px;margin:auto;padding:32px}
+h1{margin:0 0 6px}
+p{margin:0 0 18px;color:var(--muted)}
 .card{
   background:var(--card);
   border:1px solid var(--border);
@@ -43,208 +35,317 @@ h2,h3{margin:16px 0 8px}
   padding:20px;
   backdrop-filter:blur(14px);
 }
-
-.grid{
-  display:grid;
-  grid-template-columns:1fr 420px;
-  gap:24px;
-}
-
+.grid{display:grid;grid-template-columns:1fr 420px;gap:24px}
 button{
   background:linear-gradient(135deg,#7c5cff,#5f4cff);
-  border:none;
-  color:white;
-  padding:12px 16px;
-  border-radius:12px;
-  cursor:pointer;
+  border:none;color:#fff;
+  padding:12px 16px;border-radius:12px;cursor:pointer;
   font-size:16px;
 }
-
 button.secondary{
   background:rgba(0,0,0,.35);
   border:1px solid var(--border);
 }
-
-.stats{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:10px;
+button.small{
+  font-size:12px;
+  padding:8px 10px;
+  border-radius:10px;
 }
-
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .stat{
   background:rgba(0,0,0,.3);
-  border-radius:12px;
-  padding:10px;
-  text-align:center;
+  border-radius:12px;padding:10px;text-align:center;
 }
-
-.inventory{
-  display:grid;
-  grid-template-columns:repeat(4,1fr);
-  gap:12px;
-}
-
+.inventory{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
 .slot{
   background:rgba(0,0,0,.35);
   border:1px dashed var(--border);
   border-radius:12px;
   padding:10px;
-  min-height:70px;
+  min-height:76px;
   text-align:center;
   font-size:14px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  gap:8px;
 }
-
 .slot strong{display:block;font-size:12px;color:var(--muted)}
-
+.slot .itemName{line-height:1.2}
 .log{
   background:rgba(0,0,0,.4);
   border-radius:12px;
   padding:12px;
-  height:180px;
+  height:220px;
   overflow:auto;
   font-size:14px;
 }
+.bagGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.itemCard{
+  background:rgba(0,0,0,.35);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:10px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  min-height:92px;
+}
+.itemCard .meta{font-size:12px;color:var(--muted)}
+hr{border:none;border-top:1px solid var(--border);margin:16px 0}
 </style>
 </head>
 
 <body>
 <div class="wrap">
-<h1>🎲 Apex Dice RPG</h1>
-<p class="muted">Turn-based D&D-style dice combat. Progress saves locally.</p>
+  <h1>🎲 Apex Dice RPG</h1>
+  <p>Turn-based D&D-style dice combat. Progress saves locally.</p>
 
-<div class="grid">
+  <div class="grid">
 
-<!-- LEFT: GAME -->
-<div class="card">
+    <!-- LEFT: GAME -->
+    <div class="card">
+      <h2>Player</h2>
+      <div class="stats">
+        <div class="stat">❤️ HP<br><strong id="hp">20</strong></div>
+        <div class="stat">⚔️ Attack<br><strong id="atk">2</strong></div>
+        <div class="stat">🛡️ Defense<br><strong id="def">1</strong></div>
+      </div>
 
-<h2>Player</h2>
-<div class="stats">
-  <div class="stat">❤️ HP<br><strong id="hp">20</strong></div>
-  <div class="stat">⚔️ Attack<br><strong id="atk">2</strong></div>
-  <div class="stat">🛡️ Defense<br><strong id="def">1</strong></div>
-</div>
+      <h2 style="margin-top:20px">Actions</h2>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <button id="attackBtn">Attack (d20)</button>
+        <button class="secondary" id="lootBtn">Search for Loot</button>
+        <button class="secondary" id="resetBtn">Reset Game</button>
+      </div>
 
-<h2 style="margin-top:20px">Actions</h2>
-<button onclick="attack()">Attack (d20)</button>
-<button class="secondary" onclick="loot()">Search for Loot</button>
+      <hr>
 
-<h3>Combat Log</h3>
-<div class="log" id="log"></div>
+      <h3>Combat Log</h3>
+      <div class="log" id="log"></div>
+    </div>
 
-</div>
+    <!-- RIGHT: INVENTORY -->
+    <div class="card">
+      <h2>Equipment</h2>
 
-<!-- RIGHT: INVENTORY -->
-<div class="card">
-<h2>Equipment</h2>
-<div class="inventory">
-  <div class="slot" id="weaponSlot"><strong>Weapon</strong>None</div>
-  <div class="slot" id="armorSlot"><strong>Armor</strong>None</div>
-  <div class="slot" id="accessorySlot"><strong>Accessory</strong>None</div>
-  <div class="slot"><strong>Gold</strong><span id="gold">0</span></div>
-</div>
+      <div class="inventory">
+        <div class="slot" id="weaponSlot"></div>
+        <div class="slot" id="armorSlot"></div>
+        <div class="slot" id="accessorySlot"></div>
+        <div class="slot">
+          <strong>Gold</strong>
+          <div class="itemName"><span id="gold">0</span></div>
+          <div></div>
+        </div>
+      </div>
 
-<h3 style="margin-top:20px">Backpack</h3>
-<div class="inventory" id="bag"></div>
-</div>
+      <h3 style="margin-top:18px">Backpack</h3>
+      <div class="bagGrid" id="bag"></div>
+    </div>
 
-</div>
+  </div>
 </div>
 
 <script>
-/* ---------- GAME STATE ---------- */
+/* ---------- STATE ---------- */
 let state = JSON.parse(localStorage.getItem("diceRPG")) || {
   hp:20,
-  atk:2,
-  def:1,
+  atkBase:2,
+  defBase:1,
   gold:0,
   weapon:null,
   armor:null,
   accessory:null,
-  bag:[]
+  bag:[],
+  log:[]
 };
+
+const $ = id => document.getElementById(id);
 
 /* ---------- HELPERS ---------- */
-const log = msg=>{
-  const l=document.getElementById("log");
-  l.innerHTML+=msg+"<br>";
-  l.scrollTop=l.scrollHeight;
-};
-
 const roll = sides => Math.floor(Math.random()*sides)+1;
 
-/* ---------- UI ---------- */
-function render(){
-  hp.textContent=state.hp;
-  atk.textContent=state.atk;
-  def.textContent=state.def;
-  gold.textContent=state.gold;
+function pushLog(msg){
+  state.log.push(msg);
+  // keep last 200 lines
+  if(state.log.length>200) state.log = state.log.slice(-200);
+}
 
-  weaponSlot.innerHTML=`<strong>Weapon</strong>${state.weapon?.name||"None"}`;
-  armorSlot.innerHTML=`<strong>Armor</strong>${state.armor?.name||"None"}`;
-  accessorySlot.innerHTML=`<strong>Accessory</strong>${state.accessory?.name||"None"}`;
+function save(){
+  localStorage.setItem("diceRPG", JSON.stringify(state));
+}
 
-  bag.innerHTML="";
-  state.bag.forEach((item,i)=>{
-    const d=document.createElement("div");
-    d.className="slot";
-    d.innerHTML=`${item.name}<br><button onclick="equip(${i})">Equip</button>`;
-    bag.appendChild(d);
-  });
+function fmtItem(item){
+  if(!item) return "None";
+  const parts=[];
+  if(item.atk) parts.push(`+${item.atk} ATK`);
+  if(item.def) parts.push(`+${item.def} DEF`);
+  return parts.length ? `${item.name} (${parts.join(", ")})` : item.name;
+}
 
-  localStorage.setItem("diceRPG",JSON.stringify(state));
+function recalcDerived(){
+  // Derived stats = base + equipped bonuses
+  const atkBonus = (state.weapon?.atk||0) + (state.accessory?.atk||0);
+  const defBonus = (state.armor?.def||0) + (state.accessory?.def||0);
+  state.atk = state.atkBase + atkBonus;
+  state.def = state.defBase + defBonus;
+}
+
+/* ---------- EQUIP SWAP (NO STACKING) ---------- */
+function equipFromBag(index){
+  const item = state.bag[index];
+  if(!item) return;
+
+  // Remove from bag first (so swapping back doesn't duplicate)
+  state.bag.splice(index,1);
+
+  if(item.type === "weapon"){
+    // swap out existing weapon back to bag
+    if(state.weapon) state.bag.push(state.weapon);
+    state.weapon = item;
+    pushLog(`🧩 Equipped Weapon: <b>${fmtItem(item)}</b>`);
+  }
+
+  if(item.type === "armor"){
+    if(state.armor) state.bag.push(state.armor);
+    state.armor = item;
+    pushLog(`🧩 Equipped Armor: <b>${fmtItem(item)}</b>`);
+  }
+
+  if(item.type === "accessory"){
+    if(state.accessory) state.bag.push(state.accessory);
+    state.accessory = item;
+    pushLog(`🧩 Equipped Accessory: <b>${fmtItem(item)}</b>`);
+  }
+
+  recalcDerived();
+  render();
+}
+
+function unequip(slot){
+  if(slot==="weapon" && state.weapon){
+    state.bag.push(state.weapon);
+    pushLog(`📦 Unequipped Weapon: <b>${fmtItem(state.weapon)}</b>`);
+    state.weapon=null;
+  }
+  if(slot==="armor" && state.armor){
+    state.bag.push(state.armor);
+    pushLog(`📦 Unequipped Armor: <b>${fmtItem(state.armor)}</b>`);
+    state.armor=null;
+  }
+  if(slot==="accessory" && state.accessory){
+    state.bag.push(state.accessory);
+    pushLog(`📦 Unequipped Accessory: <b>${fmtItem(state.accessory)}</b>`);
+    state.accessory=null;
+  }
+  recalcDerived();
+  render();
 }
 
 /* ---------- GAME ACTIONS ---------- */
 function attack(){
   const d20 = roll(20);
-  const dmg = roll(6)+state.atk;
-  log(`🎲 You roll d20: <b>${d20}</b>`);
-  if(d20>=10){
-    log(`⚔️ Hit! You deal ${dmg} damage.`);
-  }else{
-    log(`❌ Miss!`);
+  pushLog(`🎲 You roll d20: <b>${d20}</b>`);
+  if(d20 >= 10){
+    const dmg = roll(6) + state.atk;
+    pushLog(`⚔️ Hit! You deal <b>${dmg}</b> damage.`);
+  } else {
+    pushLog(`❌ Miss!`);
   }
+  render();
 }
 
 function loot(){
-  const items=[
-    {type:"weapon",name:"Sword (+2 ATK)",atk:2},
-    {type:"armor",name:"Leather Armor (+2 DEF)",def:2},
-    {type:"accessory",name:"Ring of Luck (+1 ATK)",atk:1},
-    {type:"gold",name:"Gold Pouch",gold:10}
+  const table = [
+    {type:"weapon", name:"Sword", atk:2},
+    {type:"weapon", name:"Dagger", atk:1},
+    {type:"armor", name:"Leather Armor", def:2},
+    {type:"armor", name:"Chain Shirt", def:3},
+    {type:"accessory", name:"Ring of Luck", atk:1},
+    {type:"accessory", name:"Amulet of Guarding", def:1},
+    {type:"gold", name:"Gold Pouch", gold:10},
+    {type:"gold", name:"Coin Cache", gold:25}
   ];
-  const item = items[Math.floor(Math.random()*items.length)];
+  const item = table[Math.floor(Math.random()*table.length)];
+
   if(item.type==="gold"){
-    state.gold+=item.gold;
-    log(`💰 Found ${item.gold} gold!`);
-  }else{
+    state.gold += item.gold;
+    pushLog(`💰 Found <b>${item.gold}</b> gold.`);
+  } else {
     state.bag.push(item);
-    log(`📦 Found ${item.name}`);
+    pushLog(`📦 Found <b>${fmtItem(item)}</b>`);
   }
   render();
 }
 
-function equip(i){
-  const item = state.bag.splice(i,1)[0];
-  if(item.type==="weapon"){
-    if(state.weapon) state.atk-=state.weapon.atk||0;
-    state.weapon=item;
-    state.atk+=item.atk||0;
-  }
-  if(item.type==="armor"){
-    if(state.armor) state.def-=state.armor.def||0;
-    state.armor=item;
-    state.def+=item.def||0;
-  }
-  if(item.type==="accessory"){
-    if(state.accessory) state.atk-=state.accessory.atk||0;
-    state.accessory=item;
-    state.atk+=item.atk||0;
-  }
-  log(`🧩 Equipped ${item.name}`);
-  render();
+function hardReset(){
+  localStorage.removeItem("diceRPG");
+  location.reload();
 }
 
+/* ---------- RENDER ---------- */
+function render(){
+  recalcDerived();
+
+  $("hp").textContent = state.hp;
+  $("atk").textContent = state.atk;
+  $("def").textContent = state.def;
+  $("gold").textContent = state.gold;
+
+  // equipment slots with Unequip
+  $("weaponSlot").innerHTML = `
+    <strong>Weapon</strong>
+    <div class="itemName">${state.weapon ? fmtItem(state.weapon) : "None"}</div>
+    <div>${state.weapon ? `<button class="small secondary" onclick="unequip('weapon')">Unequip</button>` : ""}</div>
+  `;
+
+  $("armorSlot").innerHTML = `
+    <strong>Armor</strong>
+    <div class="itemName">${state.armor ? fmtItem(state.armor) : "None"}</div>
+    <div>${state.armor ? `<button class="small secondary" onclick="unequip('armor')">Unequip</button>` : ""}</div>
+  `;
+
+  $("accessorySlot").innerHTML = `
+    <strong>Accessory</strong>
+    <div class="itemName">${state.accessory ? fmtItem(state.accessory) : "None"}</div>
+    <div>${state.accessory ? `<button class="small secondary" onclick="unequip('accessory')">Unequip</button>` : ""}</div>
+  `;
+
+  // bag items
+  $("bag").innerHTML = "";
+  if(state.bag.length===0){
+    const empty = document.createElement("div");
+    empty.className="itemCard";
+    empty.style.gridColumn="1 / -1";
+    empty.innerHTML = `<div class="meta">Backpack is empty. Click “Search for Loot”.</div>`;
+    $("bag").appendChild(empty);
+  } else {
+    state.bag.forEach((item,i)=>{
+      const d=document.createElement("div");
+      d.className="itemCard";
+      d.innerHTML = `
+        <div><b>${item.name}</b></div>
+        <div class="meta">${item.type.toUpperCase()} • ${item.atk?`+${item.atk} ATK `:""}${item.def?`+${item.def} DEF`:""}</div>
+        <button class="small" onclick="equipFromBag(${i})">Equip</button>
+      `;
+      $("bag").appendChild(d);
+    });
+  }
+
+  // log
+  $("log").innerHTML = state.log.map(x=>`<div>${x}</div>`).join("");
+
+  save();
+}
+
+/* ---------- BIND UI ---------- */
+$("attackBtn").addEventListener("click", attack);
+$("lootBtn").addEventListener("click", loot);
+$("resetBtn").addEventListener("click", hardReset);
+
+// first-time derived stats
+recalcDerived();
 render();
 </script>
 </body>
