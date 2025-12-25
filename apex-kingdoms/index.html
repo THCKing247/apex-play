@@ -29,9 +29,12 @@
 body{
   margin:0;
   font-family:system-ui,-apple-system,Segoe UI,Roboto;
+  /* Game page background image (put the file at /assets/apex-kingdoms-cover.png) */
   background:
     radial-gradient(1200px 600px at 60% -10%, #7c5cff55, transparent 60%),
-    linear-gradient(180deg,var(--bg0),var(--bg1));
+    linear-gradient(180deg, rgba(7,11,26,.82), rgba(11,16,38,.92)),
+    url("/assets/apex-kingdoms-cover.png") center/cover fixed no-repeat;
+  background-color: var(--bg0);
   color:var(--text);
   min-height:100vh;
 }
