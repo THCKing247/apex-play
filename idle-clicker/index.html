@@ -175,6 +175,28 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
   100%{ box-shadow:0 0 0 0 rgba(251,191,36,0) }
 }
 
+
+/* Map legend + toggles */
+.legendBox{
+  position:absolute;
+  left:12px; top:12px;
+  max-width:360px;
+  padding:10px 12px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(0,0,0,.35);
+  backdrop-filter:blur(10px);
+}
+.legendTitle{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.legendTitle b{font-size:13px}
+.legendGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-top:8px}
+.legendItem{display:flex;gap:8px;align-items:center;font-size:12px;color:var(--muted)}
+.legendIcon{width:18px;text-align:center}
+.legendKingdoms{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.kchip{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);font-size:11px;color:var(--muted)}
+.kdot{width:10px;height:10px;border-radius:999px}
+
+
 /* Inventory */
 .inventory{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
 .slot{
@@ -359,6 +381,33 @@ input, select{
             </div>
           </div>
         </div>
+
+        <div class="legendBox" id="legendBox">
+          <div class="legendTitle">
+            <b>Legend</b>
+            <span class="smallMuted">Node types</span>
+          </div>
+          <div class="legendGrid">
+            <div class="legendItem"><span class="legendIcon">⭐</span>Capital</div>
+            <div class="legendItem"><span class="legendIcon">🏙️</span>City</div>
+            <div class="legendItem"><span class="legendIcon">🏘️</span>Town</div>
+            <div class="legendItem"><span class="legendIcon">⚓</span>Port</div>
+            <div class="legendItem"><span class="legendIcon">🏰</span>Castle</div>
+            <div class="legendItem"><span class="legendIcon">🕳️</span>Cave</div>
+            <div class="legendItem"><span class="legendIcon">⛺</span>Camp</div>
+            <div class="legendItem"><span class="legendIcon">🌲</span>Forest</div>
+            <div class="legendItem"><span class="legendIcon">🗿</span>Ruins</div>
+            <div class="legendItem"><span class="legendIcon">❗</span>Landmark</div>
+          </div>
+          <div class="legendKingdoms">
+            <span class="kchip"><span class="kdot" style="background:rgba(124,92,255,.9)"></span>Valoria</span>
+            <span class="kchip"><span class="kdot" style="background:rgba(251,113,133,.9)"></span>Kragmire</span>
+            <span class="kchip"><span class="kdot" style="background:rgba(52,211,153,.9)"></span>Eldwyn</span>
+            <span class="kchip"><span class="kdot" style="background:rgba(59,130,246,.9)"></span>SableCoast</span>
+          </div>
+          <div class="smallMuted" style="margin-top:8px">Hover a connected node to see travel time + cost.</div>
+        </div>
+
 
         <div class="minimap" id="miniWrap" title="Click to jump • Use ⤢ to expand">
           <div class="miniHud">
@@ -1110,15 +1159,33 @@ function isLand(x,y){
   return y < (cy - bay + (Math.sin(x*0.00022+2.4)*220) - fjord);
 }
 
-// Kingdom ownership: simple partition in land by x bands + y bands
+
+// Kingdom ownership: organic regions (noise + distance to kingdom centers)
+const KINGDOM_CENTERS = {
+  Valoria:   {x: 7600,  y: 5200,  w: 0.96},
+  Kragmire:  {x: 15600, y: 6900,  w: 0.98},
+  Eldwyn:    {x: 11800, y: 12150, w: 1.05},
+  SableCoast:{x: 22800, y: 9800,  w: 1.02},
+};
 function kingdomAt(x,y){
-  // only meaningful on land
   if(!isLand(x,y)) return null;
-  if(x < 12000 && y < 9800) return "Valoria";
-  if(x >= 12000 && x < 20500 && y < 10200) return "Kragmire";
-  if(y >= 10200 && x < 18500) return "Eldwyn";
-  return "SableCoast";
+  // large-scale variation so borders aren't straight lines
+  const n = fbm(x+9000, y-4200, 6500); // [-1..1]
+  let bestK = "Eldwyn";
+  let best = Infinity;
+  let i=0;
+  for(const k of Object.keys(KINGDOM_CENTERS)){
+    const c = KINGDOM_CENTERS[k];
+    const dx = x - c.x, dy = y - c.y;
+    const d = Math.sqrt(dx*dx + dy*dy);
+    const wobble = 1 + (n*0.10) + (fbm(x + i*1111, y - i*777, 4200)*0.07);
+    const score = (d * c.w) * wobble;
+    if(score < best){ best = score; bestK = k; }
+    i++;
+  }
+  return bestK;
 }
+
 function biomeAt(x,y){
   // snow/arctic in far north, desert in far east-south, tundra mid-north, woodland near central, grass default
   if(y < 2600) return "arctic";
@@ -1206,6 +1273,30 @@ function genNodes(){
     });
   }
 
+
+  // Decorate some towns as castles/ruins for map variety (keeps node IDs stable)
+  function strHash01(s){
+    let h = 2166136261;
+    for(let i=0;i<s.length;i++){
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return ((h>>>0) % 100000) / 100000; // [0..1)
+  }
+  for(const n of nodes){
+    if(n.type!=="town") continue;
+    const h = strHash01(n.id);
+    if(h < 0.10){
+      n.type = "castle";
+      n.population = 0;
+      n.establishments = ["jobs","stable"];
+    } else if(h < 0.16){
+      n.type = "ruins";
+      n.population = 0;
+      n.establishments = [];
+    }
+  }
+
   // Ensure kingdom / biome on all nodes
   for(const n of nodes){
     if(!n.kingdom) n.kingdom = kingdomAt(n.x,n.y) || "Eldwyn";
@@ -1234,16 +1325,17 @@ function indexWorld(){
 }
 indexWorld();
 
-// Build edges: connect each node to nearest k nodes (roads), avoid ocean crossings, add sea routes between ports
+// Build edges: connect nodes (roads/sea), enforce connectivity, and compute travel costs
 function buildEdges(){
   const edges = [];
   const nodes = world.nodes;
 
-  // helper
   function dist(a,b){
     const dx=a.x-b.x, dy=a.y-b.y;
     return Math.sqrt(dx*dx+dy*dy);
   }
+  function key(a,b){ return a<b ? `${a}::${b}` : `${b}::${a}`; }
+
   function segmentMostlyLand(a,b){
     const steps = 18;
     let landCount=0;
@@ -1253,7 +1345,7 @@ function buildEdges(){
       const y=a.y+(b.y-a.y)*t;
       if(isLand(x,y)) landCount++;
     }
-    return landCount/ (steps+1) > 0.75;
+    return landCount/(steps+1) > 0.75;
   }
   function segmentMostlySea(a,b){
     const steps = 18;
@@ -1266,38 +1358,34 @@ function buildEdges(){
     }
     return seaCount/(steps+1) > 0.80;
   }
-  function key(a,b){ return a<b ? `${a}::${b}` : `${b}::${a}`; }
+
   const used = new Set();
 
-  // Roads (hug land feel): we draw curved roads later, but edges are logical connections.
+  // Roads: connect to nearest neighbors on land
   for(const n of nodes){
-    // skip landmark
-    if(n.type==="landmark") continue;
-    // gather candidates on land
+    if(n.type==="landmark" || n.impassable) continue;
+    if(!isLand(n.x,n.y)) continue;
+
     const candidates = nodes
-      .filter(m => m.id!==n.id && m.type!=="landmark" && isLand(m.x,m.y) && isLand(n.x,n.y))
+      .filter(m => m.id!==n.id && m.type!=="landmark" && !m.impassable && isLand(m.x,m.y))
       .map(m => ({m, d:dist(n,m)}))
       .sort((a,b)=>a.d-b.d)
-      .slice(0, 6);
+      .slice(0, 7);
 
     for(const c of candidates){
-      if(c.d > 5200) continue;
+      if(c.d > 5600) continue;
       const m = c.m;
       const k = key(n.id,m.id);
       if(used.has(k)) continue;
-
-      // avoid "roads" that cross mostly sea
       if(!segmentMostlyLand(n,m)) continue;
 
       used.add(k);
-
-      // war zone tag if near the Valoria/Kragmire border
       const warEdge = (WAR_PAIR.includes(n.kingdom) && WAR_PAIR.includes(m.kingdom) && n.kingdom!==m.kingdom);
       edges.push({a:n.id,b:m.id, kind:"road", war: warEdge});
     }
   }
 
-  // Sea routes between ports only
+  // Sea routes between ports
   const ports = nodes.filter(n=>n.type==="port");
   for(const p of ports){
     const nearestPorts = ports
@@ -1306,18 +1394,155 @@ function buildEdges(){
       .sort((a,b)=>a.d-b.d)
       .slice(0, 3);
     for(const {q,d} of nearestPorts){
-      if(d > 10000) continue;
+      if(d > 12000) continue;
       const k = key(p.id,q.id);
       if(used.has(k)) continue;
-      // sea segment should be mostly sea
       if(!segmentMostlySea(p,q)) continue;
+
       used.add(k);
-      const fare = clamp(Math.round(d/1200)*4 + 6, 6, 28);
-      edges.push({a:p.id,b:q.id, kind:"sea", fare});
+      const fare = clamp(Math.round(d/1200)*4 + 6, 6, 34);
+      edges.push({a:p.id,b:q.id, kind:"sea", fare, cost: fare});
+    }
+  }
+
+  // --- Connectivity enforcement ---
+  function adjacency(){
+    const adj = new Map(nodes.map(n=>[n.id,[]]));
+    for(const e of edges){
+      if(!adj.has(e.a) || !adj.has(e.b)) continue;
+      adj.get(e.a).push(e.b);
+      adj.get(e.b).push(e.a);
+    }
+    return adj;
+  }
+  function components(){
+    const adj = adjacency();
+    const seen = new Set();
+    const comps = [];
+    for(const n of nodes){
+      if(seen.has(n.id) || n.type==="landmark" || n.impassable) continue;
+      const stack=[n.id];
+      const comp=[];
+      seen.add(n.id);
+      while(stack.length){
+        const cur=stack.pop();
+        comp.push(cur);
+        for(const nb of (adj.get(cur)||[])){
+          if(!seen.has(nb)){
+            seen.add(nb);
+            stack.push(nb);
+          }
+        }
+      }
+      comps.push(comp);
+    }
+    return comps;
+  }
+  function connectPair(aId, bId){
+    const a=nodeById[aId], b=nodeById[bId];
+    if(!a||!b) return false;
+    if(!isLand(a.x,a.y) || !isLand(b.x,b.y)) return false;
+    if(!segmentMostlyLand(a,b)) return false;
+    const k = key(a.id,b.id);
+    if(used.has(k)) return false;
+    used.add(k);
+    const warEdge = (WAR_PAIR.includes(a.kingdom) && WAR_PAIR.includes(b.kingdom) && a.kingdom!==b.kingdom);
+    edges.push({a:a.id,b:b.id, kind:"road", war: warEdge});
+    return true;
+  }
+
+  // Ensure every non-impassable node has at least 1 edge
+  const deg = new Map(nodes.map(n=>[n.id,0]));
+  for(const e of edges){
+    deg.set(e.a, (deg.get(e.a)||0)+1);
+    deg.set(e.b, (deg.get(e.b)||0)+1);
+  }
+  for(const n of nodes){
+    if(n.type==="landmark" || n.impassable) continue;
+    if((deg.get(n.id)||0) > 0) continue;
+
+    // connect to nearest viable land node
+    const candidates = nodes
+      .filter(m=>m.id!==n.id && m.type!=="landmark" && !m.impassable && isLand(m.x,m.y) && isLand(n.x,n.y))
+      .map(m=>({id:m.id, d:dist(n,m)}))
+      .sort((a,b)=>a.d-b.d)
+      .slice(0, 12);
+
+    for(const c of candidates){
+      if(connectPair(n.id, c.id)){
+        deg.set(n.id, 1);
+        deg.set(c.id, (deg.get(c.id)||0)+1);
+        break;
+      }
+    }
+  }
+
+  // Ensure single connected graph (best-effort)
+  let comps = components();
+  let safety=0;
+  while(comps.length > 1 && safety++ < 20){
+    const A = comps[0];
+    let best = null;
+
+    for(let ci=1; ci<comps.length; ci++){
+      const B = comps[ci];
+      // find closest pair between A and B
+      for(const aId of A){
+        const a = nodeById[aId];
+        if(!a || a.type==="landmark" || a.impassable) continue;
+        for(const bId of B){
+          const b = nodeById[bId];
+          if(!b || b.type==="landmark" || b.impassable) continue;
+          const d = dist(a,b);
+          if(d > 9000) continue;
+          if(!best || d < best.d) best = {aId,bId,d};
+        }
+      }
+      if(best && best.d < 4200) break;
+    }
+
+    if(best && connectPair(best.aId, best.bId)){
+      comps = components();
+    } else {
+      // can't connect further with strict land checks
+      break;
+    }
+  }
+
+  // --- Compute travel cost for roads ---
+  function biomeMult(b){
+    if(b==="desert") return 1.25;
+    if(b==="arctic") return 1.35;
+    if(b==="snow") return 1.22;
+    if(b==="tundra") return 1.15;
+    if(b==="woodland") return 1.10;
+    return 1.00;
+  }
+  function roadCost(a,b, war){
+    const d = dist(a,b);
+    const pts = [0.25,0.5,0.75].map(t=>{
+      const x=a.x+(b.x-a.x)*t;
+      const y=a.y+(b.y-a.y)*t;
+      return biomeAt(x,y);
+    });
+    const mult = (biomeMult(pts[0]) + biomeMult(pts[1]) + biomeMult(pts[2]))/3;
+    let cost = Math.round((d/950) * mult) + 2;
+    if(a.kingdom!==b.kingdom) cost += 2; // toll / border fees
+    if(war) cost += 4; // danger premium
+    return clamp(cost, 1, 55);
+  }
+
+  for(const e of edges){
+    if(e.kind==="road"){
+      const a=nodeById[e.a], b=nodeById[e.b];
+      e.cost = roadCost(a,b, !!e.war);
+    } else if(e.kind==="sea"){
+      e.cost = e.fare||e.cost||0;
     }
   }
 
   world.edges = edges;
+  mapTexDirty = true;
 }
 buildEdges();
 
@@ -1568,20 +1793,20 @@ function isBigCity(node){
   return !!node.bigCity || node.type==="capital";
 }
 
+
 function travelTo(toId){
   if(state.mode!=="world") return;
   const e=edgeBetween(state.currentNode,toId);
   if(!e){ pushLog("🚫 No route."); render(); return; }
 
-  // sea fare
-  if(e.kind==="sea"){
-    const fare=e.fare||0;
-    if(state.gold<fare){
-      pushLog(`⛴️ Fare required: ${fare}g. You only have ${state.gold}g.`);
+  const cost = (e.kind==="sea") ? (e.fare||e.cost||0) : (e.cost||0);
+  if(cost>0){
+    if(state.gold < cost){
+      pushLog(`🚫 Travel cost: <b>${cost}g</b>. You only have <b>${state.gold}g</b>.`);
       render(); return;
     }
-    state.gold -= fare;
-    pushLog(`⛴️ Paid fare <b>${fare}g</b> for sea travel.`);
+    state.gold -= cost;
+    pushLog(`${e.kind==="sea"?"⛴️":"🛣️"} Paid <b>${cost}g</b> to travel (${e.kind}).`);
   }
 
   const minutes = travelTimeMinutes(state.currentNode,toId, e.kind);
@@ -1638,7 +1863,7 @@ function travelTo(toId){
   render();
 }
 
-/* =========================
+ /* =========================
    Node entry, loot per visit
 ========================= */
 function enterNode(nodeId){
@@ -1647,7 +1872,7 @@ function enterNode(nodeId){
   state.nodeVisitStamp[nodeId] = state.visitCounter;
 
   const n = nodeById[nodeId];
-  if(n.type==="city" || n.type==="town" || n.type==="port" || n.type==="capital"){
+  if(n.type==="city" || n.type==="town" || n.type==="castle" || n.type==="port" || n.type==="capital"){
     state.lastSafeNode=nodeId;
   }
 
@@ -4173,6 +4398,157 @@ function renderLog(){
 ========================= */
 let view = { x: 0, y: 0, zoom: 0.05, minZoom: 0.012, maxZoom: 0.22, dragging:false, lastX:0, lastY:0 };
 
+
+let terrainTex = null;
+let kingdomTex = null;
+let borderTex = null;
+let mapTexDirty = true;
+
+function buildMapTextures(){
+  if(!mapTexDirty && terrainTex && kingdomTex && borderTex) return;
+
+  const TW = 1400; // texture resolution (higher = smoother)
+  const TH = Math.round(TW * (WORLD_H / WORLD_W));
+
+  function makeCanvas(){
+    const c = document.createElement("canvas");
+    c.width = TW; c.height = TH;
+    return c;
+  }
+  if(!terrainTex) terrainTex = makeCanvas();
+  if(!kingdomTex) kingdomTex = makeCanvas();
+  if(!borderTex)  borderTex  = makeCanvas();
+
+  // --- Terrain ---
+  const tctx = terrainTex.getContext("2d", {alpha:false});
+  const img = tctx.createImageData(TW, TH);
+  const data = img.data;
+
+  for(let py=0; py<TH; py++){
+    const wy = (py/(TH-1)) * WORLD_H;
+    for(let px=0; px<TW; px++){
+      const wx = (px/(TW-1)) * WORLD_W;
+
+      const land = isLand(wx,wy);
+      const elev = fbm(wx,wy, 7200); // [-1..1]
+      let r=0,g=0,b=0;
+
+      if(!land){
+        const deep = SEA_COLORS.deep, sh = SEA_COLORS.shallow;
+        const t = clamp((wy / WORLD_H), 0, 1);
+        r = Math.round(deep[0]*(1-t) + sh[0]*t);
+        g = Math.round(deep[1]*(1-t) + sh[1]*t);
+        b = Math.round(deep[2]*(1-t) + sh[2]*t);
+        const wav = fbm(wx+2200, wy-1300, 5200);
+        r = clamp(r + Math.round(wav*10),0,255);
+        g = clamp(g + Math.round(wav*8),0,255);
+        b = clamp(b + Math.round(wav*16),0,255);
+      } else {
+        // biome base
+        const biome = biomeAt(wx,wy);
+        const rgb = BIOME_COLORS[biome] || BIOME_COLORS.grasslands;
+        r=rgb[0]; g=rgb[1]; b=rgb[2];
+
+        // coast/beach hint
+        const coast = (!isLand(wx+140,wy) || !isLand(wx-140,wy) || !isLand(wx,wy+140) || !isLand(wx,wy-140));
+        if(coast){
+          r = Math.round(r*0.70 + 210*0.30);
+          g = Math.round(g*0.75 + 198*0.25);
+          b = Math.round(b*0.78 + 150*0.22);
+        }
+
+        // elevation shading + mountains
+        const shade = elev*22 + fbm(wx+9000,wy+2000, 2600)*10;
+        r = clamp(r + Math.round(shade), 0, 255);
+        g = clamp(g + Math.round(shade), 0, 255);
+        b = clamp(b + Math.round(shade), 0, 255);
+
+        // mountain/snowcaps
+        if(elev > 0.58 && !coast){
+          // rocky
+          r = Math.round(r*0.55 + 140*0.45);
+          g = Math.round(g*0.55 + 140*0.45);
+          b = Math.round(b*0.55 + 150*0.45);
+        }
+        if(elev > 0.82 || (biome==="snow"||biome==="arctic")){
+          // snow
+          r = Math.round(r*0.35 + 230*0.65);
+          g = Math.round(g*0.35 + 240*0.65);
+          b = Math.round(b*0.35 + 250*0.65);
+        }
+      }
+
+      const idx = (py*TW + px)*4;
+      data[idx]=r; data[idx+1]=g; data[idx+2]=b; data[idx+3]=255;
+    }
+  }
+  tctx.putImageData(img,0,0);
+
+  // --- Kingdom overlay + borders ---
+  const kctx = kingdomTex.getContext("2d", {alpha:true});
+  const bctx = borderTex.getContext("2d", {alpha:true});
+  const kimg = kctx.createImageData(TW, TH);
+  const bimg = bctx.createImageData(TW, TH);
+  const kd = kimg.data;
+  const bd = bimg.data;
+  const owner = new Uint8Array(TW*TH);
+
+  const KLIST = ["Valoria","Kragmire","Eldwyn","SableCoast"];
+  const tintRGBA = {
+    Valoria:[124,92,255, 42],
+    Kragmire:[251,113,133, 40],
+    Eldwyn:[52,211,153, 36],
+    SableCoast:[59,130,246, 38],
+  };
+
+  for(let py=0; py<TH; py++){
+    const wy = (py/(TH-1)) * WORLD_H;
+    for(let px=0; px<TW; px++){
+      const wx = (px/(TW-1)) * WORLD_W;
+      const idx = (py*TW + px);
+
+      if(!isLand(wx,wy)){
+        owner[idx]=255;
+        continue;
+      }
+      const k = kingdomAt(wx,wy) || "Eldwyn";
+      const ki = KLIST.indexOf(k);
+      owner[idx] = (ki<0?2:ki);
+      const rgba = tintRGBA[k] || [255,255,255,20];
+
+      const i4 = idx*4;
+      kd[i4]   = rgba[0];
+      kd[i4+1] = rgba[1];
+      kd[i4+2] = rgba[2];
+      kd[i4+3] = rgba[3];
+    }
+  }
+
+  // borders: detect changes in owner
+  for(let py=1; py<TH-1; py++){
+    for(let px=1; px<TW-1; px++){
+      const idx = py*TW + px;
+      const o = owner[idx];
+      if(o===255) continue;
+
+      const oR = owner[idx+1], oD = owner[idx+TW], oL=owner[idx-1], oU=owner[idx-TW];
+      const border = (oR!==o && oR!==255) || (oD!==o && oD!==255) || (oL!==o && oL!==255) || (oU!==o && oU!==255);
+      if(border){
+        const i4 = idx*4;
+        bd[i4]   = 10;
+        bd[i4+1] = 10;
+        bd[i4+2] = 14;
+        bd[i4+3] = 95;
+      }
+    }
+  }
+  kctx.putImageData(kimg,0,0);
+  bctx.putImageData(bimg,0,0);
+
+  mapTexDirty = false;
+}
+
+
 function resizeCanvases(){
   const wrap = $("mapWrap");
   const rect = wrap.getBoundingClientRect();
@@ -4186,7 +4562,7 @@ function resizeCanvases(){
 
   // dynamic zoom bounds (pixels per world unit)
   const fit = Math.min(mapCanvas.width / WORLD_W, mapCanvas.height / WORLD_H);
-  view.minZoom = Math.max(0.004, fit * 0.30);   // ~3.3x zoomed-out from fit
+  view.minZoom = Math.max(0.003, fit * 0.18);   // ~5.5x zoomed-out from fit
   view.maxZoom = Math.min(0.65,  fit * 7.0);    // strong zoom-in
   if(!Number.isFinite(view.zoom) || view.zoom<=0) view.zoom = fit * 0.9;
   view.zoom = clamp(view.zoom, view.minZoom, view.maxZoom);
@@ -4214,6 +4590,35 @@ function hash2i(ix, iy){
   n = (n ^ (n >> 16)) >>> 0;
   return (n >>> 0) / 4294967296;
 }
+
+
+function lerp(a,b,t){ return a + (b-a)*t; }
+function smoothstep(t){ return t*t*(3-2*t); }
+
+// Value-noise + FBM for smoother terrain/region edges
+function noise2(x,y, scale){
+  const fx = x/scale, fy = y/scale;
+  const ix = Math.floor(fx), iy = Math.floor(fy);
+  const tx = fx - ix, ty = fy - iy;
+  const a = hash2i(ix,iy);
+  const b = hash2i(ix+1,iy);
+  const c = hash2i(ix,iy+1);
+  const d = hash2i(ix+1,iy+1);
+  const u = smoothstep(tx), v = smoothstep(ty);
+  return lerp(lerp(a,b,u), lerp(c,d,u), v); // [0..1]
+}
+function fbm(x,y, baseScale){
+  let val = 0;
+  let amp = 0.58;
+  let scale = baseScale;
+  for(let i=0;i<5;i++){
+    val += (noise2(x,y, scale)-0.5)*2*amp;
+    amp *= 0.55;
+    scale *= 0.52;
+  }
+  return clamp(val, -1.25, 1.25);
+}
+
 function shadeColor(r,g,b, amt){
   // amt in [-1..1], adjusts brightness
   const f = (x)=>clamp(Math.round(x + (amt*50)), 0, 255);
@@ -4242,128 +4647,176 @@ function centerOnNode(nodeId){
   view.y = n.y;
 }
 
+function prettyType(t){
+  const map = {
+    capital:"Capital",
+    city:"City",
+    town:"Town",
+    port:"Port",
+    camp:"Camp",
+    cave:"Cave",
+    forest:"Forest",
+    castle:"Castle",
+    ruins:"Ruins",
+    landmark:"Landmark"
+  };
+  return map[t] || (t ? (t.charAt(0).toUpperCase()+t.slice(1)) : "Unknown");
+}
+
+function nodeFillByKingdom(k){
+  return (k==="Valoria") ? "rgba(124,92,255,.92)" :
+         (k==="Kragmire")? "rgba(251,113,133,.92)" :
+         (k==="Eldwyn") ? "rgba(52,211,153,.92)" :
+         "rgba(59,130,246,.92)";
+}
+
+function drawNodeGlyph(n, sx, sy, isHere){
+  const base = (n.type==="capital") ? 11 :
+               (n.type==="city") ? 9 :
+               (n.type==="castle") ? 9 :
+               (n.type==="ruins") ? 8 :
+               (n.type==="port") ? 8 :
+               (n.type==="town") ? 7 :
+               (n.type==="cave") ? 7 :
+               (n.type==="forest") ? 7 :
+               (n.type==="camp") ? 6 :
+               (n.type==="landmark") ? 12 : 6;
+
+  const r = base * devicePixelRatio;
+  const fill = isHere ? "rgba(251,191,36,.98)" : nodeFillByKingdom(n.kingdom);
+  const stroke = isHere ? "rgba(251,191,36,.98)" : "rgba(255,255,255,.26)";
+
+  ctx.save();
+  ctx.translate(sx,sy);
+  ctx.shadowColor = isHere ? "rgba(255,255,180,.9)" : "rgba(0,0,0,0)";
+  ctx.shadowBlur = isHere ? 18*devicePixelRatio : 0;
+
+  ctx.fillStyle = fill;
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = 2*devicePixelRatio;
+
+  function pathCircle(){
+    ctx.beginPath();
+    ctx.arc(0,0,r,0,Math.PI*2);
+  }
+  function pathSquare(){
+    ctx.beginPath();
+    ctx.rect(-r, -r, r*2, r*2);
+  }
+  function pathDiamond(){
+    ctx.beginPath();
+    ctx.moveTo(0,-r);
+    ctx.lineTo(r,0);
+    ctx.lineTo(0,r);
+    ctx.lineTo(-r,0);
+    ctx.closePath();
+  }
+  function pathTri(up=true){
+    ctx.beginPath();
+    if(up){
+      ctx.moveTo(0,-r);
+      ctx.lineTo(r, r);
+      ctx.lineTo(-r, r);
+    } else {
+      ctx.moveTo(0,r);
+      ctx.lineTo(r, -r);
+      ctx.lineTo(-r, -r);
+    }
+    ctx.closePath();
+  }
+  function pathHex(){
+    ctx.beginPath();
+    for(let i=0;i<6;i++){
+      const a = (Math.PI/3)*i + Math.PI/6;
+      const x = Math.cos(a)*r;
+      const y = Math.sin(a)*r;
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.closePath();
+  }
+  function pathCastle(){
+    // simple battlement icon
+    const w = r*2.1, h = r*1.8;
+    const x0 = -w/2, y0 = -h/2;
+    ctx.beginPath();
+    ctx.moveTo(x0, y0+h*0.3);
+    // battlements
+    const steps=4;
+    for(let i=0;i<steps;i++){
+      const x = x0 + (w/steps)*i;
+      ctx.lineTo(x, y0+h*0.3);
+      ctx.lineTo(x, y0);
+      ctx.lineTo(x + (w/steps)*0.5, y0);
+      ctx.lineTo(x + (w/steps)*0.5, y0+h*0.3);
+    }
+    ctx.lineTo(x0+w, y0+h*0.3);
+    ctx.lineTo(x0+w, y0+h);
+    ctx.lineTo(x0, y0+h);
+    ctx.closePath();
+  }
+
+  // draw main shape
+  if(n.type==="city") pathSquare();
+  else if(n.type==="camp") pathTri(true);
+  else if(n.type==="cave") pathTri(false);
+  else if(n.type==="forest") pathHex();
+  else if(n.type==="ruins") pathDiamond();
+  else if(n.type==="castle") pathCastle();
+  else pathCircle();
+
+  ctx.fill();
+  ctx.stroke();
+
+  // extra marks
+  ctx.shadowBlur = 0;
+  if(n.type==="port"){
+    // tiny anchor-like mark
+    ctx.beginPath();
+    ctx.arc(0,0,r*0.25,0,Math.PI*2);
+    ctx.moveTo(0,-r*0.6); ctx.lineTo(0, r*0.55);
+    ctx.moveTo(-r*0.35, r*0.25); ctx.lineTo(0, r*0.55); ctx.lineTo(r*0.35, r*0.25);
+    ctx.strokeStyle="rgba(0,0,0,.28)";
+    ctx.lineWidth = 2*devicePixelRatio;
+    ctx.stroke();
+  }
+  if(n.type==="capital"){
+    // small star sparkle
+    ctx.beginPath();
+    const s = r*0.55;
+    for(let i=0;i<5;i++){
+      const a = (Math.PI*2/5)*i - Math.PI/2;
+      const x = Math.cos(a)*s;
+      const y = Math.sin(a)*s;
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+      const a2 = a + Math.PI/5;
+      ctx.lineTo(Math.cos(a2)*s*0.45, Math.sin(a2)*s*0.45);
+    }
+    ctx.closePath();
+    ctx.fillStyle="rgba(0,0,0,.18)";
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
 function drawWorld(){
+  buildMapTextures();
+
   ctx.clearRect(0,0,mapCanvas.width,mapCanvas.height);
 
-  // keep camera within world bounds (with a little padding)
-  const pad = 0;
-  view.x = clamp(view.x, -pad, WORLD_W+pad);
-  view.y = clamp(view.y, -pad, WORLD_H+pad);
+  // draw textures (terrain + kingdom tint + borders)
+  const tl = worldToScreen(0,0);
+  const wpx = WORLD_W * view.zoom;
+  const hpx = WORLD_H * view.zoom;
 
-  const halfW = mapCanvas.width/(2*view.zoom);
-  const halfH = mapCanvas.height/(2*view.zoom);
-  const minX = view.x - halfW;
-  const maxX = view.x + halfW;
-  const minY = view.y - halfH;
-  const maxY = view.y + halfH;
-
-  // --- Background: terrain + kingdoms (coarse tiles, stable noise) ---
-  const stepPx = 90 * devicePixelRatio;          // ~screen pixels per tile
-  const stepW  = stepPx / view.zoom;             // world units per tile
-  const startX = Math.floor(minX/stepW) * stepW;
-  const startY = Math.floor(minY/stepW) * stepW;
-
-  for(let wx=startX; wx<=maxX; wx+=stepW){
-    for(let wy=startY; wy<=maxY; wy+=stepW){
-      const cxW = wx + stepW/2;
-      const cyW = wy + stepW/2;
-
-      const land = isLand(cxW, cyW);
-      const h = hash2i(Math.floor(cxW/320), Math.floor(cyW/320));
-      const amt = (h - 0.5) * 0.9;
-
-      // base fill
-      if(land){
-        const biome = biomeAt(cxW, cyW);
-        const rgb = BIOME_COLORS[biome] || BIOME_COLORS.grasslands;
-        ctx.fillStyle = shadeColor(rgb[0], rgb[1], rgb[2], amt);
-      } else {
-        const deep = SEA_COLORS.deep, sh = SEA_COLORS.shallow;
-        const t = clamp((cyW / WORLD_H), 0, 1);
-        const r = Math.round(deep[0]*(1-t) + sh[0]*t);
-        const g = Math.round(deep[1]*(1-t) + sh[1]*t);
-        const b = Math.round(deep[2]*(1-t) + sh[2]*t);
-        ctx.fillStyle = shadeColor(r,g,b, (amt*0.7));
-      }
-
-      const A = worldToScreen(wx, wy);
-      const B = worldToScreen(wx+stepW, wy+stepW);
-      ctx.fillRect(A.sx, A.sy, (B.sx-A.sx), (B.sy-A.sy));
-
-      // kingdoms tint overlay on land
-      if(land){
-        const k = kingdomAt(cxW, cyW);
-        if(k){
-          ctx.fillStyle = KINGDOM_TINT[k] || "rgba(255,255,255,.06)";
-          ctx.fillRect(A.sx, A.sy, (B.sx-A.sx), (B.sy-A.sy));
-        }
-      }
-    }
-  }
-
-  // --- Borders: kingdom lines + coastline accents ---
-  ctx.lineWidth = Math.max(1, 1.6*devicePixelRatio);
-  for(let wx=startX; wx<=maxX; wx+=stepW){
-    for(let wy=startY; wy<=maxY; wy+=stepW){
-      const c1x = wx + stepW/2, c1y = wy + stepW/2;
-      const land1 = isLand(c1x, c1y);
-      const k1 = land1 ? kingdomAt(c1x, c1y) : null;
-
-      // right edge
-      if(wx + stepW <= maxX){
-        const c2x = c1x + stepW, c2y = c1y;
-        const land2 = isLand(c2x, c2y);
-        const k2 = land2 ? kingdomAt(c2x, c2y) : null;
-
-        if(land1 && land2 && k1 && k2 && k1!==k2){
-          ctx.strokeStyle = "rgba(255,255,255,.22)";
-          const P1 = worldToScreen(wx+stepW, wy);
-          const P2 = worldToScreen(wx+stepW, wy+stepW);
-          ctx.beginPath(); ctx.moveTo(P1.sx, P1.sy); ctx.lineTo(P2.sx, P2.sy); ctx.stroke();
-        } else if(land1 !== land2){
-          ctx.strokeStyle = "rgba(255,255,255,.12)";
-          const P1 = worldToScreen(wx+stepW, wy);
-          const P2 = worldToScreen(wx+stepW, wy+stepW);
-          ctx.beginPath(); ctx.moveTo(P1.sx, P1.sy); ctx.lineTo(P2.sx, P2.sy); ctx.stroke();
-        }
-      }
-
-      // bottom edge
-      if(wy + stepW <= maxY){
-        const c2x = c1x, c2y = c1y + stepW;
-        const land2 = isLand(c2x, c2y);
-        const k2 = land2 ? kingdomAt(c2x, c2y) : null;
-
-        if(land1 && land2 && k1 && k2 && k1!==k2){
-          ctx.strokeStyle = "rgba(255,255,255,.22)";
-          const P1 = worldToScreen(wx, wy+stepW);
-          const P2 = worldToScreen(wx+stepW, wy+stepW);
-          ctx.beginPath(); ctx.moveTo(P1.sx, P1.sy); ctx.lineTo(P2.sx, P2.sy); ctx.stroke();
-        } else if(land1 !== land2){
-          ctx.strokeStyle = "rgba(255,255,255,.12)";
-          const P1 = worldToScreen(wx, wy+stepW);
-          const P2 = worldToScreen(wx+stepW, wy+stepW);
-          ctx.beginPath(); ctx.moveTo(P1.sx, P1.sy); ctx.lineTo(P2.sx, P2.sy); ctx.stroke();
-        }
-      }
-    }
-  }
-
-  // --- Kingdom labels (only when zoomed out enough) ---
-  const labelScale = clamp(view.zoom / (Math.min(mapCanvas.width/WORLD_W, mapCanvas.height/WORLD_H)), 0.75, 1.35);
   ctx.save();
-  ctx.font = `${Math.round(18*devicePixelRatio*labelScale)}px system-ui`;
-  ctx.textBaseline="middle";
-  ctx.shadowColor="rgba(0,0,0,.55)";
-  ctx.shadowBlur=10*devicePixelRatio;
-  for(const k of KINGDOMS){
-    const {sx,sy} = worldToScreen(k.labelX, k.labelY);
-    ctx.fillStyle = "rgba(229,231,235,.78)";
-    ctx.fillText(k.id, sx, sy);
-  }
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(terrainTex, tl.sx, tl.sy, wpx, hpx);
+  ctx.drawImage(kingdomTex, tl.sx, tl.sy, wpx, hpx);
+  ctx.drawImage(borderTex,  tl.sx, tl.sy, wpx, hpx);
   ctx.restore();
 
-  // --- Routes (roads/sea lanes) ---
+  // --- Routes ---
   ctx.lineWidth = Math.max(1, 2*devicePixelRatio);
   for(const e of world.edges){
     const a=nodeById[e.a], b=nodeById[e.b];
@@ -4395,37 +4848,18 @@ function drawWorld(){
   ctx.setLineDash([]);
 
   // --- Nodes ---
-  const showLabels = view.zoom > (Math.min(mapCanvas.width/WORLD_W, mapCanvas.height/WORLD_H) * 0.9);
+  const showLabels = view.zoom > (Math.min(mapCanvas.width/WORLD_W, mapCanvas.height/WORLD_H) * 1.05);
   for(const n of world.nodes){
     const {sx,sy} = worldToScreen(n.x,n.y);
-    if(sx< -60 || sy< -60 || sx>mapCanvas.width+60 || sy>mapCanvas.height+60) continue;
+    if(sx< -80 || sy< -80 || sx>mapCanvas.width+80 || sy>mapCanvas.height+80) continue;
 
     const isHere = (n.id===state.currentNode) && state.mode!=="dungeon";
-    const base = n.type==="capital" ? 10 : n.type==="city" ? 8 : n.type==="port" ? 7 : n.type==="town" ? 6 : n.type==="camp" ? 5 : n.type==="landmark" ? 9 : 5;
-    const r = base * devicePixelRatio;
+    drawNodeGlyph(n, sx, sy, isHere);
 
-    ctx.beginPath();
-    ctx.arc(sx,sy, r, 0, Math.PI*2);
-
-    const k = n.kingdom;
-    const fill = (k==="Valoria") ? "rgba(124,92,255,.92)" :
-                 (k==="Kragmire")? "rgba(251,113,133,.92)" :
-                 (k==="Eldwyn") ? "rgba(52,211,153,.92)" :
-                 "rgba(59,130,246,.92)";
-    ctx.fillStyle = isHere ? "rgba(251,191,36,.98)" : fill;
-    ctx.shadowColor = isHere ? "rgba(255,255,180,.9)" : "rgba(0,0,0,0)";
-    ctx.shadowBlur = isHere ? 18*devicePixelRatio : 0;
-    ctx.fill();
-
-    ctx.lineWidth = 2*devicePixelRatio;
-    ctx.strokeStyle = isHere ? "rgba(251,191,36,.98)" : "rgba(255,255,255,.26)";
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-
-    if(showLabels && (n.type==="capital" || n.type==="city")){
+    if(showLabels && (n.type==="capital" || n.type==="city" || n.type==="castle")){
       ctx.font = `${Math.round(12*devicePixelRatio)}px system-ui`;
-      ctx.fillStyle = "rgba(229,231,235,.82)";
-      ctx.fillText(n.name.split(" ")[0], sx+10*devicePixelRatio, sy-8*devicePixelRatio);
+      ctx.fillStyle = "rgba(229,231,235,.84)";
+      ctx.fillText(n.name.split(" ")[0], sx+11*devicePixelRatio, sy-9*devicePixelRatio);
     }
   }
 
@@ -4483,102 +4917,57 @@ function drawDungeon(){
 }
 
 function drawMinimapWorld(){
+  buildMapTextures();
+
   mctx.clearRect(0,0,miniCanvas.width,miniCanvas.height);
 
-  // Terrain + kingdoms (coarse)
-  const stepPx = Math.max(2, Math.floor(5*devicePixelRatio));
-  for(let x=0; x<miniCanvas.width; x+=stepPx){
-    for(let y=0; y<miniCanvas.height; y+=stepPx){
-      const wx = (x / miniCanvas.width) * WORLD_W;
-      const wy = (y / miniCanvas.height) * WORLD_H;
-      const land = isLand(wx, wy);
-      const h = hash2i(Math.floor(wx/420), Math.floor(wy/420));
-      const amt = (h-0.5)*0.8;
+  // base textures
+  mctx.save();
+  mctx.imageSmoothingEnabled = true;
+  mctx.drawImage(terrainTex, 0,0, miniCanvas.width, miniCanvas.height);
+  mctx.drawImage(kingdomTex, 0,0, miniCanvas.width, miniCanvas.height);
+  mctx.drawImage(borderTex,  0,0, miniCanvas.width, miniCanvas.height);
+  mctx.restore();
 
-      if(land){
-        const biome = biomeAt(wx,wy);
-        const rgb = BIOME_COLORS[biome] || BIOME_COLORS.grasslands;
-        mctx.fillStyle = shadeColor(rgb[0],rgb[1],rgb[2], amt);
-      } else {
-        const deep = SEA_COLORS.deep, sh = SEA_COLORS.shallow;
-        const t = clamp((wy / WORLD_H), 0, 1);
-        const r = Math.round(deep[0]*(1-t) + sh[0]*t);
-        const g = Math.round(deep[1]*(1-t) + sh[1]*t);
-        const b = Math.round(deep[2]*(1-t) + sh[2]*t);
-        mctx.fillStyle = shadeColor(r,g,b, (amt*0.6));
-      }
-      mctx.fillRect(x,y,stepPx+0.5,stepPx+0.5);
-
-      if(land){
-        const k = kingdomAt(wx,wy);
-        if(k){
-          mctx.fillStyle = KINGDOM_TINT[k] || "rgba(255,255,255,.05)";
-          mctx.fillRect(x,y,stepPx+0.5,stepPx+0.5);
-        }
-      }
-    }
-  }
-
-  // Routes (faint)
-  mctx.lineWidth = Math.max(1, 1.1*devicePixelRatio);
+  // routes (very light)
+  mctx.lineWidth = Math.max(1, 1*devicePixelRatio);
   for(const e of world.edges){
     const a=nodeById[e.a], b=nodeById[e.b];
     if(!a||!b) continue;
-    const ax = (a.x / WORLD_W) * miniCanvas.width;
-    const ay = (a.y / WORLD_H) * miniCanvas.height;
-    const bx = (b.x / WORLD_W) * miniCanvas.width;
-    const by = (b.y / WORLD_H) * miniCanvas.height;
+    const ax = (a.x/WORLD_W)*miniCanvas.width;
+    const ay = (a.y/WORLD_H)*miniCanvas.height;
+    const bx = (b.x/WORLD_W)*miniCanvas.width;
+    const by = (b.y/WORLD_H)*miniCanvas.height;
+
     mctx.beginPath();
-    mctx.moveTo(ax,ay); mctx.lineTo(bx,by);
-    if(e.kind==="sea"){
-      mctx.strokeStyle="rgba(59,130,246,.32)";
-    } else {
-      mctx.strokeStyle= e.war ? "rgba(251,113,133,.28)" : "rgba(255,255,255,.18)";
-    }
+    mctx.moveTo(ax,ay);
+    mctx.lineTo(bx,by);
+    mctx.strokeStyle = (e.kind==="sea") ? "rgba(59,130,246,.35)" : (e.war ? "rgba(251,113,133,.25)" : "rgba(255,255,255,.15)");
+    if(e.kind==="sea") mctx.setLineDash([6*devicePixelRatio, 6*devicePixelRatio]); else mctx.setLineDash([]);
     mctx.stroke();
   }
+  mctx.setLineDash([]);
 
-  // Nodes
+  // nodes
   for(const n of world.nodes){
-    const x = (n.x / WORLD_W) * miniCanvas.width;
-    const y = (n.y / WORLD_H) * miniCanvas.height;
-    const base = (n.type==="capital"?3.2:n.type==="city"?2.6:2.0) * devicePixelRatio;
+    const x = (n.x/WORLD_W)*miniCanvas.width;
+    const y = (n.y/WORLD_H)*miniCanvas.height;
+    const isHere = (n.id===state.currentNode) && state.mode!=="dungeon";
+    mctx.fillStyle = isHere ? "rgba(251,191,36,.98)" : nodeFillByKingdom(n.kingdom);
     mctx.beginPath();
-    mctx.arc(x,y,base,0,Math.PI*2);
-    const k = n.kingdom;
-    const fill = (k==="Valoria") ? "rgba(124,92,255,.65)" :
-                 (k==="Kragmire")? "rgba(251,113,133,.62)" :
-                 (k==="Eldwyn") ? "rgba(52,211,153,.58)" :
-                 "rgba(59,130,246,.58)";
-    mctx.fillStyle=fill;
+    mctx.arc(x,y, (isHere?3.4:2.4)*devicePixelRatio, 0, Math.PI*2);
     mctx.fill();
   }
 
-  // Current position
-  const cur = nodeById[state.currentNode];
-  if(cur){
-    const x = (cur.x / WORLD_W) * miniCanvas.width;
-    const y = (cur.y / WORLD_H) * miniCanvas.height;
-    mctx.beginPath();
-    mctx.arc(x,y,4.2*devicePixelRatio,0,Math.PI*2);
-    mctx.fillStyle="rgba(251,191,36,.98)";
-    mctx.fill();
-    mctx.lineWidth=1.6*devicePixelRatio;
-    mctx.strokeStyle="rgba(0,0,0,.35)";
-    mctx.stroke();
-  }
+  // viewport rectangle
+  const vx = ((view.x - (mapCanvas.width/2)/view.zoom)/WORLD_W)*miniCanvas.width;
+  const vy = ((view.y - (mapCanvas.height/2)/view.zoom)/WORLD_H)*miniCanvas.height;
+  const vw = (mapCanvas.width/view.zoom)/WORLD_W*miniCanvas.width;
+  const vh = (mapCanvas.height/view.zoom)/WORLD_H*miniCanvas.height;
 
-  // Viewport rectangle
-  const halfW = mapCanvas.width/(2*view.zoom);
-  const halfH = mapCanvas.height/(2*view.zoom);
-  const left = ((view.x - halfW) / WORLD_W) * miniCanvas.width;
-  const right= ((view.x + halfW) / WORLD_W) * miniCanvas.width;
-  const top  = ((view.y - halfH) / WORLD_H) * miniCanvas.height;
-  const bot  = ((view.y + halfH) / WORLD_H) * miniCanvas.height;
-
-  mctx.strokeStyle="rgba(251,191,36,.75)";
-  mctx.lineWidth=1.4*devicePixelRatio;
-  mctx.strokeRect(left,top,(right-left),(bot-top));
+  mctx.strokeStyle="rgba(255,255,255,.55)";
+  mctx.lineWidth = 2*devicePixelRatio;
+  mctx.strokeRect(vx,vy,vw,vh);
 }
 
 function drawMinimapDungeon(d){
@@ -4688,8 +5077,11 @@ window.addEventListener("mousemove", (e)=>{
 
   tip.innerHTML = `
     <div style="font-weight:800">${n.name}${here ? " • (You)" : ""}</div>
-    <div class="smallMuted">${n.type.toUpperCase()} • ${n.kingdom} • ${n.biome}${n.population?` • Pop ${n.population.toLocaleString()}`:""}</div>
-    <div class="smallMuted">Connections: ${nb}${tt!==null?` • Travel: ~${tt} min (${connected.kind})${connected.war?` • <span style="color:var(--bad)">WAR ZONE</span>`:""}`:""}</div>
+    <div class="smallMuted">${prettyType(n.type)} • ${n.kingdom} • ${n.biome}${n.population?` • Pop ${n.population.toLocaleString()}`:""}</div>
+    <div class="smallMuted">
+      Connections: ${nb}
+      ${tt!==null?` • Travel: ~${tt} min (${connected.kind}) • Cost: <b>${connected.cost||connected.fare||0}g</b>${connected.war?` • <span style="color:var(--bad)">WAR ZONE</span>`:""}`:""}
+    </div>
   `;
   tip.style.display="block";
   tip.style.left = `${(e.clientX - rect.left) + 14}px`;
