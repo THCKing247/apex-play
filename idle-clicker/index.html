@@ -420,7 +420,8 @@ input, select{
             <button class="small secondary" id="ovCostsBtn" title="Show/hide gold costs on routes">Costs: Off</button>
             <button class="small secondary" id="ovRegionsBtn" title="Show/hide kingdom regions">Regions: On</button>
             <button class="small secondary" id="ovMiniBtn" title="Show/hide minimap">Minimap: On</button>
-          </div>
+                      <button class="small secondary" id="ovLegendBtn" title="Show/hide map legend">Legend: On</button>
+</div>
           <div class="smallMuted" style="margin-top:10px">
             Tip: Hover a connected node to see travel time + cost. Click a connected node to travel.
           </div>
@@ -4489,7 +4490,8 @@ var mapTexDirty = true;
 
 let showRouteCosts = false;  // toggleable labels on routes
 let showRegions = true;      // kingdom tint + border overlay
-let showMinimap = true;      // minimap visibility
+let showMinimap = true;      let showLegend = true;
+// minimap visibility
 let paperTex = null;         // painterly paper grain tile
 
 
@@ -5397,6 +5399,8 @@ function syncOverlayToggles(){
   $("ovCostsBtn").textContent = `Costs: ${showRouteCosts ? "On" : "Off"}`;
   $("ovRegionsBtn").textContent = `Regions: ${showRegions ? "On" : "Off"}`;
   $("ovMiniBtn").textContent = `Minimap: ${showMinimap ? "On" : "Off"}`;
+  $("ovLegendBtn").textContent = `Legend: ${showLegend ? "On" : "Off"}`;
+  $("legendBox").style.display = showLegend ? "" : "none";
 }
 
 $("ovCostsBtn").addEventListener("click", (e)=>{
@@ -5418,6 +5422,11 @@ $("ovMiniBtn").addEventListener("click", (e)=>{
   syncOverlayToggles();
   resizeCanvases();
   draw();
+});
+$("ovLegendBtn").addEventListener("click", (e)=>{
+  e.preventDefault(); e.stopPropagation();
+  showLegend = !showLegend;
+  syncOverlayToggles();
 });
 syncOverlayToggles();
 
