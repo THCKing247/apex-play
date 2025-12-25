@@ -129,6 +129,29 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
   width:520px; height:320px;
 }
 .minimap canvas{width:100%;height:100%;display:block;opacity:.97}
+
+/* Floating overlay controls */
+.overlayPanel{
+  position:absolute;
+  top:12px; right:12px;
+  min-width:240px;
+  padding:10px 12px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(0,0,0,.38);
+  backdrop-filter:blur(10px);
+  box-shadow:0 20px 60px rgba(0,0,0,.35);
+  pointer-events:auto;
+  z-index:5;
+}
+.overlayPanel .ovTitle{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  font-weight:800;font-size:13px;
+  margin-bottom:8px;
+}
+.overlayPanel .ovRow{display:flex;gap:8px;flex-wrap:wrap}
+.overlayPanel .ovRow + .ovRow{margin-top:8px}
+.overlayPanel .ovHint{color:var(--muted);font-size:11px;margin-top:8px;line-height:1.2}
 .miniHud{
   position:absolute;
   left:8px; top:8px;
@@ -369,6 +392,25 @@ input, select{
       <div class="mapCanvas" id="mapWrap">
         <canvas id="map"></canvas>
         <div class="tooltip" id="tooltip"></div>
+
+
+<div class="overlayPanel" id="overlayPanel">
+  <div class="ovTitle">
+    <span>🗺️ Map Controls</span>
+    <span class="smallMuted" id="ovStatus">Ready</span>
+  </div>
+  <div class="ovRow">
+    <button class="small secondary" id="ovCenterBtn" title="Center camera on your location">Center</button>
+    <button class="small secondary" id="ovFitBtn" title="Zoom to fit the whole world">Fit</button>
+    <button class="small secondary" id="ovHomeBtn" title="Jump to capital of your birth kingdom">Home</button>
+  </div>
+  <div class="ovRow">
+    <button class="small secondary" id="ovCostsBtn" title="Show or hide gold cost labels on routes">Costs: Off</button>
+    <button class="small secondary" id="ovRegionsBtn" title="Show or hide kingdom territory overlays">Regions: On</button>
+    <button class="small secondary" id="ovMiniBtn" title="Show or hide minimap">Minimap: On</button>
+  </div>
+  <div class="ovHint">Tip: Hover a connected location to see travel time + cost. Click a connected location to travel.</div>
+</div>
 
         <div class="youAreHere">
           <span class="pulseDot"></span>
@@ -4398,6 +4440,11 @@ function renderLog(){
 ========================= */
 let view = { x: 0, y: 0, zoom: 0.05, minZoom: 0.012, maxZoom: 0.22, dragging:false, lastX:0, lastY:0 };
 
+let showRouteCosts = false;
+let showRegions = true;
+let showMinimap = true;
+
+
 
 let terrainTex = null;
 let kingdomTex = null;
@@ -4407,7 +4454,7 @@ let mapTexDirty = true;
 function buildMapTextures(){
   if(!mapTexDirty && terrainTex && kingdomTex && borderTex) return;
 
-  const TW = 1400; // texture resolution (higher = smoother)
+  const TW = 900; // texture resolution (reduced for responsiveness)
   const TH = Math.round(TW * (WORLD_H / WORLD_W));
 
   function makeCanvas(){
@@ -4484,6 +4531,38 @@ function buildMapTextures(){
   }
   tctx.putImageData(img,0,0);
 
+// --- Hand-painted finish: subtle paper grain + vignette ---
+tctx.save();
+tctx.globalAlpha = 0.10;
+tctx.fillStyle = "rgba(255,255,255,.35)";
+for(let i=0;i<2200;i++){
+  const x = Math.random()*TW;
+  const y = Math.random()*TH;
+  const r = (Math.random()*1.8)+0.2;
+  tctx.beginPath();
+  tctx.arc(x,y,r,0,Math.PI*2);
+  tctx.fill();
+}
+tctx.globalAlpha = 0.08;
+tctx.fillStyle = "rgba(0,0,0,.50)";
+for(let i=0;i<1400;i++){
+  const x = Math.random()*TW;
+  const y = Math.random()*TH;
+  const r = (Math.random()*2.2)+0.6;
+  tctx.beginPath();
+  tctx.arc(x,y,r,0,Math.PI*2);
+  tctx.fill();
+}
+// vignette
+const vg = tctx.createRadialGradient(TW*0.55, TH*0.45, Math.min(TW,TH)*0.18, TW*0.55, TH*0.45, Math.max(TW,TH)*0.80);
+vg.addColorStop(0, "rgba(0,0,0,0)");
+vg.addColorStop(1, "rgba(0,0,0,0.35)");
+tctx.globalAlpha = 0.9;
+tctx.fillStyle = vg;
+tctx.fillRect(0,0,TW,TH);
+tctx.restore();
+
+
   // --- Kingdom overlay + borders ---
   const kctx = kingdomTex.getContext("2d", {alpha:true});
   const bctx = borderTex.getContext("2d", {alpha:true});
@@ -4555,10 +4634,16 @@ function resizeCanvases(){
   mapCanvas.width  = Math.floor(rect.width * devicePixelRatio);
   mapCanvas.height = Math.floor(rect.height * devicePixelRatio);
 
-  const miniWrap = $("miniWrap");
+
+const miniWrap = $("miniWrap");
+if(showMinimap){
   const mrect = miniWrap.getBoundingClientRect();
-  miniCanvas.width  = Math.floor(mrect.width * devicePixelRatio);
-  miniCanvas.height = Math.floor(mrect.height * devicePixelRatio);
+  miniCanvas.width  = Math.max(1, Math.floor(mrect.width * devicePixelRatio));
+  miniCanvas.height = Math.max(1, Math.floor(mrect.height * devicePixelRatio));
+} else {
+  miniCanvas.width = 1;
+  miniCanvas.height = 1;
+}
 
   // dynamic zoom bounds (pixels per world unit)
   const fit = Math.min(mapCanvas.width / WORLD_W, mapCanvas.height / WORLD_H);
@@ -4608,15 +4693,16 @@ function noise2(x,y, scale){
   return lerp(lerp(a,b,u), lerp(c,d,u), v); // [0..1]
 }
 function fbm(x,y, baseScale){
+  // Lightweight FBM for responsiveness (3 octaves)
   let val = 0;
-  let amp = 0.58;
+  let amp = 0.60;
   let scale = baseScale;
-  for(let i=0;i<5;i++){
+  for(let i=0;i<3;i++){
     val += (noise2(x,y, scale)-0.5)*2*amp;
     amp *= 0.55;
     scale *= 0.52;
   }
-  return clamp(val, -1.25, 1.25);
+  return clamp(val, -1.15, 1.15);
 }
 
 function shadeColor(r,g,b, amt){
@@ -4799,6 +4885,46 @@ function drawNodeGlyph(n, sx, sy, isHere){
   ctx.restore();
 }
 
+function drawRouteCostLabel(x, y, text){
+  // x/y are in screen pixels (already DPR-scaled)
+  const padX = 5*devicePixelRatio;
+  const padY = 3*devicePixelRatio;
+  ctx.save();
+  ctx.font = `${Math.round(10*devicePixelRatio)}px system-ui`;
+  const w = ctx.measureText(text).width + padX*2;
+  const h = (12*devicePixelRatio) + padY*2;
+
+  const rx = x - w/2;
+  const ry = y - h/2;
+
+  // background pill
+  ctx.globalAlpha = 0.95;
+  ctx.fillStyle = "rgba(0,0,0,.55)";
+  ctx.strokeStyle = "rgba(255,255,255,.18)";
+  ctx.lineWidth = 1*devicePixelRatio;
+
+  const r = 6*devicePixelRatio;
+  ctx.beginPath();
+  ctx.moveTo(rx+r, ry);
+  ctx.lineTo(rx+w-r, ry);
+  ctx.quadraticCurveTo(rx+w, ry, rx+w, ry+r);
+  ctx.lineTo(rx+w, ry+h-r);
+  ctx.quadraticCurveTo(rx+w, ry+h, rx+w-r, ry+h);
+  ctx.lineTo(rx+r, ry+h);
+  ctx.quadraticCurveTo(rx, ry+h, rx, ry+h-r);
+  ctx.lineTo(rx, ry+r);
+  ctx.quadraticCurveTo(rx, ry, rx+r, ry);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // text
+  ctx.globalAlpha = 0.98;
+  ctx.fillStyle = "rgba(255,255,255,.92)";
+  ctx.fillText(text, rx+padX, ry + h - padY - 3*devicePixelRatio);
+  ctx.restore();
+}
+
 function drawWorld(){
   buildMapTextures();
 
@@ -4812,7 +4938,7 @@ function drawWorld(){
   ctx.save();
   ctx.imageSmoothingEnabled = true;
   ctx.drawImage(terrainTex, tl.sx, tl.sy, wpx, hpx);
-  ctx.drawImage(kingdomTex, tl.sx, tl.sy, wpx, hpx);
+  if(showRegions) ctx.drawImage(kingdomTex, tl.sx, tl.sy, wpx, hpx);
   ctx.drawImage(borderTex,  tl.sx, tl.sy, wpx, hpx);
   ctx.restore();
 
@@ -4844,6 +4970,13 @@ function drawWorld(){
       ctx.strokeStyle = e.war ? "rgba(251,113,133,.55)" : "rgba(255,255,255,.22)";
     }
     ctx.stroke();
+
+    if(showRouteCosts && view.zoom > (Math.min(mapCanvas.width/WORLD_W, mapCanvas.height/WORLD_H) * 1.15)){
+      const cost = (e.kind==="sea") ? (e.fare||e.cost||0) : (e.cost||0);
+      if(cost>0){
+        drawRouteCostLabel(mx, my, `${cost}g`);
+      }
+    }
   }
   ctx.setLineDash([]);
 
@@ -4863,8 +4996,9 @@ function drawWorld(){
     }
   }
 
-  drawMinimapWorld();
+  if(showMinimap) drawMinimapWorld();
 }
+
 
 function drawDungeon(){
   const d = currentDungeon();
@@ -4925,7 +5059,7 @@ function drawMinimapWorld(){
   mctx.save();
   mctx.imageSmoothingEnabled = true;
   mctx.drawImage(terrainTex, 0,0, miniCanvas.width, miniCanvas.height);
-  mctx.drawImage(kingdomTex, 0,0, miniCanvas.width, miniCanvas.height);
+  if(showRegions) mctx.drawImage(kingdomTex, 0,0, miniCanvas.width, miniCanvas.height);
   mctx.drawImage(borderTex,  0,0, miniCanvas.width, miniCanvas.height);
   mctx.restore();
 
@@ -5144,6 +5278,47 @@ $("miniWrap").addEventListener("click", (e)=>{
 
 $("centerBtn").addEventListener("click", (e)=>{ e.stopPropagation(); centerOnPlayer(); });
 $("fitBtn").addEventListener("click", (e)=>{ e.stopPropagation(); fitWorld(); });
+
+$("ovCenterBtn").addEventListener("click", (e)=>{ e.preventDefault(); e.stopPropagation(); centerOnPlayer(); });
+$("ovFitBtn").addEventListener("click", (e)=>{ e.preventDefault(); e.stopPropagation(); fitWorld(); });
+$("ovHomeBtn").addEventListener("click", (e)=>{
+  e.preventDefault(); e.stopPropagation();
+  const homeId = getBirthCapitalId(state.char.birthKingdom || "Valoria");
+  state.currentNode = state.currentNode || homeId;
+  centerOnNode(homeId);
+  draw();
+});
+
+function syncOverlayToggles(){
+  $("ovCostsBtn").textContent = `Costs: ${showRouteCosts ? "On" : "Off"}`;
+  $("ovRegionsBtn").textContent = `Regions: ${showRegions ? "On" : "Off"}`;
+  $("ovMiniBtn").textContent = `Minimap: ${showMinimap ? "On" : "Off"}`;
+}
+
+$("ovCostsBtn").addEventListener("click", (e)=>{
+  e.preventDefault(); e.stopPropagation();
+  showRouteCosts = !showRouteCosts;
+  syncOverlayToggles();
+  draw();
+});
+$("ovRegionsBtn").addEventListener("click", (e)=>{
+  e.preventDefault(); e.stopPropagation();
+  showRegions = !showRegions;
+  syncOverlayToggles();
+  mapTexDirty = true; // so we redraw with/without overlay cleanly
+  draw();
+});
+$("ovMiniBtn").addEventListener("click", (e)=>{
+  e.preventDefault(); e.stopPropagation();
+  showMinimap = !showMinimap;
+  $("miniWrap").style.display = showMinimap ? "" : "none";
+  syncOverlayToggles();
+  if(showMinimap){
+    resizeCanvases();
+  }
+  draw();
+});
+syncOverlayToggles();
 
 /* =========================
    Keyboard controls (Dungeon)
