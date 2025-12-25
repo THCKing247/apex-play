@@ -1,9 +1,8 @@
-<!doctype html>
 <html lang="en"><head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Apex Play — Apex Dice RPG: Kingdoms</title>
-  <meta name="description" content="Play Apex Dice RPG — Kingdoms in your browser. Quest log, map search, and cloud saves.">
+  <title>Apex Play — Apex Kingdoms - Dice RPG</title>
+  <meta name="description" content="Play Apex Kingdoms — Dice RPG in your browser. Quest log, map search, and cloud saves.">
   <style>
     :root{
       --bg0:#070b1a;
@@ -280,16 +279,16 @@
       <div class="hero-left">
         <h1>Explore. Quest. Roll.</h1>
         <p class="sub">
-          Apex Dice RPG — Kingdoms is a lightweight browser RPG with a world map, routes, travel costs, and progression you can take anywhere with cloud saves.
+          Apex Kingdoms is a lightweight browser RPG with a world map, routes, travel costs, and progression you can take anywhere with cloud saves.
         </p>
 
         <!-- CHANGE THIS if your game URL is different -->
         <script>
-          window.APEX_GAME_URL = "./kingdoms/"; // <-- put your game folder here
+          window.APEX_GAME_URL = "./apex-kingdoms/"; // <-- put your game folder here
         </script>
 
         <div class="cta">
-          <a class="btn primary" id="playNow" href="./kingdoms/">▶ Play Apex Kingdoms</a>
+          <a class="btn primary" id="playNow" href="./apex-kingdoms/">▶ Play Apex Kingdoms</a>
           <a class="btn" href="#games">Browse games</a>
         </div>
 
@@ -311,7 +310,7 @@
         <div class="featured">
           <div class="cover" aria-hidden="true"></div>
           <div>
-            <h3>Apex Dice RPG — Kingdoms</h3>
+            <h3>Apex Kingdoms</h3>
             <p>Travel the map, take quests, and build your legend.</p>
           </div>
 
@@ -321,7 +320,7 @@
             <div class="pill"><small>Save</small><b>Cloud</b></div>
           </div>
 
-          <a class="btn primary" href="./kingdoms/">Play now</a>
+          <a class="btn primary" href="./apex-kingdoms/">Play now</a>
         </div>
       </aside>
     </section>
@@ -339,13 +338,13 @@
             <span class="tag">Single Player</span>
             <span class="tag">Cloud Save</span>
           </div>
-          <h3 style="margin:0 0 6px;">Apex Dice RPG — Kingdoms</h3>
+          <h3 style="margin:0 0 6px;">Apex Kingdoms</h3>
           <p style="margin:0;color:var(--muted);font-size:13px;">
             Track quests, search the map, and travel with copper on roads (gold by boat).
           </p>
           <div class="play" style="margin-top:12px;">
             <span style="color:rgba(255,255,255,.55);font-size:12px;">Updated</span>
-            <a href="./kingdoms/">Play Now →</a>
+            <a href="./apex-kingdoms/">Play Now →</a>
           </div>
         </div>
       </article>
@@ -395,8 +394,8 @@
   <script>
     // Keep the Play buttons in sync with APEX_GAME_URL if you edit it.
     (function(){
-      const url = window.APEX_GAME_URL || "./kingdoms/";
-      const links = document.querySelectorAll('a[href="./kingdoms/"]');
+      const url = window.APEX_GAME_URL || "./apex-kingdoms/";
+      const links = document.querySelectorAll('a[href="./apex-kingdoms/"]');
       links.forEach(a => a.setAttribute("href", url));
       document.getElementById("y").textContent = new Date().getFullYear();
     })();
