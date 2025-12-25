@@ -1,109 +1,437 @@
 <!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Apex Play</title>
-  <meta name="description" content="Apex Play is a browser-based arcade featuring simple, fast, and addictive games you can play instantly." />
-  <link rel="stylesheet" href="/assets/site.css" />
-</head>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Apex Play — Apex Dice RPG: Kingdoms</title>
+  <meta name="description" content="Play Apex Dice RPG — Kingdoms in your browser. Quest log, map search, and cloud saves.">
+  <style>
+    :root{
+      --bg0:#070b1a;
+      --bg1:#0b1026;
+      --accent:#7c5cff;
+      --accent2:#2dd4bf;
+      --card:rgba(255,255,255,.08);
+      --card2:rgba(255,255,255,.06);
+      --border:rgba(255,255,255,.14);
+      --text:#e5e7eb;
+      --muted:#a7b0c0;
+      --shadow:0 12px 38px rgba(0,0,0,.45);
+      --radius:22px;
+    }
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      color:var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      background: radial-gradient(1200px 700px at 18% 18%, rgba(124,92,255,.34), transparent 55%),
+                  radial-gradient(900px 520px at 78% 58%, rgba(45,212,191,.22), transparent 55%),
+                  linear-gradient(135deg, var(--bg0), var(--bg1));
+      overflow-x:hidden;
+    }
 
+    /* background FX */
+    .bg-layer{ position:fixed; inset:0; z-index:-2; }
+    .grid{
+      position:fixed; inset:0; z-index:-2;
+      background-image:
+        linear-gradient(rgba(255,255,255,.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.06) 1px, transparent 1px);
+      background-size: 64px 64px;
+      mask-image: radial-gradient(700px 500px at 30% 30%, rgba(0,0,0,1), rgba(0,0,0,.15), transparent 70%);
+      opacity:.18;
+      pointer-events:none;
+    }
+    canvas#stars{ position:fixed; inset:0; z-index:-3; width:100%; height:100%; }
+
+    .wrap{ max-width:1180px; margin:0 auto; padding:28px 18px 70px; }
+
+    /* top bar */
+    .top{
+      display:flex; align-items:center; justify-content:space-between;
+      padding:14px 16px;
+      border:1px solid var(--border);
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.05));
+      border-radius: 999px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+    .brand{ display:flex; align-items:center; gap:12px; }
+    .logo{
+      width:40px; height:40px; border-radius: 14px;
+      display:grid; place-items:center;
+      background: radial-gradient(circle at 30% 30%, rgba(124,92,255,.9), rgba(124,92,255,.18));
+      border:1px solid rgba(255,255,255,.16);
+      font-weight:900;
+      color:#fff;
+    }
+    .brand .t{ display:flex; flex-direction:column; line-height:1.1; }
+    .brand .t b{ font-size:14px; letter-spacing:.2px; }
+    .brand .t span{ font-size:12px; color:var(--muted); }
+    .links{ display:flex; gap:14px; }
+    .links a{
+      color:var(--muted);
+      text-decoration:none;
+      font-size:13px;
+      padding:8px 10px;
+      border-radius: 999px;
+    }
+    .links a:hover{ background: rgba(255,255,255,.06); color:var(--text); }
+
+    /* hero */
+    .hero{
+      margin-top:22px;
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap:18px;
+      align-items:stretch;
+    }
+    @media (max-width: 920px){
+      .hero{ grid-template-columns: 1fr; }
+    }
+    .hero-left{
+      padding:26px;
+      border-radius: var(--radius);
+      border:1px solid var(--border);
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.05));
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      position:relative;
+      overflow:hidden;
+    }
+    .hero-left::before{
+      content:"";
+      position:absolute; inset:-40px;
+      background: url("./assets/apex-kingdoms-hero.svg") center/cover no-repeat;
+      opacity:.45;
+      filter: saturate(1.1);
+      transform: scale(1.06);
+      pointer-events:none;
+    }
+    .hero-left > *{ position:relative; }
+    h1{
+      margin:0 0 10px;
+      font-size: 52px;
+      line-height:1.03;
+      letter-spacing:-.02em;
+    }
+    .sub{
+      max-width: 54ch;
+      margin:0 0 18px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+    .cta{ display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin:16px 0 10px; }
+    .btn{
+      border:1px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.07);
+      color: var(--text);
+      padding:12px 14px;
+      border-radius: 999px;
+      font-weight:700;
+      font-size:14px;
+      cursor:pointer;
+      text-decoration:none;
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      box-shadow: 0 10px 24px rgba(0,0,0,.25);
+    }
+    .btn.primary{
+      background: radial-gradient(circle at 30% 30%, rgba(124,92,255,.9), rgba(124,92,255,.25));
+      border-color: rgba(124,92,255,.45);
+    }
+    .btn:hover{ transform: translateY(-1px); }
+    .chips{ display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; }
+    .chip{
+      font-size:12px;
+      color:#cbd5ff;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.20);
+      padding:7px 10px;
+      border-radius: 999px;
+    }
+
+    /* featured card (right) */
+    .hero-right{
+      padding:18px;
+      border-radius: var(--radius);
+      border:1px solid var(--border);
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+    .badge-row{ display:flex; gap:10px; align-items:center; margin-bottom:10px;}
+    .badge{
+      font-size:11px;
+      font-weight:800;
+      letter-spacing:.05em;
+      padding:6px 9px;
+      border-radius: 999px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.18);
+      color:#dfe6ff;
+    }
+    .badge.new{ border-color: rgba(45,212,191,.35); color:#d7fff8; }
+    .featured{
+      display:flex; flex-direction:column; gap:12px;
+    }
+    .featured .cover{
+      width:100%;
+      aspect-ratio: 16 / 9;
+      border-radius: 18px;
+      border:1px solid rgba(255,255,255,.14);
+      background: url("./assets/apex-kingdoms-card.svg") center/cover no-repeat;
+      box-shadow: 0 12px 28px rgba(0,0,0,.35);
+    }
+    .featured h3{ margin:0; font-size:18px; }
+    .featured p{ margin:0; font-size:13px; color:var(--muted); }
+
+    .pill-grid{ display:grid; grid-template-columns: repeat(3,1fr); gap:10px; margin-top:6px; }
+    .pill{
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.05);
+      border-radius: 16px;
+      padding:10px 10px;
+    }
+    .pill small{ display:block; color:var(--muted); font-size:11px; margin-bottom:3px; }
+    .pill b{ display:block; font-size:13px; }
+
+    /* games section */
+    h2{ margin:28px 0 8px; font-size:18px; color:#dfe6ff; }
+    .muted{ color:var(--muted); font-size:13px; margin:0 0 14px; }
+
+    .games{
+      display:grid;
+      grid-template-columns: repeat(3, minmax(0,1fr));
+      gap:16px;
+    }
+    @media (max-width: 920px){
+      .games{ grid-template-columns: 1fr; }
+    }
+    .game-card{
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.06);
+      border-radius: var(--radius);
+      overflow:hidden;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+    .game-card .img{
+      height: 180px;
+      background: url("./assets/apex-kingdoms-card.svg") center/cover no-repeat;
+    }
+    .game-card .body{ padding:14px 14px 16px; }
+    .tag-row{ display:flex; gap:8px; flex-wrap:wrap; margin:8px 0 12px; }
+    .tag{
+      font-size:11px;
+      padding:6px 8px;
+      border-radius: 999px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.18);
+      color:#dfe6ff;
+    }
+    .play{
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+    }
+    .play a{
+      color:#dfe6ff;
+      text-decoration:none;
+      font-weight:800;
+      padding:10px 12px;
+      border-radius: 12px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+    }
+    .play a:hover{ background: rgba(255,255,255,.09); }
+    footer{
+      margin-top:34px;
+      color: rgba(255,255,255,.50);
+      font-size:12px;
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+    footer a{ color: rgba(255,255,255,.62); text-decoration:none; }
+    footer a:hover{ color: rgba(255,255,255,.85); }
+  </style>
+</head>
 <body>
-  <div class="bg-animated" aria-hidden="true">
-    <div class="bg-grid"></div>
-    <canvas id="particles"></canvas>
-  </div>
+  <canvas id="stars" aria-hidden="true" width="517" height="868" style="width: 414px; height: 695px;"></canvas>
+  <div class="grid" aria-hidden="true"></div>
 
   <div class="wrap">
-    <header class="site-header">
-      <a class="brand-link" href="/">
-        <div class="brand-mark">A</div>
-        <div class="brand-title">
-          <strong>Apex Play</strong>
+    <div class="top">
+      <div class="brand">
+        <div class="logo">A</div>
+        <div class="t">
+          <b>Apex Play</b>
           <span>Instant browser games. No downloads.</span>
         </div>
-      </a>
-
-      <nav class="nav">
-        <a href="/privacy.html">Privacy</a>
-        <a href="/terms.html">Terms</a>
+      </div>
+      <nav class="links">
+        <a href="./privacy.html">Privacy</a>
+        <a href="./terms.html">Terms</a>
       </nav>
-    </header>
+    </div>
 
     <section class="hero">
-      <div class="hero-inner">
-        <div>
-          <h1>Play fast. Build score. Come back tomorrow.</h1>
-          <p>
-            A growing arcade of lightweight browser games. No accounts required.
-            Progress saves locally in your browser.
-          </p>
+      <div class="hero-left">
+        <h1>Explore. Quest. Roll.</h1>
+        <p class="sub">
+          Apex Dice RPG — Kingdoms is a lightweight browser RPG with a world map, routes, travel costs, and progression you can take anywhere with cloud saves.
+        </p>
 
-          <div class="actions">
-            <a class="btn primary" href="/idle-clicker/">Play Idle Clicker</a>
-            <a class="btn" href="#games">Browse games</a>
-          </div>
+        <!-- CHANGE THIS if your game URL is different -->
+        <script>
+          window.APEX_GAME_URL = "./kingdoms/"; // <-- put your game folder here
+        </script>
 
-          <div class="chips">
-            <span class="chip">⚡ Fast</span>
-            <span class="chip">🧠 Simple</span>
-            <span class="chip">💾 Saves locally</span>
-          </div>
+        <div class="cta">
+          <a class="btn primary" id="playNow" href="./kingdoms/">▶ Play Apex Kingdoms</a>
+          <a class="btn" href="#games">Browse games</a>
         </div>
 
-        <aside class="feature">
-          <div class="pills">
-            <span class="pill">FEATURED</span>
-            <span class="pill alt">NEW</span>
-          </div>
-
-          <h3>Idle Clicker</h3>
-          <p>Click, upgrade, and earn while idle.</p>
-
-          <div class="mini-grid">
-            <div class="mini"><div class="k">Mode</div><div class="v">Idle</div></div>
-            <div class="mini"><div class="k">Style</div><div class="v">Casual</div></div>
-            <div class="mini"><div class="k">Save</div><div class="v">Local</div></div>
-          </div>
-        </aside>
+        <div class="chips">
+          <span class="chip">Quest log</span>
+          <span class="chip">Map search</span>
+          <span class="chip">Cloud save</span>
+          <span class="chip">Gold / Silver / Copper</span>
+          <span class="chip">Boat routes cost gold</span>
+        </div>
       </div>
+
+      <aside class="hero-right">
+        <div class="badge-row">
+          <span class="badge">FEATURED</span>
+          <span class="badge new">NEW</span>
+        </div>
+
+        <div class="featured">
+          <div class="cover" aria-hidden="true"></div>
+          <div>
+            <h3>Apex Dice RPG — Kingdoms</h3>
+            <p>Travel the map, take quests, and build your legend.</p>
+          </div>
+
+          <div class="pill-grid">
+            <div class="pill"><small>Mode</small><b>RPG</b></div>
+            <div class="pill"><small>Style</small><b>Fantasy</b></div>
+            <div class="pill"><small>Save</small><b>Cloud</b></div>
+          </div>
+
+          <a class="btn primary" href="./kingdoms/">Play now</a>
+        </div>
+      </aside>
     </section>
 
-    <section class="section" id="games">
-      <h2>Games</h2>
-      <p>More games coming soon. Each game gets its own page and can be monetized with ads.</p>
+    <h2 id="games">Games</h2>
+    <p class="muted">More games coming soon. Each game gets its own page.</p>
 
-      <div class="grid">
-        <a class="card" href="/idle-clicker/">
-          <div class="thumb"></div>
-          <div class="card-body">
-            <div class="card-top">
-              <span class="pill">NEW</span>
-              <span class="pill alt">IDLE</span>
-            </div>
-            <h3>Idle Clicker</h3>
-            <p>Click, upgrade, and earn while idle. Simple progression with satisfying growth.</p>
-            <div class="tags">
-              <span>Idle</span><span>Single Player</span><span>Fast</span>
-            </div>
-            <div class="cta">Play Now →</div>
+    <div class="games">
+      <article class="game-card">
+        <div class="img" aria-hidden="true"></div>
+        <div class="body">
+          <div class="tag-row">
+            <span class="tag">NEW</span>
+            <span class="tag">RPG</span>
+            <span class="tag">Single Player</span>
+            <span class="tag">Cloud Save</span>
           </div>
-        </a>
-      </div>
-    </section>
+          <h3 style="margin:0 0 6px;">Apex Dice RPG — Kingdoms</h3>
+          <p style="margin:0;color:var(--muted);font-size:13px;">
+            Track quests, search the map, and travel with copper on roads (gold by boat).
+          </p>
+          <div class="play" style="margin-top:12px;">
+            <span style="color:rgba(255,255,255,.55);font-size:12px;">Updated</span>
+            <a href="./kingdoms/">Play Now →</a>
+          </div>
+        </div>
+      </article>
 
-    <footer class="footer">
-      <span>© <span id="year"></span> Apex Play</span>
-      <span class="dot">•</span>
-      <a href="/privacy.html">Privacy Policy</a>
-      <span class="dot">•</span>
-      <a href="/terms.html">Terms</a>
+      <!-- Placeholder for your next games -->
+      <article class="game-card" style="opacity:.55">
+        <div class="img" style="background: linear-gradient(135deg, rgba(124,92,255,.25), rgba(45,212,191,.18));"></div>
+        <div class="body">
+          <div class="tag-row">
+            <span class="tag">SOON</span>
+            <span class="tag">Arcade</span>
+          </div>
+          <h3 style="margin:0 0 6px;">Next game</h3>
+          <p style="margin:0;color:var(--muted);font-size:13px;">Coming soon.</p>
+          <div class="play" style="margin-top:12px;">
+            <span style="color:rgba(255,255,255,.55);font-size:12px;">—</span>
+            <a href="#games" aria-disabled="true" onclick="return false;">Stay tuned</a>
+          </div>
+        </div>
+      </article>
+
+      <article class="game-card" style="opacity:.55">
+        <div class="img" style="background: linear-gradient(135deg, rgba(45,212,191,.22), rgba(124,92,255,.16));"></div>
+        <div class="body">
+          <div class="tag-row">
+            <span class="tag">SOON</span>
+            <span class="tag">Puzzle</span>
+          </div>
+          <h3 style="margin:0 0 6px;">Next game</h3>
+          <p style="margin:0;color:var(--muted);font-size:13px;">Coming soon.</p>
+          <div class="play" style="margin-top:12px;">
+            <span style="color:rgba(255,255,255,.55);font-size:12px;">—</span>
+            <a href="#games" aria-disabled="true" onclick="return false;">Stay tuned</a>
+          </div>
+        </div>
+      </article>
+    </div>
+
+    <footer>
+      <span>© <span id="y">2025</span> Apex Play</span>
+      <span>
+        <a href="./privacy.html">Privacy Policy</a> · <a href="./terms.html">Terms</a>
+      </span>
     </footer>
   </div>
 
   <script>
-    document.getElementById("year").textContent = new Date().getFullYear();
+    // Keep the Play buttons in sync with APEX_GAME_URL if you edit it.
+    (function(){
+      const url = window.APEX_GAME_URL || "./kingdoms/";
+      const links = document.querySelectorAll('a[href="./kingdoms/"]');
+      links.forEach(a => a.setAttribute("href", url));
+      document.getElementById("y").textContent = new Date().getFullYear();
+    })();
+
+    // Simple starfield
+    const canvas = document.getElementById('stars');
+    const ctx = canvas.getContext('2d');
+    let W=0,H=0,stars=[];
+    function resize(){
+      const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+      W = canvas.width = Math.floor(window.innerWidth * dpr);
+      H = canvas.height = Math.floor(window.innerHeight * dpr);
+      canvas.style.width = window.innerWidth + "px";
+      canvas.style.height = window.innerHeight + "px";
+      stars = Array.from({length: Math.floor((window.innerWidth*window.innerHeight)/18000)}, () => ({
+        x: Math.random()*W, y: Math.random()*H, r: (Math.random()*1.6+0.4)*dpr, a: Math.random()*0.6+0.15, s: (Math.random()*0.25+0.05)*dpr
+      }));
+    }
+    function tick(){
+      ctx.clearRect(0,0,W,H);
+      for(const p of stars){
+        p.y += p.s;
+        if(p.y > H){ p.y = -10; p.x = Math.random()*W; }
+        ctx.globalAlpha = p.a;
+        ctx.beginPath();
+        ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+        ctx.fillStyle = "#fff";
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      requestAnimationFrame(tick);
+    }
+    window.addEventListener('resize', resize);
+    resize(); tick();
   </script>
-  <script src="/assets/site.js"></script>
-</body>
-</html>
+
+
+</body></html>
