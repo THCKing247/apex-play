@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Apex Dice RPG</title>
+<title>Apex Dice RPG — Kingdoms</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <style>
 :root{
@@ -16,6 +16,12 @@
   --good:#34d399;
   --bad:#fb7185;
   --warn:#fbbf24;
+
+  --sea:#0b2a6a;
+  --sea2:#081a43;
+
+  --land:#1f6b3f;
+  --land2:#173b2a;
 }
 *{box-sizing:border-box}
 body{
@@ -27,7 +33,7 @@ body{
   color:var(--text);
   min-height:100vh;
 }
-.wrap{max-width:1500px;margin:auto;padding:26px}
+.wrap{max-width:1550px;margin:auto;padding:26px}
 h1{margin:0 0 6px;font-size:34px}
 p{margin:0 0 16px;color:var(--muted)}
 .card{
@@ -38,7 +44,7 @@ p{margin:0 0 16px;color:var(--muted)}
   backdrop-filter:blur(14px);
   box-shadow:0 30px 80px rgba(0,0,0,.35);
 }
-.grid{display:grid;grid-template-columns:1fr 500px;gap:18px;align-items:start}
+.grid{display:grid;grid-template-columns:1fr 520px;gap:18px;align-items:start}
 .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
 button{
   background:linear-gradient(135deg,#7c5cff,#5f4cff);
@@ -74,17 +80,16 @@ button:disabled{opacity:.45;cursor:not-allowed}
   background:rgba(0,0,0,.4);
   border-radius:14px;
   padding:12px;
-  height:230px;
+  height:240px;
   overflow:auto;
   font-size:14px;
 }
 hr{border:none;border-top:1px solid var(--border);margin:14px 0}
 
-/* Map */
 .mapTitle{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .mapCanvas{
   width:100%;
-  height:520px;
+  height:560px;
   border-radius:16px;
   background:rgba(0,0,0,.35);
   border:1px solid var(--border);
@@ -103,10 +108,9 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
   font-size:12px;
   color:var(--text);
   display:none;
-  max-width:260px;
+  max-width:320px;
 }
 
-/* Inventory */
 .inventory{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
 .slot{
   background:rgba(0,0,0,.35);
@@ -145,7 +149,6 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
 .panel h3{margin:0 0 10px;font-size:16px}
 .panel .muted{color:var(--muted);font-size:12px}
 
-/* Modal */
 .overlay{
   position:fixed; inset:0;
   background:rgba(0,0,0,.55);
@@ -156,7 +159,7 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
   z-index:50;
 }
 .modal{
-  width:min(860px, 96vw);
+  width:min(940px, 96vw);
   background:rgba(15,18,40,.92);
   border:1px solid var(--border);
   border-radius:18px;
@@ -175,13 +178,45 @@ kbd{
   color:var(--text);
   font-size:12px;
 }
+select, input[type="text"]{
+  background:rgba(0,0,0,.35);
+  border:1px solid rgba(255,255,255,.18);
+  color:var(--text);
+  padding:10px 12px;
+  border-radius:12px;
+  outline:none;
+}
+label{color:var(--muted);font-size:12px}
+.formGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media (max-width:1100px){
+  .grid{grid-template-columns:1fr}
+  .formGrid{grid-template-columns:1fr}
+}
+.statGrid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-top:10px}
+.statCell{
+  background:rgba(0,0,0,.35);
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:14px;
+  padding:10px;
+  text-align:center;
+}
+.statCell .k{color:var(--muted);font-size:12px}
+.statCell .v{font-size:20px;font-weight:700;margin-top:4px}
+.statCell .m{color:var(--muted);font-size:12px;margin-top:4px}
+.pill{
+  display:inline-flex;gap:8px;align-items:center;
+  padding:6px 10px;border-radius:999px;
+  background:rgba(0,0,0,.35);
+  border:1px solid rgba(255,255,255,.14);
+  color:var(--muted);font-size:12px
+}
 </style>
 </head>
 
 <body>
 <div class="wrap">
-  <h1>🎲 Apex Dice RPG</h1>
-  <p>Travel a coastal region, take quests, explore caves/forests with fog-of-war, open chests, fight placed enemies. Progress saves locally.</p>
+  <h1>🗺️🎲 Apex Dice RPG — Kingdoms</h1>
+  <p>Massive world map with terrain regions, a capital kingdom, bridges, curved routes, persistent dungeons, and full character creation (race/sex/class + dice-rolled stats that affect outcomes).</p>
 
   <div class="grid">
     <!-- LEFT -->
@@ -199,9 +234,10 @@ kbd{
           <button class="secondary" id="sleepBtn">Sleep</button>
           <button class="secondary" id="eatBtn">Eat (Ration)</button>
           <button class="secondary" id="questBoardBtn">Quest Board</button>
+          <button class="secondary" id="charBtn">Character</button>
         </div>
         <div class="hint">
-          World: click connected locations • zoom wheel • drag to pan • Dungeon: move with <kbd>WASD</kbd>/<kbd>↑↓←→</kbd>
+          World: click connected locations • zoom wheel • drag to pan • hover tooltips • Dungeon: move with <kbd>WASD</kbd>/<kbd>↑↓←→</kbd>
         </div>
       </div>
 
@@ -210,7 +246,6 @@ kbd{
         <div class="tooltip" id="tooltip"></div>
       </div>
 
-      <!-- Combat buttons appear only in combat -->
       <div class="row" id="combatRow" style="display:none;margin-top:10px">
         <button id="attackBtn">Attack (d20)</button>
         <button class="secondary" id="fleeBtn">Flee</button>
@@ -223,7 +258,7 @@ kbd{
 
       <div class="panel" id="interactPanel">
         <h3>Interact</h3>
-        <div class="muted" id="interactHint">World: click a connected location to travel. Dungeons: stand on something to interact.</div>
+        <div class="muted" id="interactHint">World: click a connected location to travel. Cities: pick an establishment. Dungeons: stand on something to interact.</div>
         <div class="row" id="interactButtons" style="margin-top:10px"></div>
       </div>
 
@@ -239,8 +274,8 @@ kbd{
 
       <div class="kv">
         <div class="tile">❤️ HP<br><strong id="hp">20</strong><div class="sub">Max <span id="hpMax">20</span></div></div>
-        <div class="tile">⚔️ ATK<br><strong id="atk">2</strong><div class="sub">Base + Gear</div></div>
-        <div class="tile">🛡️ DEF<br><strong id="def">1</strong><div class="sub">Base + Gear</div></div>
+        <div class="tile">⚔️ ATK<br><strong id="atk">2</strong><div class="sub">Base + Mods + Gear</div></div>
+        <div class="tile">🛡️ DEF<br><strong id="def">1</strong><div class="sub">AC bonus</div></div>
         <div class="tile">⚡ Energy<br><strong id="energy">10</strong><div class="sub">Max <span id="energyMax">10</span></div></div>
       </div>
 
@@ -249,15 +284,26 @@ kbd{
           <strong id="hunger">10</strong>
           <div class="sub">0 = starving (HP drain when time passes)</div>
         </div>
-        <div class="tile" style="grid-column:span 2">📜 Quest<br>
-          <strong id="questTitle">None</strong>
-          <div class="sub" id="questSub">Check quest boards.</div>
+        <div class="tile" style="grid-column:span 2">⭐ Level / XP<br>
+          <strong><span id="level">1</span> • <span id="xp">0</span>xp</strong>
+          <div class="sub">Next: <span id="xpNext">60</span>xp</div>
         </div>
       </div>
 
       <div class="kv" style="margin-top:10px">
         <div class="tile" style="grid-column:span 2">🔑 Keys<br><strong id="keys">0</strong><div class="sub">Used on locked doors/chests</div></div>
         <div class="tile" style="grid-column:span 2">🪙 Gold<br><strong id="gold">0</strong><div class="sub">Spend at towns/ports</div></div>
+      </div>
+
+      <div class="kv" style="margin-top:10px">
+        <div class="tile" style="grid-column:span 4">
+          <div class="row" style="justify-content:space-between">
+            <span class="pill">🧑 <b id="charName">Adventurer</b></span>
+            <span class="pill">🧬 <span id="charRace">Human</span> • <span id="charSex">—</span></span>
+            <span class="pill">🧙 <span id="charClass">Fighter</span></span>
+          </div>
+          <div class="sub" id="charModsLine" style="margin-top:10px">STR/DEX/CON/INT/WIS/CHA mods apply to combat & outcomes.</div>
+        </div>
       </div>
 
       <h3 style="margin:18px 0 10px">Equipment</h3>
@@ -268,7 +314,11 @@ kbd{
         <div class="slot">
           <strong>Consumables</strong>
           <div class="itemName">Rations: <b id="rationCount">0</b></div>
-          <div><button class="small secondary" id="buyFoodBtn">Buy Ration (5g)</button></div>
+          <div class="row" style="justify-content:center">
+            <button class="small secondary" id="buyFoodBtn">Buy Ration (5g)</button>
+            <button class="small secondary" id="buyTorchBtn">Buy Torch (4g)</button>
+          </div>
+          <div class="sub">Torches increase dungeon reveal radius.</div>
         </div>
       </div>
 
@@ -295,70 +345,82 @@ kbd{
 </div>
 
 <script>
-/* =========================
+/* ============================================================
    SAVE + STATE
-========================= */
-const SAVE_KEY = "apexDiceRpg_v5_mapArt";
+============================================================ */
+const SAVE_KEY = "apexDiceRpg_kingdoms_v1";
 
-const defaultState = () => ({
-  hp: 20, hpMax: 20,
-  energy: 10, energyMax: 10,
-  hunger: 10, hungerMax: 10,
+function defaultState(){
+  return {
+    // character
+    characterCreated: false,
+    name: "Adventurer",
+    race: "Human",
+    sex: "Unspecified",
+    class: "Fighter",
+    stats: {STR:10,DEX:10,CON:10,INT:10,WIS:10,CHA:10},
+    rerollsLeft: 3,
 
-  atkBase: 2,
-  defBase: 1,
+    level: 1,
+    xp: 0,
 
-  gold: 15,
-  keys: 0,
+    hp: 20, hpMax: 20,
+    energy: 10, energyMax: 10,
+    hunger: 10, hungerMax: 10,
 
-  weapon: null,
-  armor: null,
-  accessory: null,
+    gold: 18,
+    keys: 0,
+    torches: 0,
 
-  bag: [{type:"consumable", name:"Ration", kind:"food", qty:2}],
+    weapon: null,
+    armor: null,
+    accessory: null,
+    bag: [{type:"consumable", name:"Ration", kind:"food", qty:2}],
 
-  mode: "world",          // world | dungeon | combat
-  currentNode: "stonehaven",
-  lastSafeNode: "stonehaven",
+    mode: "world",          // world | dungeon | combat
+    currentNode: "capital_aurelia",
+    lastSafeNode: "capital_aurelia",
 
-  // time
-  day: 1,
-  minutes: 8*60,          // start 08:00
-  energyDrainPerDayMin: 1,
-  energyDrainPerDayMax: 2,
-  energyDrainToday: 1,
+    // time
+    day: 1,
+    minutes: 8*60,
+    energyDrainPerDayMin: 1,
+    energyDrainPerDayMax: 2,
+    energyDrainToday: 1,
 
-  // per-visit loot limiting
-  visitCounter: 1,
-  nodeVisitStamp: {},
-  nodeLootStamp: {},
+    // per-visit loot limiting
+    visitCounter: 1,
+    nodeVisitStamp: {},
+    nodeLootStamp: {},
 
-  // persistent dungeons keyed by nodeId
-  dungeons: {}, // nodeId -> {kind,id,w,h,tiles,seen,px,py,enemies,chests,keysOnGround,doors}
+    // persistent dungeons keyed by nodeId
+    dungeons: {},
+    dungeonId: null,
 
-  // active dungeon pointer
-  dungeonId: null, // nodeId of current dungeon, if in dungeon
+    // combat
+    enemy: null,
+    enemyMeta: null,
+    pendingArrival: null,
 
-  // combat
-  enemy: null,
-  enemyMeta: null,
-  pendingArrival: null,
+    // quests
+    quests: {},
+    activeQuestId: null,
 
-  // quests
-  quests: {},          // questId -> {accepted,completed}
-  activeQuestId: null,
-
-  log: []
-});
+    log: []
+  };
+}
 
 let state = JSON.parse(localStorage.getItem(SAVE_KEY) || "null") || defaultState();
 
-/* =========================
+/* ============================================================
    DOM helpers
-========================= */
+============================================================ */
 const $ = id => document.getElementById(id);
 const mapCanvas = $("map");
 const ctx = mapCanvas.getContext("2d");
+const tooltip = $("tooltip");
+const mapWrap = $("mapWrap");
+
 function save(){ localStorage.setItem(SAVE_KEY, JSON.stringify(state)); }
 function clamp(n,min,max){ return Math.max(min, Math.min(max, n)); }
 function roll(s){ return Math.floor(Math.random()*s)+1; }
@@ -370,302 +432,116 @@ function fmtTime(mins){
 }
 function pushLog(msg){
   state.log.push(msg);
-  if(state.log.length>400) state.log = state.log.slice(-400);
+  if(state.log.length>500) state.log = state.log.slice(-500);
 }
-
-/* =========================
-   WORLD MAP (land + sea + routes)
-   - Curved sea lanes (no crossing)
-   - Curved roads (hug land)
-========================= */
-const world = {
-  nodes: [
-    { id:"stonehaven", name:"Stonehaven", type:"town",  x:170, y:240 },
-    { id:"pinewatch",  name:"Pinewatch",  type:"camp",  x:320, y:140 },
-    { id:"emberrest",  name:"Emberrest",  type:"town",  x:410, y:320 },
-    { id:"redfen",     name:"Redfen",     type:"camp",  x:560, y:285 },
-    { id:"grandport",  name:"Grandport",  type:"port",  x:730, y:175 },
-
-    { id:"cave_mourn", name:"Mournroot Cave",  type:"cave",   x:610, y:410, dungeonKind:"cave" },
-    { id:"cave_salt",  name:"Saltwind Grotto", type:"cave",   x:835, y:320, dungeonKind:"cave" },
-
-    { id:"forest_gloom", name:"Gloamwood", type:"forest", x:270, y:420, dungeonKind:"forest" },
-    { id:"forest_briar", name:"Briarwild", type:"forest", x:440, y:120, dungeonKind:"forest" },
-  ],
-  edges: [
-    // ROADS (curved to feel like routes that follow terrain)
-    {a:"stonehaven", b:"pinewatch", kind:"road", ctrl:{x:230, y:165}},
-    {a:"stonehaven", b:"emberrest", kind:"road", ctrl:{x:270, y:305}},
-    {a:"pinewatch",  b:"emberrest", kind:"road", ctrl:{x:355, y:230}},
-    {a:"emberrest",  b:"redfen",    kind:"road", ctrl:{x:490, y:305}},
-    {a:"redfen",     b:"grandport", kind:"road", ctrl:{x:640, y:215}},
-    {a:"redfen",     b:"cave_mourn", kind:"road", ctrl:{x:585, y:355}},
-    {a:"emberrest",  b:"forest_gloom", kind:"road", ctrl:{x:315, y:390}},
-    {a:"pinewatch",  b:"forest_briar", kind:"road", ctrl:{x:395, y:105}},
-
-    // SEA LANES (curved shipping lanes)
-    {a:"stonehaven", b:"grandport", kind:"sea", fare:8,  ctrl:{x:430, y:540}},
-    {a:"grandport",  b:"cave_salt", kind:"sea", fare:6,  ctrl:{x:980, y:140}},
-    {a:"cave_mourn", b:"cave_salt", kind:"sea", fare:5,  ctrl:{x:870, y:540}},
-  ]
-};
-const nodeById = Object.fromEntries(world.nodes.map(n=>[n.id,n]));
-function edgeBetween(a,b){
-  return world.edges.find(e => (e.a===a && e.b===b) || (e.a===b && e.b===a));
+function openModal(title, html){
+  $("modalTitle").textContent=title;
+  $("modalBody").innerHTML=html;
+  $("overlay").style.display="flex";
 }
-function neighbors(id){
-  return world.edges.filter(e=>e.a===id||e.b===id).map(e=>e.a===id?e.b:e.a);
-}
+function closeModal(){ $("overlay").style.display="none"; }
+$("closeModal").addEventListener("click", closeModal);
+$("overlay").addEventListener("click",(e)=>{ if(e.target.id==="overlay") closeModal(); });
 
-/* =========================
-   Procedural Map Art (coastline noise, terrain shading/icons, docks)
-   - Deterministic for a consistent look
-========================= */
-function makeSeededRng(seedStr){
-  let h = 2166136261;
-  for(let i=0;i<seedStr.length;i++){ h ^= seedStr.charCodeAt(i); h = Math.imul(h, 16777619); }
-  let s = h >>> 0;
-  return function(){
-    s ^= s << 13; s >>>= 0;
-    s ^= s >> 17; s >>>= 0;
-    s ^= s << 5;  s >>>= 0;
-    return (s >>> 0) / 4294967296;
-  };
-}
-
-const mapArt = {
-  ready:false,
-  coastPts: [],
-  landPath: null,     // Path2D
-  terrain: [],        // {type, x,y, s, rot}
-  blobs: [],          // shading blobs
-  docks: []           // {x,y, rot, len, w}
+/* ============================================================
+   CHARACTER: races/classes/stats
+============================================================ */
+const RACES = {
+  "Human":   {mods:{}, desc:"Versatile and adaptable."},
+  "Elf":     {mods:{DEX:+2, INT:+1}, desc:"Quick, precise, and clever."},
+  "Dwarf":   {mods:{CON:+2, STR:+1}, desc:"Sturdy and resilient."},
+  "Orc":     {mods:{STR:+2, CON:+1, CHA:-1}, desc:"Brutal power, rough edges."},
+  "Halfling":{mods:{DEX:+2, CHA:+1, STR:-1}, desc:"Lightfoot and charming."}
 };
 
-function buildCoastline(){
-  const rng = makeSeededRng("apex-coast-v1");
+const CLASSES = {
+  "Fighter": {hpBase:12, primary:"STR", desc:"Frontline warrior. Strong melee focus."},
+  "Rogue":   {hpBase:9,  primary:"DEX", desc:"Fast and evasive. Crits and finesse."},
+  "Mage":    {hpBase:7,  primary:"INT", desc:"Spellcraft. Big hits, low durability."},
+  "Cleric":  {hpBase:10, primary:"WIS", desc:"Support and survivability. Reliable."}
+};
 
-  // base polygon (roughly the same silhouette as earlier blob, but more "coast-y")
-  const base = [
-    {x:95,  y:95},
-    {x:210, y:55},
-    {x:360, y:65},
-    {x:520, y:120},
-    {x:675, y:175},
-    {x:765, y:265},
-    {x:800, y:360},
-    {x:720, y:430},
-    {x:585, y:448},
-    {x:440, y:425},
-    {x:300, y:395},
-    {x:185, y:345},
-    {x:115, y:265},
-    {x:85,  y:170},
-  ];
-
-  // Subdivide edges and add coastline noise (perpendicular jitter)
-  const pts = [];
-  const stepsPerEdge = 8; // more = smoother but heavier
-  const noiseAmp = 10;    // coastline roughness
-
-  for(let i=0;i<base.length;i++){
-    const a = base[i];
-    const b = base[(i+1)%base.length];
-    for(let j=0;j<stepsPerEdge;j++){
-      const t = j/stepsPerEdge;
-      const x = a.x + (b.x-a.x)*t;
-      const y = a.y + (b.y-a.y)*t;
-
-      // perpendicular normal
-      const dx = (b.x-a.x), dy = (b.y-a.y);
-      const len = Math.max(1, Math.hypot(dx,dy));
-      const nx = -dy/len, ny = dx/len;
-
-      // layered pseudo-noise (deterministic)
-      const n1 = Math.sin((i*stepsPerEdge+j)*0.9) * 0.6;
-      const n2 = Math.sin((i*stepsPerEdge+j)*2.3 + 1.7) * 0.4;
-      const n  = (n1+n2) * noiseAmp * (0.4 + rng()*0.8);
-
-      pts.push({x: x + nx*n, y: y + ny*n});
-    }
+function statMod(v){ return Math.floor((v-10)/2); }
+function getEffectiveStats(){
+  const base = {...state.stats};
+  const mods = (RACES[state.race]?.mods)||{};
+  for(const k of Object.keys(mods)){
+    base[k] = clamp((base[k]||10) + mods[k], 3, 20);
   }
-
-  // Light smoothing pass
-  const smooth = pts.map((p, idx)=>{
-    const p0 = pts[(idx-1+pts.length)%pts.length];
-    const p1 = pts[(idx+1)%pts.length];
-    return {x:(p0.x+p.x+p1.x)/3, y:(p0.y+p.y+p1.y)/3};
-  });
-
-  mapArt.coastPts = smooth;
-
-  const path = new Path2D();
-  path.moveTo(smooth[0].x, smooth[0].y);
-  for(let i=1;i<smooth.length;i++) path.lineTo(smooth[i].x, smooth[i].y);
-  path.closePath();
-  mapArt.landPath = path;
+  return base;
 }
 
-function pointInLand(x,y){
-  // requires ctx state neutral, so we use a temporary path hit test by translating/scaling to world
-  // We will only call this during art generation (no transforms applied).
-  if(!mapArt.landPath) return false;
-  // Use a temporary canvas context hit test without transforms (Path2D in world coords)
-  return ctx.isPointInPath(mapArt.landPath, x, y);
+function computeDerived(){
+  const s = getEffectiveStats();
+  const cls = CLASSES[state.class] || CLASSES["Fighter"];
+  const conM = statMod(s.CON);
+  const hpMax = clamp(cls.hpBase + conM*state.level + 8, 12, 60 + state.level*8);
+
+  // base energy scales slightly with WIS
+  const wisM = statMod(s.WIS);
+  const energyMax = clamp(10 + Math.max(0,wisM), 8, 16);
+
+  // hunger max scales slightly with CON
+  const hungerMax = clamp(10 + Math.max(0,conM), 8, 16);
+
+  state.hpMax = hpMax;
+  state.energyMax = energyMax;
+  state.hungerMax = hungerMax;
+  state.hp = clamp(state.hp, 0, state.hpMax);
+  state.energy = clamp(state.energy, 0, state.energyMax);
+  state.hunger = clamp(state.hunger, 0, state.hungerMax);
 }
-
-function buildTerrain(){
-  const rng = makeSeededRng("apex-terrain-v1");
-
-  // Shading blobs (subtle terrain shading)
-  mapArt.blobs = [];
-  for(let i=0;i<16;i++){
-    let x=0,y=0;
-    for(let tries=0;tries<800;tries++){
-      x = 120 + rng()*700;
-      y = 90  + rng()*380;
-      if(pointInLand(x,y)) break;
-    }
-    const r = 30 + rng()*85;
-    const a = 0.05 + rng()*0.08;
-    mapArt.blobs.push({x,y,r,a});
+function xpToNext(level){ return 60 + (level-1)*35; }
+function gainXP(x){
+  state.xp += x;
+  let leveled=false;
+  while(state.xp >= xpToNext(state.level)){
+    state.xp -= xpToNext(state.level);
+    state.level += 1;
+    leveled=true;
+    computeDerived();
+    state.hp = state.hpMax;
+    pushLog(`<span style="color:var(--good)">⭐ Level up! You are now level <b>${state.level}</b>. HP restored.</span>`);
   }
-
-  // Terrain icons (mountains/forest)
-  mapArt.terrain = [];
-  const icons = [
-    {type:"mountain", count:10},
-    {type:"forest", count:18},
-  ];
-
-  for(const group of icons){
-    for(let i=0;i<group.count;i++){
-      let x=0,y=0;
-      for(let tries=0;tries<1200;tries++){
-        x = 120 + rng()*700;
-        y = 90  + rng()*380;
-        if(pointInLand(x,y)) break;
-      }
-      const s = group.type==="mountain" ? (0.8 + rng()*0.7) : (0.75 + rng()*0.9);
-      const rot = (rng()*0.35 - 0.175);
-      mapArt.terrain.push({type:group.type, x,y, s, rot});
-    }
-  }
+  if(leveled) pushLog(`📈 Your stats now influence outcomes even more.`);
 }
 
-function buildDocks(){
-  // Docks at Grandport that extend into the sea (east / slightly NE)
-  const p = nodeById["grandport"];
-  mapArt.docks = [
-    {x:p.x+18, y:p.y+8,  rot:-0.10, len:72, w:10},
-    {x:p.x+12, y:p.y+20, rot: 0.05, len:52, w:9},
-  ];
-}
+/* ============================================================
+   INVENTORY / GEAR
+============================================================ */
+function getAtk(){
+  const s = getEffectiveStats();
+  const cls = CLASSES[state.class] || CLASSES["Fighter"];
+  const primary = cls.primary;
+  const mod = statMod(s[primary]||10);
 
-function ensureMapArt(){
-  if(mapArt.ready) return;
-  buildCoastline();
-  buildTerrain();
-  buildDocks();
-  mapArt.ready = true;
-}
+  const weaponAtk = (state.weapon?.atk||0);
+  const accAtk = (state.accessory?.atk||0);
 
-/* =========================
-   Quests
-========================= */
-const QUESTS = [
-  {
-    id:"q_crate_1",
-    title:"Deliver Sealed Crate",
-    from:"stonehaven",
-    to:"grandport",
-    item:{type:"quest", name:"Sealed Crate"},
-    reward:{gold:25, key:1},
-    text:"A merchant needs a sealed crate delivered to Grandport. No questions asked."
-  },
-  {
-    id:"q_herbs_1",
-    title:"Medicinal Herbs Run",
-    from:"pinewatch",
-    to:"emberrest",
-    item:{type:"quest", name:"Herb Satchel"},
-    reward:{gold:18, key:0},
-    text:"Bring a satchel of herbs to Emberrest's healer."
-  },
-  {
-    id:"q_letter_1",
-    title:"Captain’s Letter",
-    from:"grandport",
-    to:"stonehaven",
-    item:{type:"quest", name:"Captain’s Letter"},
-    reward:{gold:22, key:0},
-    text:"Carry a sealed letter back to Stonehaven’s steward."
-  },
-  {
-    id:"q_tools_1",
-    title:"Tools for Redfen Camp",
-    from:"emberrest",
-    to:"redfen",
-    item:{type:"quest", name:"Tool Bundle"},
-    reward:{gold:16, key:1},
-    text:"Deliver a bundle of tools to Redfen camp. They also promise a spare key."
-  }
-];
+  // class flavor
+  const classBonus = (state.class==="Rogue") ? 1 : 0;
 
-function questBoardForNode(nodeId){
-  return QUESTS.filter(q=>q.from===nodeId);
+  return 1 + mod + classBonus + weaponAtk + accAtk + Math.floor((state.level-1)/2);
 }
-function questStatus(qid){
-  return state.quests[qid] || {accepted:false, completed:false};
+function getDef(){
+  const s = getEffectiveStats();
+  const dexM = statMod(s.DEX);
+  const armorDef = (state.armor?.def||0);
+  const accDef = (state.accessory?.def||0);
+  // DEF shown is "AC bonus" which becomes 10 + DEF
+  return dexM + armorDef + accDef + Math.floor((state.level-1)/3);
 }
-function setQuestStatus(qid, patch){
-  const cur = questStatus(qid);
-  state.quests[qid] = {...cur, ...patch};
-}
-function activeQuest(){
-  if(!state.activeQuestId) return null;
-  return QUESTS.find(q=>q.id===state.activeQuestId) || null;
-}
-function hasQuestItem(name){
-  return state.bag.some(x=>x.type==="quest" && x.name===name);
-}
-function removeQuestItem(name){
-  const idx = state.bag.findIndex(x=>x.type==="quest" && x.name===name);
-  if(idx>=0) state.bag.splice(idx,1);
-}
-function addQuestItem(item){
-  if(!hasQuestItem(item.name)) state.bag.push({...item});
-}
-function tryDeliverQuest(){
-  const q = activeQuest();
-  if(!q) return false;
-  const st = questStatus(q.id);
-  if(!st.accepted || st.completed) return false;
+function playerAC(){ return 10 + getDef(); }
 
-  if(state.currentNode===q.to && hasQuestItem(q.item.name)){
-    removeQuestItem(q.item.name);
-    state.gold += q.reward.gold||0;
-    state.keys += q.reward.key||0;
-    setQuestStatus(q.id, {completed:true});
-    pushLog(`<span style="color:var(--good)">📦 Quest complete: ${q.title}! +${q.reward.gold||0}g${(q.reward.key?` and +${q.reward.key} key`:"")}.</span>`);
-    state.activeQuestId = null;
-    return true;
-  }
-  return false;
-}
-
-/* =========================
-   Inventory
-========================= */
-function getAtk(){ return state.atkBase + (state.weapon?.atk||0) + (state.accessory?.atk||0); }
-function getDef(){ return state.defBase + (state.armor?.def||0) + (state.accessory?.def||0); }
 function fmtItem(item){
   if(!item) return "None";
   const parts=[];
   if(item.atk) parts.push(`+${item.atk} ATK`);
   if(item.def) parts.push(`+${item.def} DEF`);
+  if(item.tag) parts.push(item.tag.toUpperCase());
   return parts.length ? `${item.name} (${parts.join(", ")})` : item.name;
 }
+
 function addToBag(item){
   if(item.type==="consumable"){
     const found = state.bag.find(x=>x.type==="consumable" && x.kind===item.kind && x.name===item.name);
@@ -689,21 +565,31 @@ function consumeItem(kind, qty=1){
   state.bag = state.bag.filter(x=>!x._remove);
   return qty===0;
 }
-function randomGear(){
-  const table = [
+
+function randomGear(rng=Math.random){
+  const tier = (rng()<0.10) ? 2 : (rng()<0.40 ? 1 : 0);
+  const t = [
     {type:"weapon", name:"Sword", atk:2},
     {type:"weapon", name:"Dagger", atk:1},
     {type:"weapon", name:"Warhammer", atk:3},
-    {type:"armor", name:"Leather Armor", def:2},
-    {type:"armor", name:"Chain Shirt", def:3},
+    {type:"weapon", name:"Bow", atk:2, tag:"ranged"},
+    {type:"armor",  name:"Leather Armor", def:2},
+    {type:"armor",  name:"Chain Shirt", def:3},
+    {type:"armor",  name:"Scale Mail", def:4},
     {type:"accessory", name:"Ring of Luck", atk:1},
     {type:"accessory", name:"Amulet of Guarding", def:1},
+    {type:"accessory", name:"Charm of Focus", atk:1, def:1},
   ];
-  return table[Math.floor(Math.random()*table.length)];
+  const base = t[Math.floor(rng()*t.length)];
+  if(tier===0) return {...base};
+  if(tier===1) return {...base, name: "Fine " + base.name, atk:(base.atk||0)+1, def:(base.def||0)+1};
+  return {...base, name: "Mythic " + base.name, atk:(base.atk||0)+2, def:(base.def||0)+2};
 }
+
 function equipFromBag(index){
   const item = state.bag[index];
   if(!item || item.type==="consumable" || item.type==="quest") return;
+
   state.bag.splice(index,1);
   if(item.type==="weapon"){ if(state.weapon) state.bag.push(state.weapon); state.weapon=item; pushLog(`🧩 Equipped Weapon: <b>${fmtItem(item)}</b>`); }
   if(item.type==="armor"){ if(state.armor) state.bag.push(state.armor); state.armor=item; pushLog(`🧩 Equipped Armor: <b>${fmtItem(item)}</b>`); }
@@ -717,22 +603,25 @@ function unequip(slot){
   render();
 }
 
-/* =========================
+/* ============================================================
    TIME + DAY TICK
-========================= */
+============================================================ */
 function startNewDay(){
   const drain = (state.energyDrainPerDayMin + Math.floor(Math.random()*(state.energyDrainPerDayMax - state.energyDrainPerDayMin + 1)));
   state.energyDrainToday = drain;
   state.energy = clamp(state.energy - drain, 0, state.energyMax);
+
   state.hunger = clamp(state.hunger - 2, 0, state.hungerMax);
   if(state.hunger===0){
     state.hp = clamp(state.hp - 2, 0, state.hpMax);
     pushLog(`<span style="color:var(--warn)">🍗 You wake starving and lose 2 HP.</span>`);
   }
-  pushLog(`🌅 Day ${state.day} begins. Energy drains by day: -${drain} energy today.`);
+  pushLog(`🌅 Day ${state.day} begins. Energy drains today: -${drain}.`);
 }
+
 function passTime(minutes, reason){
   if(minutes<=0) return;
+
   state.minutes += minutes;
 
   while(state.minutes >= 1440){
@@ -741,6 +630,7 @@ function passTime(minutes, reason){
     startNewDay();
   }
 
+  // hunger effect: 1 hunger per 4 hours
   const hungerLoss = Math.floor(minutes / 240);
   if(hungerLoss>0){
     state.hunger = clamp(state.hunger - hungerLoss, 0, state.hungerMax);
@@ -754,28 +644,639 @@ function passTime(minutes, reason){
   if(reason) pushLog(`⏳ Time passes (${Math.round(minutes)} min): ${reason}.`);
 }
 
-function distance(a,b){
-  const A=nodeById[a], B=nodeById[b];
-  const dx=A.x-B.x, dy=A.y-B.y;
-  return Math.sqrt(dx*dx+dy*dy);
+/* ============================================================
+   WORLD GENERATION (HUGE MAP, terrain, curved routes, bridges)
+   - "20x bigger": we run a 3200x2200 world coordinate system
+============================================================ */
+const WORLD_W = 3200;
+const WORLD_H = 2200;
+const WORLD_SEED = "apex-kingdoms-001";
+
+/* -------- deterministic RNG + noise ---------- */
+function makeRNG(seedStr){
+  let h = 2166136261;
+  for(let i=0;i<seedStr.length;i++){ h ^= seedStr.charCodeAt(i); h = Math.imul(h, 16777619); }
+  let s = h >>> 0;
+  return function(){
+    s ^= s << 13; s >>>= 0;
+    s ^= s >> 17; s >>>= 0;
+    s ^= s << 5;  s >>>= 0;
+    return (s >>> 0) / 4294967296;
+  };
 }
-function travelTimeMinutes(from,to){
-  const d = distance(from,to);
-  return clamp(Math.round(d * 0.55), 20, 160);
+const rngWorld = makeRNG(WORLD_SEED);
+
+function hash2(x,y){
+  // quick hash
+  let n = x*374761393 + y*668265263;
+  n = (n ^ (n >> 13)) * 1274126177;
+  return ((n ^ (n >> 16)) >>> 0) / 4294967296;
+}
+function smoothstep(t){ return t*t*(3-2*t); }
+function lerp(a,b,t){ return a + (b-a)*t; }
+
+function valueNoise(x,y,scale){
+  const fx = x/scale, fy=y/scale;
+  const x0 = Math.floor(fx), y0=Math.floor(fy);
+  const tx = fx-x0, ty=fy-y0;
+
+  const v00 = hash2(x0,y0);
+  const v10 = hash2(x0+1,y0);
+  const v01 = hash2(x0,y0+1);
+  const v11 = hash2(x0+1,y0+1);
+
+  const sx = smoothstep(tx), sy=smoothstep(ty);
+  const ix0 = lerp(v00,v10,sx);
+  const ix1 = lerp(v01,v11,sx);
+  return lerp(ix0,ix1,sy);
+}
+function fbm(x,y){
+  let f=0, amp=0.55, scale=300;
+  for(let i=0;i<5;i++){
+    f += amp*valueNoise(x+123.4*i, y+987.6*i, scale);
+    amp *= 0.55;
+    scale *= 0.55;
+  }
+  return f; // ~0..1
 }
 
-/* =========================
-   Limited "Area Loot" per visit
-========================= */
+/* -------- landmask with coastline noise ---------- */
+function landMask(x,y){
+  // base ellipse island
+  const cx = WORLD_W*0.47, cy=WORLD_H*0.52;
+  const nx = (x-cx)/(WORLD_W*0.52);
+  const ny = (y-cy)/(WORLD_H*0.48);
+  const d = Math.sqrt(nx*nx + ny*ny);
+
+  // coastline noise pushes boundary
+  const n = fbm(x*1.0, y*1.0);
+  const coast = 0.88 + (n-0.5)*0.22; // boundary varies
+  const m = 1 - clamp((d - coast)/0.12, 0, 1);
+  return m; // 0 sea, 1 deep land
+}
+
+function elevation(x,y){
+  const base = fbm(x*0.9, y*0.9);
+  const lat = 1 - Math.abs((y/WORLD_H)-0.55); // mid lat tends higher life
+  let e = base*0.72 + lat*0.28;
+  e = clamp(e,0,1);
+  // mountains ridge
+  const ridge = Math.abs((fbm(x*1.7+400, y*1.7+200)-0.5))*2;
+  e = clamp(e + ridge*0.18, 0, 1);
+  return e;
+}
+
+function temperature(x,y){
+  // colder north/south edges; warmer center
+  const lat = y/WORLD_H; // 0..1
+  const t = 1 - Math.abs(lat-0.55)*1.4;
+  const n = fbm(x+222, y+444);
+  return clamp(t*0.75 + n*0.25, 0, 1);
+}
+
+function moisture(x,y){
+  const n = fbm(x+777, y+333);
+  // coastal tends wet
+  const coast = landMask(x,y);
+  return clamp(n*0.75 + (1-coast)*0.15 + 0.10, 0, 1);
+}
+
+function terrainType(x,y){
+  const m = landMask(x,y);
+  if(m < 0.12) return "ocean";
+  if(m < 0.20) return "coast";
+
+  const temp = temperature(x,y);
+  const moist = moisture(x,y);
+  const elev = elevation(x,y);
+
+  if(elev > 0.78) return "mountains";
+
+  // arctic / tundra / desert / forest / grasslands / woody
+  if(temp < 0.25) return (moist>0.55) ? "arctic" : "tundra";
+  if(temp > 0.72 && moist < 0.28) return "desert";
+  if(moist > 0.66) return "forest";
+  if(moist > 0.52) return "woody";
+  return "grasslands";
+}
+
+/* -------- pre-render terrain to an offscreen map ---------- */
+let terrainImg = null;
+let terrainIcons = []; // {x,y,kind}
+let rivers = [];       // array of polyline points
+let bridges = [];      // {x,y}
+
+function buildTerrain(){
+  const tw=820, th=560; // low-res texture (fast)
+  const off = document.createElement("canvas");
+  off.width = tw; off.height=th;
+  const tctx = off.getContext("2d");
+  const img = tctx.createImageData(tw, th);
+  const data = img.data;
+
+  terrainIcons = [];
+  rivers = [];
+  bridges = [];
+
+  // simple major river polyline (only on land)
+  function genRiver(seedX, seedY){
+    let pts = [];
+    let x = seedX, y=seedY;
+    let steps=0;
+    while(steps<180){
+      pts.push({x,y});
+      // flow roughly to sea (toward nearest edge) + noise
+      const toEast = (WORLD_W-x);
+      const toWest = x;
+      const toNorth = y;
+      const toSouth = (WORLD_H-y);
+      // pick direction toward closest border (sea likely there)
+      let dx=0, dy=0;
+      const min = Math.min(toEast,toWest,toNorth,toSouth);
+      if(min===toEast) dx=+1;
+      else if(min===toWest) dx=-1;
+      else if(min===toNorth) dy=-1;
+      else dy=+1;
+
+      // add meander
+      const ang = (fbm(x*1.2+90, y*1.2+22)-0.5)*Math.PI*1.2;
+      const mx = Math.cos(ang), my=Math.sin(ang);
+
+      x += (dx*0.8 + mx*0.9) * 18;
+      y += (dy*0.8 + my*0.9) * 18;
+
+      if(x<0||y<0||x>WORLD_W||y>WORLD_H) break;
+      if(landMask(x,y)<0.18) break; // reached coast
+      steps++;
+    }
+    if(pts.length>40) rivers.push(pts);
+  }
+  // seed rivers in mountains
+  for(let i=0;i<5;i++){
+    // find mountain-ish point
+    let tries=0;
+    while(tries++<2000){
+      const x = rngWorld()*WORLD_W;
+      const y = rngWorld()*WORLD_H;
+      if(landMask(x,y)>0.45 && elevation(x,y)>0.78){
+        genRiver(x,y);
+        break;
+      }
+    }
+  }
+
+  // paint
+  for(let j=0;j<th;j++){
+    for(let i=0;i<tw;i++){
+      const x = (i/(tw-1))*WORLD_W;
+      const y = (j/(th-1))*WORLD_H;
+
+      const t = terrainType(x,y);
+      const m = landMask(x,y);
+      const elev = elevation(x,y);
+      const temp = temperature(x,y);
+
+      // base colors
+      let r=8,g=18,b=52; // sea base
+      if(t==="ocean"){
+        const deep = 0.45 + fbm(x*0.7,y*0.7)*0.55;
+        r = 10 + deep*10; g = 30 + deep*40; b = 80 + deep*95;
+      } else if(t==="coast"){
+        r = 20 + m*30; g = 60 + m*45; b = 110 + m*55;
+      } else {
+        // land shading by elevation and moisture
+        const moist = moisture(x,y);
+        const shade = 0.60 + elev*0.35;
+
+        if(t==="grasslands"){ r=40; g=115; b=70; }
+        if(t==="woody"){ r=32; g=92; b=60; }
+        if(t==="forest"){ r=26; g=74; b=52; }
+        if(t==="desert"){ r=160; g=130; b=70; }
+        if(t==="tundra"){ r=95; g=120; b=120; }
+        if(t==="arctic"){ r=180; g=200; b=210; }
+        if(t==="mountains"){ r=95; g=100; b=110; }
+
+        // subtle terrain shading
+        r = r*shade; g=g*shade; b=b*shade;
+
+        // cooler tint toward arctic
+        if(temp<0.33){
+          const cool = (0.33-temp)/0.33;
+          r = lerp(r, 170, cool*0.35);
+          g = lerp(g, 200, cool*0.35);
+          b = lerp(b, 220, cool*0.35);
+        }
+      }
+
+      // coastline edge highlight
+      if(m>0.12 && m<0.24){
+        r = lerp(r, 210, 0.05);
+        g = lerp(g, 230, 0.05);
+        b = lerp(b, 240, 0.05);
+      }
+
+      const idx = (j*tw+i)*4;
+      data[idx]=Math.round(clamp(r,0,255));
+      data[idx+1]=Math.round(clamp(g,0,255));
+      data[idx+2]=Math.round(clamp(b,0,255));
+      data[idx+3]=255;
+    }
+  }
+
+  // draw rivers onto the texture
+  tctx.putImageData(img,0,0);
+  tctx.save();
+  tctx.globalAlpha=0.78;
+  tctx.strokeStyle="rgba(147,197,253,.85)";
+  tctx.lineWidth=2.2;
+  for(const river of rivers){
+    tctx.beginPath();
+    for(let i=0;i<river.length;i++){
+      const px = (river[i].x/WORLD_W)*tw;
+      const py = (river[i].y/WORLD_H)*th;
+      if(i===0) tctx.moveTo(px,py); else tctx.lineTo(px,py);
+    }
+    tctx.stroke();
+  }
+  tctx.restore();
+
+  // sample icons
+  // mountains + forests icons sprinkled (visual only)
+  for(let k=0;k<900;k++){
+    const x = rngWorld()*WORLD_W;
+    const y = rngWorld()*WORLD_H;
+    if(landMask(x,y)<0.25) continue;
+    const t = terrainType(x,y);
+    if(t==="mountains" && rngWorld()<0.20) terrainIcons.push({x,y,kind:"mountain"});
+    if((t==="forest"||t==="woody") && rngWorld()<0.10) terrainIcons.push({x,y,kind:"tree"});
+    if(t==="desert" && rngWorld()<0.06) terrainIcons.push({x,y,kind:"dune"});
+    if((t==="tundra"||t==="arctic") && rngWorld()<0.05) terrainIcons.push({x,y,kind:"snow"});
+  }
+
+  terrainImg = off; // store offscreen canvas
+}
+
+/* ============================================================
+   WORLD NODES + ROUTES (curved, no-crossing attempt)
+============================================================ */
+function isLand(x,y){ return landMask(x,y) >= 0.22; }
+function pickLandPoint(){
+  for(let t=0;t<6000;t++){
+    const x = rngWorld()*WORLD_W;
+    const y = rngWorld()*WORLD_H;
+    if(isLand(x,y) && elevation(x,y)<0.83) return {x,y};
+  }
+  return {x:WORLD_W*0.5,y:WORLD_H*0.5};
+}
+function pickCoastPoint(){
+  for(let t=0;t<9000;t++){
+    const x = rngWorld()*WORLD_W;
+    const y = rngWorld()*WORLD_H;
+    const m = landMask(x,y);
+    if(m>0.18 && m<0.28) return {x,y};
+  }
+  return {x:WORLD_W*0.7,y:WORLD_H*0.5};
+}
+
+function dist(a,b){ const dx=a.x-b.x, dy=a.y-b.y; return Math.hypot(dx,dy); }
+function segmentsIntersect(a,b,c,d){
+  function ccw(p1,p2,p3){ return (p3.y-p1.y)*(p2.x-p1.x) > (p2.y-p1.y)*(p3.x-p1.x); }
+  return (ccw(a,c,d) !== ccw(b,c,d)) && (ccw(a,b,c) !== ccw(a,b,d));
+}
+
+function routeCurvaturePoints(A,B,kind){
+  // roads hug land: push control points along a "coastward" gradient
+  // sea routes: gentle arc
+  const mid = {x:(A.x+B.x)/2, y:(A.y+B.y)/2};
+  const dx = B.x-A.x, dy=B.y-A.y;
+  const len = Math.hypot(dx,dy) || 1;
+  const nx = -dy/len, ny=dx/len;
+
+  const n1 = fbm(mid.x+123, mid.y+456)-0.5;
+  const arc = (kind==="sea" ? 0.22 : 0.35) * len * n1;
+
+  // "hug land": try to bias roads inward (higher landMask)
+  let bias = 0;
+  if(kind==="road" || kind==="bridge"){
+    const left = landMask(mid.x+nx*90, mid.y+ny*90);
+    const right= landMask(mid.x-nx*90, mid.y-ny*90);
+    bias = (left-right) * 0.55 * len * 0.06; // choose side with higher landness
+  }
+
+  const c1 = {x: A.x + dx*0.33 + nx*(arc + bias), y: A.y + dy*0.33 + ny*(arc + bias)};
+  const c2 = {x: A.x + dx*0.66 + nx*(arc*0.65 + bias*0.65), y: A.y + dy*0.66 + ny*(arc*0.65 + bias*0.65)};
+
+  // add subtle wobble to reduce straight-line feel
+  const wob = (kind==="sea"?0.05:0.08)*len;
+  const wob2= (fbm(A.x+77,B.y+88)-0.5)*2;
+  c1.x += nx*wob*wob2; c1.y += ny*wob*wob2;
+  c2.x -= nx*wob*wob2; c2.y -= ny*wob*wob2;
+
+  return {c1,c2};
+}
+
+const world = { nodes: [], edges: [] };
+let nodeById = {};
+
+function buildWorld(){
+  // base structure: Capital + Kingdom cities + ports + many points
+  world.nodes = [];
+  world.edges = [];
+
+  // Capital kingdom in lush heartland near center-ish
+  const cap = {id:"capital_aurelia", name:"Aurelia (Capital)", type:"capital", x:WORLD_W*0.50, y:WORLD_H*0.52, kingdom:true};
+  world.nodes.push(cap);
+
+  // big kingdom ring cities
+  const ring = [
+    {id:"city_embergate", name:"Embergate", type:"city"},
+    {id:"city_silverford", name:"Silverford", type:"city"},
+    {id:"city_westcliff", name:"Westcliff", type:"city"},
+    {id:"city_mornspire", name:"Mornspire", type:"city"},
+    {id:"city_greenhollow", name:"Greenhollow", type:"city"},
+    {id:"city_southwatch", name:"Southwatch", type:"city"},
+  ];
+  for(let i=0;i<ring.length;i++){
+    const ang = (i/ring.length)*Math.PI*2;
+    const r = 420 + rngWorld()*120;
+    const p = {x: cap.x + Math.cos(ang)*r, y: cap.y + Math.sin(ang)*r};
+    // snap to land
+    let tries=0;
+    while(tries++<120 && !isLand(p.x,p.y)){
+      p.x += (rngWorld()-0.5)*60; p.y += (rngWorld()-0.5)*60;
+    }
+    world.nodes.push({...ring[i], x: clamp(p.x,120,WORLD_W-120), y: clamp(p.y,120,WORLD_H-120)});
+  }
+
+  // Ports along coast
+  const ports = [];
+  const portNames = ["Grandport","Seabreak","Dawnwharf","Rimepier","Saltmere","Coralhaven","Blackwater Quay","Gullwatch"];
+  for(let i=0;i<8;i++){
+    const p = pickCoastPoint();
+    ports.push({id:`port_${i}`, name:portNames[i], type:"port", x:p.x, y:p.y});
+  }
+  world.nodes.push(...ports);
+
+  // Many towns/camps
+  const townNames = [
+    "Stonehaven","Pinewatch","Redfen","Briarfield","Hawthorn","Ravenmoor","Oakmere","Sunvale","Ironridge","Mistwood",
+    "Frostbarrow","Sandspire","Wyrmrest","Oldbridge","Marrowwick","Kingsfall","Westmere","Glimmerholt","Ashenford","Larkstone"
+  ];
+  const campNames = ["Wayfarer Camp","Hunter’s Rest","Pilgrim Fire","Ridge Camp","Bogwatch Camp","Pinelean Camp","Silt Camp","Northline Camp"];
+  let ti=0, ci=0;
+
+  for(let i=0;i<20;i++){
+    const p = pickLandPoint();
+    world.nodes.push({id:`town_${i}`, name:townNames[ti++%townNames.length], type:"town", x:p.x, y:p.y});
+  }
+  for(let i=0;i<12;i++){
+    const p = pickLandPoint();
+    world.nodes.push({id:`camp_${i}`, name:campNames[ci++%campNames.length], type:"camp", x:p.x, y:p.y});
+  }
+
+  // Many caves/forests (dungeons)
+  const caveNames = ["Mournroot Cave","Saltwind Grotto","Hollowfang Den","Cinderjaw Caverns","Shatterstone Depths","Moonshale Cave","Duskveil Tunnels","Ironmouth Pit"];
+  const forestNames = ["Gloamwood","Briarwild","Mossreach","Wolfsong Thicket","Crownleaf Grove","Deepbark","Rimewood","Duskmere Glade","Sable Forest","Hollow Pines"];
+  for(let i=0;i<10;i++){
+    const p = pickLandPoint();
+    world.nodes.push({id:`cave_${i}`, name:caveNames[i%caveNames.length], type:"cave", x:p.x, y:p.y, dungeonKind:"cave"});
+  }
+  for(let i=0;i<12;i++){
+    const p = pickLandPoint();
+    world.nodes.push({id:`forest_${i}`, name:forestNames[i%forestNames.length], type:"forest", x:p.x, y:p.y, dungeonKind:"forest"});
+  }
+
+  // Build lookup
+  nodeById = Object.fromEntries(world.nodes.map(n=>[n.id,n]));
+
+  // Build roads on land: MST-ish + extra edges; reject intersections to reduce crossings
+  const landNodes = world.nodes.filter(n => n.type!=="port");
+  const seaNodes = world.nodes.filter(n => n.type==="port");
+
+  // helper: connect with intersection avoidance
+  function addEdge(a,b,kind,extra={}){
+    if(a===b) return false;
+    // prevent duplicates
+    if(world.edges.some(e => (e.a===a && e.b===b) || (e.a===b && e.b===a))) return false;
+
+    const A=nodeById[a], B=nodeById[b];
+    const newSeg = {p1:{x:A.x,y:A.y}, p2:{x:B.x,y:B.y}};
+
+    // avoid crossing with same or different kind (especially roads vs sea)
+    for(const e of world.edges){
+      const E1=nodeById[e.a], E2=nodeById[e.b];
+      // allow share endpoints
+      if([a,b].includes(e.a) || [a,b].includes(e.b)) continue;
+      // disallow crossing always (keeps routes cleaner)
+      if(segmentsIntersect(newSeg.p1,newSeg.p2,{x:E1.x,y:E1.y},{x:E2.x,y:E2.y})) return false;
+    }
+
+    const curve = routeCurvaturePoints(A,B,kind);
+    world.edges.push({a,b,kind, ...extra, c1:curve.c1, c2:curve.c2});
+    return true;
+  }
+
+  // MST-ish: connect each node to nearest already-connected to ensure connected graph
+  const connected = new Set([cap.id]);
+  const remaining = new Set(landNodes.map(n=>n.id).filter(id=>id!==cap.id));
+
+  while(remaining.size){
+    let best=null;
+    for(const id of remaining){
+      const N=nodeById[id];
+      // find nearest connected
+      let bestC=null, bestD=1e18;
+      for(const cid of connected){
+        const C=nodeById[cid];
+        const d=dist(N,C);
+        if(d<bestD){ bestD=d; bestC=cid; }
+      }
+      if(!best || bestD<best.d) best={id, c:bestC, d:bestD};
+    }
+    if(best){
+      addEdge(best.id, best.c, "road");
+      connected.add(best.id);
+      remaining.delete(best.id);
+    } else break;
+  }
+
+  // add extra roads: kNN style
+  const landIds = landNodes.map(n=>n.id);
+  for(const id of landIds){
+    const A=nodeById[id];
+    // pick nearest 3
+    const near = landIds
+      .filter(o=>o!==id)
+      .map(o=>({o, d:dist(A,nodeById[o])}))
+      .sort((x,y)=>x.d-y.d)
+      .slice(0,4);
+    for(const n of near){
+      if(n.d<520) addEdge(id, n.o, "road");
+    }
+  }
+
+  // connect ports to nearest land towns/cities + a few sea lanes between ports
+  for(const p of seaNodes){
+    // nearest 3 land nodes (prefer cities/towns)
+    const candidates = world.nodes.filter(n=>n.type==="city"||n.type==="town"||n.type==="capital");
+    const near = candidates
+      .map(n=>({id:n.id, d:dist(p,n)}))
+      .sort((a,b)=>a.d-b.d)
+      .slice(0,2);
+    for(const n of near){
+      // docks/roads that hug land: we still treat as road if endpoint on land and short distance
+      addEdge(p.id, n.id, "road", {dock:true});
+    }
+  }
+  // sea lanes between ports
+  for(let i=0;i<seaNodes.length;i++){
+    const P=seaNodes[i];
+    const near = seaNodes
+      .filter((_,j)=>j!==i)
+      .map(n=>({id:n.id,d:dist(P,n)}))
+      .sort((a,b)=>a.d-b.d)
+      .slice(0,2);
+    for(const n of near){
+      const fare = clamp(Math.round(n.d/120), 6, 18);
+      addEdge(P.id, n.id, "sea", {fare});
+    }
+  }
+
+  // mark bridges where roads cross rivers
+  function sampleBezier(e,t){
+    const A=nodeById[e.a], B=nodeById[e.b];
+    const c1=e.c1, c2=e.c2;
+    const u=1-t;
+    const x = u*u*u*A.x + 3*u*u*t*c1.x + 3*u*t*t*c2.x + t*t*t*B.x;
+    const y = u*u*u*A.y + 3*u*u*t*c1.y + 3*u*t*t*c2.y + t*t*t*B.y;
+    return {x,y};
+  }
+  function pointNearPolyline(p, poly, thresh){
+    for(let i=1;i<poly.length;i++){
+      const a=poly[i-1], b=poly[i];
+      const d = pointToSegmentDistance(p,a,b);
+      if(d<thresh) return {hit:true, i};
+    }
+    return {hit:false};
+  }
+  function pointToSegmentDistance(p,a,b){
+    const vx=b.x-a.x, vy=b.y-a.y;
+    const wx=p.x-a.x, wy=p.y-a.y;
+    const c1 = vx*wx + vy*wy;
+    if(c1<=0) return Math.hypot(p.x-a.x,p.y-a.y);
+    const c2 = vx*vx + vy*vy;
+    if(c2<=c1) return Math.hypot(p.x-b.x,p.y-b.y);
+    const t = c1/c2;
+    const px=a.x+t*vx, py=a.y+t*vy;
+    return Math.hypot(p.x-px,p.y-py);
+  }
+
+  for(const e of world.edges){
+    if(e.kind!=="road") continue;
+    // sample along curve
+    let bestBridge=null;
+    for(let s=0;s<=20;s++){
+      const t=s/20;
+      const p = sampleBezier(e,t);
+      // check each river
+      for(const r of rivers){
+        const hit = pointNearPolyline(p,r,10);
+        if(hit.hit){
+          bestBridge = p;
+          break;
+        }
+      }
+      if(bestBridge) break;
+    }
+    if(bestBridge){
+      bridges.push(bestBridge);
+      e.kind = "bridge"; // visually mark
+    }
+  }
+
+  // ensure starting node exists
+  if(!nodeById[state.currentNode]) state.currentNode = cap.id;
+  if(!nodeById[state.lastSafeNode]) state.lastSafeNode = cap.id;
+}
+
+/* ============================================================
+   ROUTING / NEIGHBORS
+============================================================ */
+function edgeBetween(a,b){
+  return world.edges.find(e => (e.a===a && e.b===b) || (e.a===b && e.b===a));
+}
+function neighbors(id){
+  return world.edges.filter(e=>e.a===id||e.b===id).map(e=>e.a===id?e.b:e.a);
+}
+
+/* ============================================================
+   QUESTS (now scalable; a bunch across the world)
+============================================================ */
+const QUESTS = [
+  {id:"q_crate_1", title:"Deliver Sealed Crate", from:"town_0", to:"port_0", item:{type:"quest",name:"Sealed Crate"}, reward:{gold:25, key:1, xp:30}, text:"A merchant needs a sealed crate delivered to the docks. No questions asked."},
+  {id:"q_herbs_1", title:"Medicinal Herbs Run", from:"camp_0", to:"city_greenhollow", item:{type:"quest",name:"Herb Satchel"}, reward:{gold:18, key:0, xp:24}, text:"Bring a satchel of herbs to the healer in Greenhollow."},
+  {id:"q_letter_1", title:"Captain’s Letter", from:"port_2", to:"capital_aurelia", item:{type:"quest",name:"Captain’s Letter"}, reward:{gold:22, key:0, xp:26}, text:"Carry a sealed letter to the capital’s steward."},
+  {id:"q_tools_1", title:"Tools for Redfen Camp", from:"city_embergate", to:"camp_3", item:{type:"quest",name:"Tool Bundle"}, reward:{gold:16, key:1, xp:22}, text:"Deliver tools to the camp. They’ll spare a key for your trouble."},
+  {id:"q_tomes_1", title:"Return Lost Tomes", from:"city_mornspire", to:"city_silverford", item:{type:"quest",name:"Bundle of Tomes"}, reward:{gold:30, key:0, xp:38}, text:"Return rare tomes to Silverford’s library. Don’t get them wet."},
+  {id:"q_guild_1", title:"Guild Contract Drop", from:"capital_aurelia", to:"city_westcliff", item:{type:"quest",name:"Guild Contract"}, reward:{gold:28, key:1, xp:35}, text:"Deliver an official guild contract for Westcliff’s chapter."},
+];
+
+function questBoardForNode(nodeId){
+  return QUESTS.filter(q=>q.from===nodeId);
+}
+function questStatus(qid){ return state.quests[qid] || {accepted:false, completed:false}; }
+function setQuestStatus(qid, patch){
+  const cur = questStatus(qid);
+  state.quests[qid] = {...cur, ...patch};
+}
+function activeQuest(){
+  if(!state.activeQuestId) return null;
+  return QUESTS.find(q=>q.id===state.activeQuestId) || null;
+}
+function hasQuestItem(name){ return state.bag.some(x=>x.type==="quest" && x.name===name); }
+function removeQuestItem(name){
+  const idx = state.bag.findIndex(x=>x.type==="quest" && x.name===name);
+  if(idx>=0) state.bag.splice(idx,1);
+}
+function addQuestItem(item){ if(!hasQuestItem(item.name)) state.bag.push({...item}); }
+
+function tryDeliverQuest(){
+  const q = activeQuest();
+  if(!q) return false;
+  const st = questStatus(q.id);
+  if(!st.accepted || st.completed) return false;
+
+  if(state.currentNode===q.to && hasQuestItem(q.item.name)){
+    removeQuestItem(q.item.name);
+    state.gold += q.reward.gold||0;
+    state.keys += q.reward.key||0;
+    gainXP(q.reward.xp||0);
+    setQuestStatus(q.id, {completed:true});
+    pushLog(`<span style="color:var(--good)">📦 Quest complete: ${q.title}! +${q.reward.gold||0}g${q.reward.key?` +${q.reward.key} key`:""} +${q.reward.xp||0}xp.</span>`);
+    state.activeQuestId = null;
+    return true;
+  }
+  return false;
+}
+
+/* ============================================================
+   PER-VISIT LOOT
+============================================================ */
 function enterNode(nodeId){
   state.currentNode = nodeId;
   state.visitCounter += 1;
   state.nodeVisitStamp[nodeId] = state.visitCounter;
 
   const n = nodeById[nodeId];
-  if(n.type==="town"||n.type==="camp"||n.type==="port") state.lastSafeNode=nodeId;
+  if(n.type==="town"||n.type==="city"||n.type==="camp"||n.type==="port"||n.type==="capital") state.lastSafeNode=nodeId;
 
   tryDeliverQuest();
+
+  // center view gently on new location (world only)
+  if(state.mode==="world"){
+    softCenterOnNode(nodeId);
+  }
+
   render();
 }
 function areaLootAvailable(){
@@ -783,6 +1284,14 @@ function areaLootAvailable(){
   const used  = state.nodeLootStamp[state.currentNode] || 0;
   return used !== stamp;
 }
+
+function outcomeCheck(statKey, dc){
+  const s = getEffectiveStats();
+  const mod = statMod(s[statKey]||10);
+  const d20 = roll(20);
+  return {d20, mod, total:d20+mod, pass:(d20+mod)>=dc};
+}
+
 function useAreaLoot(){
   if(state.mode==="combat"){ pushLog("⚠️ Can't loot during combat."); render(); return; }
   if(!areaLootAvailable()){
@@ -794,37 +1303,69 @@ function useAreaLoot(){
   state.nodeLootStamp[state.currentNode] = state.nodeVisitStamp[state.currentNode];
 
   const n=nodeById[state.currentNode];
-  let r=roll(100);
+  const r=roll(100);
 
-  if(n.type==="town"||n.type==="port"){
-    if(r<=55){ const g=roll(6)+2; state.gold+=g; pushLog(`🧺 You find <b>${g}</b> gold.`); }
+  // terrain influences loot
+  const tt = terrainType(n.x,n.y);
+
+  if(n.type==="capital"||n.type==="city"){
+    if(r<=50){ const g=roll(10)+6; state.gold+=g; pushLog(`🧺 You find <b>${g}</b> gold in the bustle.`); gainXP(6); }
+    else if(r<=70){ addToBag({type:"consumable", name:"Ration", kind:"food", qty:1}); pushLog("🧺 Found <b>1 Ration</b>."); }
+    else { const item=randomGear(); state.bag.push(item); pushLog(`🧺 Found gear: <b>${fmtItem(item)}</b>.`); }
+  } else if(n.type==="town"||n.type==="port"){
+    if(r<=55){ const g=roll(8)+3; state.gold+=g; pushLog(`🧺 You find <b>${g}</b> gold.`); }
     else { addToBag({type:"consumable", name:"Ration", kind:"food", qty:1}); pushLog("🧺 Found <b>1 Ration</b>."); }
   } else if(n.type==="camp"){
-    if(r<=45){ addToBag({type:"consumable", name:"Ration", kind:"food", qty:1}); pushLog("🧺 Camp supplies: <b>1 Ration</b>."); }
+    if(r<=40){ addToBag({type:"consumable", name:"Ration", kind:"food", qty:1}); pushLog("🧺 Camp supplies: <b>1 Ration</b>."); }
     else { const item=randomGear(); state.bag.push(item); pushLog(`🧺 Found gear: <b>${fmtItem(item)}</b>.`); }
   } else {
-    if(r<=40){ const g=roll(10)+4; state.gold+=g; pushLog(`🧺 Found <b>${g}</b> gold.`); }
+    if(r<=40){ const g=roll(12)+4; state.gold+=g; pushLog(`🧺 Found <b>${g}</b> gold.`); }
     else { const item=randomGear(); state.bag.push(item); pushLog(`🧺 Found <b>${fmtItem(item)}</b>.`); }
   }
 
-  if(state.mode!=="combat" && roll(100)<=10){
+  // terrain perk
+  if(tt==="desert" && roll(100)<=25){
+    state.hunger = clamp(state.hunger-1,0,state.hungerMax);
+    pushLog(`<span style="color:var(--warn)">🏜️ Heat drains you: -1 hunger.</span>`);
+  }
+  if((tt==="tundra"||tt==="arctic") && roll(100)<=22){
+    state.hp = clamp(state.hp-1,0,state.hpMax);
+    pushLog(`<span style="color:var(--warn)">❄️ Bitter cold bites: -1 HP.</span>`);
+  }
+
+  // small world encounter chance: influenced by CHA/WIS
+  const chk = outcomeCheck("WIS", 12);
+  if(roll(100)<= (chk.pass ? 8 : 14)){
     startCombat(makeEnemy("ambush"), {origin:"world"});
   }
+
   render();
 }
 
-/* =========================
-   Travel rules (no energy cost)
-========================= */
+/* ============================================================
+   TRAVEL RULES (curved routes but time based on distance)
+   - Sea fare required + sea risks
+============================================================ */
+function distanceNode(a,b){
+  const A=nodeById[a], B=nodeById[b];
+  return Math.hypot(A.x-B.x, A.y-B.y);
+}
+function travelTimeMinutes(from,to){
+  const d = distanceNode(from,to);
+  // scaled for huge world
+  return clamp(Math.round(d * 0.18), 25, 260);
+}
 function canTravelTo(toId){
   if(state.mode!=="world") return false;
   return !!edgeBetween(state.currentNode,toId);
 }
+
 function travelTo(toId){
   if(state.mode!=="world") return;
   const e=edgeBetween(state.currentNode,toId);
   if(!e){ pushLog("🚫 No route."); render(); return; }
 
+  // sea fare
   if(e.kind==="sea"){
     const fare=e.fare||0;
     if(state.gold<fare){
@@ -838,11 +1379,17 @@ function travelTo(toId){
   const minutes = travelTimeMinutes(state.currentNode,toId);
   passTime(minutes, "Travel");
 
+  // travel checks influenced by terrain
+  const fromN=nodeById[state.currentNode];
+  const toN=nodeById[toId];
+  const tt = terrainType(toN.x,toN.y);
+
   if(e.kind==="sea"){
-    if(roll(100)<=15){
+    if(roll(100)<=14){
       pushLog(`<span style="color:var(--warn)">🌊 Rough waters! You fall into the sea.</span>`);
-      state.hp = clamp(state.hp - (roll(4)+1), 0, state.hpMax);
-      if(countItem("food")>0 && roll(100)<=35){
+      const dmg = roll(4)+1;
+      state.hp = clamp(state.hp - dmg, 0, state.hpMax);
+      if(countItem("food")>0 && roll(100)<=30){
         consumeItem("food",1);
         pushLog(`<span style="color:var(--warn)">🍗 You lose a ration to the waves.</span>`);
       }
@@ -857,74 +1404,72 @@ function travelTo(toId){
       const type = (roll(100)<=55) ? "pirates" : "sea";
       startCombat(makeEnemy(type), {origin:"sea"});
       state.pendingArrival = toId;
-      pushLog(`⚓ Combat triggered during sea travel to <b>${nodeById[toId].name}</b>.`);
+      pushLog(`⚓ Combat triggered during sea travel to <b>${toN.name}</b>.`);
       render(); return;
     }
   } else {
-    if(roll(100)<=18){
+    // overland hazards by terrain
+    let chance = 16;
+    if(tt==="forest"||tt==="woody") chance=20;
+    if(tt==="desert") chance=14;
+    if(tt==="tundra"||tt==="arctic") chance=18;
+    if(tt==="mountains") chance=22;
+
+    // WIS helps avoid
+    const avoid = outcomeCheck("WIS", 13);
+    chance = clamp(chance + (avoid.pass?-5:+0), 8, 28);
+
+    if(roll(100)<=chance){
       startCombat(makeEnemy("road"), {origin:"road"});
       state.pendingArrival = toId;
-      pushLog(`⚠️ Encounter on the road toward <b>${nodeById[toId].name}</b>.`);
+      pushLog(`⚠️ Encounter on the route toward <b>${toN.name}</b>.`);
       render(); return;
     }
   }
 
-  pushLog(`🧭 Arrived at <b>${nodeById[toId].name}</b>.`);
+  pushLog(`🧭 Arrived at <b>${toN.name}</b>.`);
   enterNode(toId);
   render();
 }
 
-/* =========================
-   Dungeons (Persistent)
-========================= */
-function makeRNG(seedStr){
-  let h = 2166136261;
-  for(let i=0;i<seedStr.length;i++){ h ^= seedStr.charCodeAt(i); h = Math.imul(h, 16777619); }
-  let s = h >>> 0;
-  return function(){
-    s ^= s << 13; s >>>= 0;
-    s ^= s >> 17; s >>>= 0;
-    s ^= s << 5;  s >>>= 0;
-    return (s >>> 0) / 4294967296;
-  };
-}
-function randomGearFromRng(rng){
-  const table = [
-    {type:"weapon", name:"Sword", atk:2},
-    {type:"weapon", name:"Dagger", atk:1},
-    {type:"weapon", name:"Warhammer", atk:3},
-    {type:"armor", name:"Leather Armor", def:2},
-    {type:"armor", name:"Chain Shirt", def:3},
-    {type:"accessory", name:"Ring of Luck", atk:1},
-    {type:"accessory", name:"Amulet of Guarding", def:1},
-  ];
-  return table[Math.floor(rng()*table.length)];
-}
+/* ============================================================
+   DUNGEONS (Persistent) — unchanged concept, expanded reveal via torches
+============================================================ */
+function randomGearFromRng(rng){ return randomGear(rng); }
+
 function dungeonChestContents(rng){
   const contents = [];
-  contents.push({type:"gold", amount: 8 + Math.floor(rng()*18)});
-  if(rng()<0.70) contents.push({type:"gear", item: randomGearFromRng(rng)});
-  if(rng()<0.55) contents.push({type:"consumable", item:{type:"consumable", name:"Ration", kind:"food", qty:1}});
-  if(rng()<0.25) contents.push({type:"key", amount:1});
+  contents.push({type:"gold", amount: 10 + Math.floor(rng()*24)});
+  if(rng()<0.72) contents.push({type:"gear", item: randomGearFromRng(rng)});
+  if(rng()<0.58) contents.push({type:"consumable", item:{type:"consumable", name:"Ration", kind:"food", qty:1}});
+  if(rng()<0.30) contents.push({type:"key", amount:1});
+  if(rng()<0.18) contents.push({type:"xp", amount: 12 + Math.floor(rng()*20)});
   return contents;
 }
 function makeDungeonEnemy(type,x,y){
   const base = {
-    "Goblin": {hp:12, ac:10, atk:3},
-    "Bandit": {hp:16, ac:11, atk:3},
-    "Cultist":{hp:14, ac:12, atk:3},
-    "Slime":  {hp:15, ac:10, atk:2},
-    "Wolf":   {hp:10, ac:10, atk:2},
-    "Boar":   {hp:14, ac:11, atk:3},
-    "Warg":   {hp:18, ac:12, atk:4},
-  }[type] || {hp:12, ac:10, atk:2};
-  return {x,y,type, hp:base.hp, ac:base.ac, atk:base.atk};
+    "Goblin": {hp:12, ac:10, atk:3, xp:18},
+    "Bandit": {hp:16, ac:11, atk:3, xp:22},
+    "Cultist":{hp:14, ac:12, atk:3, xp:24},
+    "Slime":  {hp:15, ac:10, atk:2, xp:20},
+    "Wolf":   {hp:10, ac:10, atk:2, xp:16},
+    "Boar":   {hp:14, ac:11, atk:3, xp:20},
+    "Warg":   {hp:18, ac:12, atk:4, xp:28},
+  }[type] || {hp:12, ac:10, atk:2, xp:18};
+  // scale slightly with level
+  const lv = Math.max(1,state.level);
+  const hp = base.hp + Math.floor((lv-1)*2);
+  const atk = base.atk + Math.floor((lv-1)/2);
+  const ac = base.ac + Math.floor((lv-1)/3);
+  const xp = base.xp + Math.floor((lv-1)*4);
+  return {x,y,type, hp, ac, atk, xp};
 }
+
 function generateDungeon(kind, id){
   const rng = makeRNG(kind+"::"+id);
-  const w = 24, h = 15;
+  const w = 28, h = 18;
 
-  let grid = Array.from({length:h}, ()=>Array.from({length:w}, ()=> (rng()< (kind==="forest"?0.47:0.50) ? "wall" : "floor")));
+  let grid = Array.from({length:h}, ()=>Array.from({length:w}, ()=> (rng()< (kind==="forest"?0.44:0.50) ? "wall" : "floor")));
   for(let y=0;y<h;y++){ grid[y][0]="wall"; grid[y][w-1]="wall"; }
   for(let x=0;x<w;x++){ grid[0][x]="wall"; grid[h-1][x]="wall"; }
 
@@ -939,7 +1484,6 @@ function generateDungeon(kind, id){
     }
     return c;
   }
-
   const iters = kind==="forest"?5:6;
   for(let i=0;i<iters;i++){
     const next = grid.map(row=>row.slice());
@@ -953,7 +1497,7 @@ function generateDungeon(kind, id){
   }
 
   function randomFloor(){
-    for(let t=0;t<3000;t++){
+    for(let t=0;t<4000;t++){
       const x = 1 + Math.floor(rng()*(w-2));
       const y = 1 + Math.floor(rng()*(h-2));
       if(grid[y][x]==="floor") return {x,y};
@@ -974,7 +1518,7 @@ function generateDungeon(kind, id){
 
   // door
   let doorPos=null;
-  for(let tries=0;tries<1800;tries++){
+  for(let tries=0;tries<2200;tries++){
     const p=randomFloor();
     if(Math.abs(p.x-entrance.x)+Math.abs(p.y-entrance.y)<6) continue;
     if(Math.abs(p.x-exit.x)+Math.abs(p.y-exit.y)<6) continue;
@@ -987,7 +1531,7 @@ function generateDungeon(kind, id){
 
   // key
   let keyPos=null;
-  for(let tries=0;tries<1800;tries++){
+  for(let tries=0;tries<2200;tries++){
     const p=randomFloor();
     if(doorPos && p.x===doorPos.x && p.y===doorPos.y) continue;
     if(Math.abs(p.x-entrance.x)+Math.abs(p.y-entrance.y)<4) continue;
@@ -999,10 +1543,10 @@ function generateDungeon(kind, id){
   }
 
   // chests
-  const chestCount = kind==="forest"?3:4;
+  const chestCount = kind==="forest"?4:5;
   for(let i=0;i<chestCount;i++){
     let p=null;
-    for(let tries=0;tries<2200;tries++){
+    for(let tries=0;tries<3000;tries++){
       const c=randomFloor();
       if(grid[c.y][c.x]!=="floor") continue;
       if(Math.abs(c.x-entrance.x)+Math.abs(c.y-entrance.y)<5) continue;
@@ -1011,24 +1555,22 @@ function generateDungeon(kind, id){
       p=c; break;
     }
     if(!p) continue;
-    const locked = rng()<0.45;
+    const locked = rng()<0.48;
     grid[p.y][p.x]= locked ? "chestLocked" : "chest";
     chests[`${p.x},${p.y}`]={locked, opened:false, contents:dungeonChestContents(rng)};
   }
 
   // enemies placed
-  const enemyCount = kind==="forest"?6:5;
+  const enemyCount = kind==="forest"?7:6;
   const enemyTypes = kind==="forest" ? ["Wolf","Bandit","Boar","Warg"] : ["Goblin","Bandit","Cultist","Slime"];
   for(let i=0;i<enemyCount;i++){
     let p=null;
-    for(let tries=0;tries<2600;tries++){
+    for(let tries=0;tries<3400;tries++){
       const c=randomFloor();
       if(grid[c.y][c.x]!=="floor") continue;
       if(Math.abs(c.x-entrance.x)+Math.abs(c.y-entrance.y)<4) continue;
       const k=`${c.x},${c.y}`;
-      if(chests[k]) continue;
-      if(keysOnGround[k]) continue;
-      if(doors[k]) continue;
+      if(chests[k]||keysOnGround[k]||doors[k]) continue;
       if(enemies.some(e=>e.x===c.x && e.y===c.y)) continue;
       p=c; break;
     }
@@ -1039,6 +1581,7 @@ function generateDungeon(kind, id){
 
   return {kind,id,w,h,tiles:grid,seen,px:entrance.x,py:entrance.y,enemies,chests,keysOnGround,doors};
 }
+
 function revealAround(d, px,py,r){
   for(let y=py-r;y<=py+r;y++){
     for(let x=px-r;x<=px+r;x++){
@@ -1046,6 +1589,7 @@ function revealAround(d, px,py,r){
     }
   }
 }
+
 function currentDungeon(){
   if(!state.dungeonId) return null;
   return state.dungeons[state.dungeonId] || null;
@@ -1062,7 +1606,10 @@ function enterDungeon(nodeId){
   }
 
   const d=currentDungeon();
-  revealAround(d,d.px,d.py,2);
+  const baseR=2;
+  const torchBonus = Math.min(2, state.torches>0 ? 1 : 0); // if you own torches, better baseline
+  revealAround(d,d.px,d.py, baseR+torchBonus);
+
   pushLog(`🕯️ Entered ${n.name}. Fog-of-war active.`);
   render();
 }
@@ -1074,6 +1621,15 @@ function leaveDungeon(){
   render();
 }
 function tileAt(d,x,y){ return d.tiles?.[y]?.[x] || "wall"; }
+function isWalkable(d,x,y){
+  const t=tileAt(d,x,y);
+  if(t==="wall") return false;
+  if(t==="doorLocked"){
+    const door=d.doors[`${x},${y}`];
+    return door && door.opened;
+  }
+  return true;
+}
 function dungeonMove(dx,dy){
   if(state.mode!=="dungeon" || state.mode==="combat") return;
   const d=currentDungeon(); if(!d) return;
@@ -1093,20 +1649,43 @@ function dungeonMove(dx,dy){
 
   passTime(8, "Dungeon movement");
   d.px=nx; d.py=ny;
-  revealAround(d,nx,ny,2);
+
+  const baseR=2;
+  const torchBonus = (state.torches>0 ? 1 : 0);
+  revealAround(d,nx,ny, baseR+torchBonus);
 
   const ei = d.enemies.findIndex(e=>e.x===nx && e.y===ny);
   if(ei>=0){
     const e=d.enemies[ei];
-    startCombat(makeEnemyFromDungeon(e), {origin:"dungeon", dungeonId: state.dungeonId, enemyPos:{x:nx,y:ny}});
+    startCombat(makeEnemyFromDungeon(e), {origin:"dungeon", dungeonId: state.dungeonId, enemyPos:{x:nx,y:ny}, dungeonEnemyXP:e.xp||20});
   }
 
   render();
 }
 
-/* =========================
-   Tile-based Interactions
-========================= */
+/* ============================================================
+   TILE-BASED INTERACTIONS + CITY ESTABLISHMENTS
+============================================================ */
+function addInteractButton(label, fn){
+  const b=document.createElement("button");
+  b.className="secondary";
+  b.textContent=label;
+  b.onclick=fn;
+  $("interactButtons").appendChild(b);
+}
+
+function buildCityMenu(node){
+  // establishments: church, tavern, inn, shop, library, guild
+  const list = [];
+  list.push({name:"Inn", icon:"🛏️", fn:()=>openInn(node)});
+  list.push({name:"Tavern", icon:"🍺", fn:()=>openTavern(node)});
+  list.push({name:"Shop", icon:"🛒", fn:()=>openShop(node)});
+  list.push({name:"Church", icon:"⛪", fn:()=>openChurch(node)});
+  list.push({name:"Library", icon:"📚", fn:()=>openLibrary(node)});
+  list.push({name:"Guild", icon:"🛡️", fn:()=>openGuild(node)});
+  return list;
+}
+
 function buildInteractOptions(){
   const btns = $("interactButtons");
   btns.innerHTML = "";
@@ -1119,16 +1698,33 @@ function buildInteractOptions(){
   if(state.mode==="world"){
     const n=nodeById[state.currentNode];
     let msg = `You are in ${n.name}. `;
-    if(n.type==="cave"||n.type==="forest") msg += "You can enter this area.";
-    else msg += "Check the Quest Board or Rest.";
     $("interactHint").textContent = msg;
 
+    // dungeons entry
     if(n.type==="cave"||n.type==="forest"){
+      msg += "You can enter this area.";
+      $("interactHint").textContent = msg;
       addInteractButton(`Enter ${n.type==="cave"?"Cave":"Forest"}`, ()=>enterDungeon(n.id));
+      return;
     }
+
+    // city/town/capital/port menus
+    if(n.type==="capital"||n.type==="city"||n.type==="town"||n.type==="port"||n.type==="camp"){
+      $("interactHint").textContent = `${n.name}: choose an establishment.`;
+      const menu = buildCityMenu(n);
+      for(const m of menu){
+        addInteractButton(`${m.icon} ${m.name}`, m.fn);
+      }
+      // also allow quick quest board
+      addInteractButton("📜 Quest Board", openQuestBoard);
+      return;
+    }
+
+    $("interactHint").textContent = msg;
     return;
   }
 
+  // dungeon mode
   const d=currentDungeon(); if(!d) return;
   const x=d.px, y=d.py;
   const t=tileAt(d,x,y);
@@ -1145,7 +1741,6 @@ function buildInteractOptions(){
       addInteractButton("Open Chest", ()=>openChestAt(x,y));
     }
   }
-
   if(t==="key"){
     const k=d.keysOnGround[`${x},${y}`];
     if(k && !k.taken){
@@ -1153,7 +1748,6 @@ function buildInteractOptions(){
       addInteractButton("Pick up Key", ()=>pickupKeyAt(x,y));
     }
   }
-
   if(t==="doorLocked"){
     const door=d.doors[`${x},${y}`];
     if(door?.opened){
@@ -1163,24 +1757,17 @@ function buildInteractOptions(){
       addInteractButton("Unlock Door (1 key)", ()=>unlockDoorAt(x,y));
     }
   }
-
   if(t==="exit"){
     lines.push("Exit to surface.");
     addInteractButton("Leave Dungeon", ()=>leaveDungeon());
   }
 
-  lines.push("You can search this area to reveal more.");
+  lines.push("Search reveals more (no energy cost).");
   addInteractButton("Search (Reveal)", ()=>dungeonSearch());
 
   $("interactHint").textContent = lines.join(" • ");
 }
-function addInteractButton(label, fn){
-  const b=document.createElement("button");
-  b.className="secondary";
-  b.textContent=label;
-  b.onclick=fn;
-  $("interactButtons").appendChild(b);
-}
+
 function pickupKeyAt(x,y){
   const d=currentDungeon(); if(!d) return;
   const k=d.keysOnGround[`${x},${y}`];
@@ -1233,6 +1820,7 @@ function openChestAt(x,y){
     if(item.type==="gear"){ state.bag.push(item.item); gained.push(fmtItem(item.item)); }
     if(item.type==="consumable"){ addToBag(item.item); gained.push(item.item.name); }
     if(item.type==="key"){ state.keys += item.amount; gained.push(`${item.amount} key`); }
+    if(item.type==="xp"){ gainXP(item.amount); gained.push(`${item.amount}xp`); }
   }
   pushLog(`📦 Chest opened! Gained: <b>${gained.join(", ")}</b>`);
   render();
@@ -1240,23 +1828,261 @@ function openChestAt(x,y){
 function dungeonSearch(){
   const d=currentDungeon(); if(!d) return;
   passTime(12, "Search dungeon area");
-  revealAround(d,d.px,d.py,3);
-  pushLog("🕯️ You search carefully and reveal more of the area.");
-  if(roll(100)<=18){
-    const g=roll(10)+3; state.gold+=g;
-    pushLog(`✨ Hidden find: <b>${g}g</b>`);
+
+  const baseR=3;
+  const torchBonus = (state.torches>0 ? 1 : 0);
+  revealAround(d,d.px,d.py, baseR+torchBonus);
+
+  // search check (INT or WIS)
+  const chk = (state.class==="Mage") ? outcomeCheck("INT", 12) : outcomeCheck("WIS", 12);
+  if(chk.pass && roll(100)<=30){
+    const g=roll(12)+5; state.gold+=g;
+    pushLog(`✨ Search success (${chk.total}): hidden stash <b>${g}g</b>.`);
+    gainXP(8);
+  } else {
+    pushLog("🕯️ You search carefully and reveal more of the area.");
   }
   render();
 }
 
-/* =========================
-   Combat
-========================= */
+/* ============================================================
+   CITY ESTABLISHMENTS (modal-driven)
+============================================================ */
+function openInn(node){
+  if(state.mode!=="world") return;
+  const price = (node.type==="capital"||node.type==="city") ? 10 : 7;
+  const html = `
+    <div class="panel">
+      <div><b>Inn</b> — Rest safely and recover.</div>
+      <div class="muted" style="margin-top:8px">Cost: <b>${price}g</b> • Heals and advances to next morning.</div>
+      <div class="row" style="margin-top:12px">
+        <button class="small" onclick="payAndSleep(${price})">Pay & Sleep</button>
+        <button class="small secondary" onclick="closeModal()">Leave</button>
+      </div>
+    </div>
+  `;
+  openModal(`🛏️ Inn — ${node.name}`, html);
+}
+function payAndSleep(price){
+  if(state.gold<price){ pushLog("🛏️ Not enough gold for the inn."); render(); return; }
+  state.gold -= price;
+  closeModal();
+  sleep(true); // inn sleep
+}
+function openTavern(node){
+  if(state.mode!=="world") return;
+  // rumors based on terrain + quest hints
+  const q = activeQuest();
+  const rumor = (() => {
+    const t = terrainType(node.x,node.y);
+    const list = [
+      "A traveler swears the caves remember what you’ve opened — chests don’t reset.",
+      "Guild contracts pay well if you can deliver without picking fights.",
+      "Torches make your dungeon searches reveal more ground.",
+      "Desert routes are safer at dawn… but hunger hits harder in the heat.",
+      "In the tundra, the wind steals your strength — pack rations and rest often.",
+      "Bandits avoid confident folk — a strong presence can sometimes avert trouble."
+    ];
+    if(q) list.unshift(`Your active quest leads toward <b>${nodeById[q.to]?.name || "your destination"}</b>.`);
+    if(t==="mountains") list.unshift("Mountain passes hide shortcuts — but beasts nest near cliffs.");
+    if(t==="forest"||t==="woody") list.unshift("Forests conceal ambushes. Keep your wits about you.");
+    return list[Math.floor(Math.random()*list.length)];
+  })();
+
+  const html = `
+    <div class="panel">
+      <div><b>Tavern</b> — Drinks, chatter, and work.</div>
+      <div class="muted" style="margin-top:10px">Rumor: ${rumor}</div>
+      <div class="row" style="margin-top:12px">
+        <button class="small" onclick="openQuestBoard()">Quest Board</button>
+        <button class="small secondary" onclick="closeModal()">Leave</button>
+      </div>
+    </div>
+  `;
+  openModal(`🍺 Tavern — ${node.name}`, html);
+}
+function openShop(node){
+  if(state.mode!=="world") return;
+  const goods = [
+    {label:"Ration", cost:5, action:"buy_ration"},
+    {label:"Torch", cost:4, action:"buy_torch"},
+    {label:"Basic Key", cost:14, action:"buy_key"},
+    {label:"Healing Poultice", cost:12, action:"buy_poultice"},
+  ];
+  const sellables = state.bag
+    .map((it,idx)=>({it,idx}))
+    .filter(x=>x.it.type==="weapon"||x.it.type==="armor"||x.it.type==="accessory");
+
+  let html = `<div class="panel"><div><b>Shop</b> — Buy supplies or sell gear.</div>`;
+  html += `<div class="muted" style="margin-top:8px">Gold: <b>${state.gold}g</b></div>`;
+  html += `<div style="margin-top:12px"><b>Buy</b></div><div style="display:grid;gap:10px;margin-top:8px">`;
+  for(const g of goods){
+    html += `
+      <div class="panel" style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+        <div>${g.label}</div>
+        <div class="row">
+          <span class="muted"><b>${g.cost}g</b></span>
+          <button class="small" onclick="shopBuy('${g.action}', ${g.cost})">Buy</button>
+        </div>
+      </div>
+    `;
+  }
+  html += `</div>`;
+
+  html += `<div style="margin-top:14px"><b>Sell gear</b> <span class="muted">(50% value)</span></div>`;
+  if(sellables.length===0){
+    html += `<div class="muted" style="margin-top:8px">No sellable gear in your backpack.</div>`;
+  } else {
+    html += `<div style="display:grid;gap:10px;margin-top:8px">`;
+    for(const s of sellables){
+      const value = gearValue(s.it);
+      const sell = Math.floor(value*0.5);
+      html += `
+        <div class="panel" style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+          <div><b>${s.it.name}</b> <span class="muted">${s.it.type}</span></div>
+          <div class="row">
+            <span class="muted">Sell: <b>${sell}g</b></span>
+            <button class="small secondary" onclick="shopSell(${s.idx})">Sell</button>
+          </div>
+        </div>
+      `;
+    }
+    html += `</div>`;
+  }
+
+  html += `<div class="row" style="margin-top:12px"><button class="small secondary" onclick="closeModal()">Leave</button></div></div>`;
+  openModal(`🛒 Shop — ${node.name}`, html);
+}
+function gearValue(it){
+  let v=10;
+  v += (it.atk||0)*7 + (it.def||0)*7;
+  if((it.name||"").includes("Fine")) v += 8;
+  if((it.name||"").includes("Mythic")) v += 18;
+  return v;
+}
+function shopBuy(action, cost){
+  if(state.gold < cost){ pushLog("🛒 Not enough gold."); render(); return; }
+  state.gold -= cost;
+  if(action==="buy_ration") addToBag({type:"consumable", name:"Ration", kind:"food", qty:1});
+  if(action==="buy_torch") state.torches += 1;
+  if(action==="buy_key") state.keys += 1;
+  if(action==="buy_poultice") addToBag({type:"consumable", name:"Poultice", kind:"heal", qty:1});
+  pushLog(`🛒 Purchased item for <b>${cost}g</b>.`);
+  openShop(nodeById[state.currentNode]); // refresh modal
+  render();
+}
+function shopSell(idx){
+  const it = state.bag[idx];
+  if(!it) return;
+  const sell = Math.floor(gearValue(it)*0.5);
+  state.bag.splice(idx,1);
+  state.gold += sell;
+  pushLog(`💰 Sold <b>${it.name}</b> for <b>${sell}g</b>.`);
+  openShop(nodeById[state.currentNode]);
+  render();
+}
+
+function openChurch(node){
+  if(state.mode!=="world") return;
+  const donate = (node.type==="capital"||node.type==="city") ? 8 : 6;
+  const html = `
+    <div class="panel">
+      <div><b>Church</b> — Quiet prayers and healing.</div>
+      <div class="muted" style="margin-top:8px">Donate <b>${donate}g</b> to restore HP and ease hardship.</div>
+      <div class="row" style="margin-top:12px">
+        <button class="small" onclick="churchHeal(${donate})">Donate & Heal</button>
+        <button class="small secondary" onclick="closeModal()">Leave</button>
+      </div>
+    </div>
+  `;
+  openModal(`⛪ Church — ${node.name}`, html);
+}
+function churchHeal(cost){
+  if(state.gold<cost){ pushLog("⛪ Not enough gold to donate."); render(); return; }
+  state.gold -= cost;
+  const s=getEffectiveStats();
+  const heal = 6 + roll(6) + Math.max(0, statMod(s.WIS));
+  state.hp = clamp(state.hp + heal, 0, state.hpMax);
+  state.hunger = clamp(state.hunger + 2, 0, state.hungerMax);
+  gainXP(10);
+  pushLog(`<span style="color:var(--good)">⛪ You feel restored. Healed <b>${heal}</b> HP.</span>`);
+  closeModal();
+  render();
+}
+
+function openLibrary(node){
+  if(state.mode!=="world") return;
+  const chk = outcomeCheck("INT", 13);
+  const text = chk.pass
+    ? `You study maps and histories. <b>INT check ${chk.total} (pass)</b> — you gain insight and feel sharper.`
+    : `You leaf through dusty tomes. <b>INT check ${chk.total} (fail)</b> — mostly confusing diagrams.`;
+
+  const html = `
+    <div class="panel">
+      <div><b>Library</b> — Research and lore.</div>
+      <div class="muted" style="margin-top:10px">${text}</div>
+      <div class="row" style="margin-top:12px">
+        <button class="small" onclick="libraryStudy(${chk.pass ? 1:0})">Study</button>
+        <button class="small secondary" onclick="closeModal()">Leave</button>
+      </div>
+    </div>
+  `;
+  openModal(`📚 Library — ${node.name}`, html);
+}
+function libraryStudy(pass){
+  passTime(40, "Library study");
+  if(pass){
+    gainXP(18);
+    pushLog(`<span style="color:var(--good)">📚 You learn useful routes and tactics. +18xp.</span>`);
+  } else {
+    gainXP(6);
+    pushLog(`📚 Some knowledge sticks. +6xp.`);
+  }
+  closeModal();
+  render();
+}
+
+function openGuild(node){
+  if(state.mode!=="world") return;
+  const trainCost = 16 + (state.level-1)*4;
+  const html = `
+    <div class="panel">
+      <div><b>Guild Hall</b> — Contracts and training.</div>
+      <div class="muted" style="margin-top:10px">Training costs <b>${trainCost}g</b> and grants XP (and a small permanent boost every few trainings later).</div>
+      <div class="row" style="margin-top:12px">
+        <button class="small" onclick="guildTrain(${trainCost})">Train</button>
+        <button class="small secondary" onclick="openQuestBoard()">Quest Board</button>
+        <button class="small secondary" onclick="closeModal()">Leave</button>
+      </div>
+    </div>
+  `;
+  openModal(`🛡️ Guild — ${node.name}`, html);
+}
+function guildTrain(cost){
+  if(state.gold<cost){ pushLog("🛡️ Not enough gold for training."); render(); return; }
+  state.gold -= cost;
+  passTime(60, "Guild training");
+  gainXP(28);
+  pushLog(`<span style="color:var(--good)">🛡️ You train hard. +28xp.</span>`);
+  closeModal();
+  render();
+}
+
+/* ============================================================
+   COMBAT (attack only in combat; stats affect rolls)
+============================================================ */
 function makeEnemy(tag){
-  if(tag==="pirates") return {name:"Pirate Skiff", hp:18, hpMax:18, ac:12, atk:4, tag:"pirates"};
+  // scale with player level
+  const lv = Math.max(1,state.level);
+  const bumpHp = Math.floor((lv-1)*2);
+  const bumpAtk = Math.floor((lv-1)/2);
+  const bumpAc = Math.floor((lv-1)/3);
+  const bumpXp = Math.floor((lv-1)*5);
+
+  if(tag==="pirates") return {name:"Pirate Skiff", hp:18+bumpHp, hpMax:18+bumpHp, ac:12+bumpAc, atk:4+bumpAtk, xp:28+bumpXp, tag:"pirates"};
   if(tag==="sea"){
     const pick = (roll(2)===1) ? "Sea Serpent" : "Reef Stalker";
-    return {name:pick, hp:16, hpMax:16, ac:11, atk:4, tag:"sea"};
+    return {name:pick, hp:16+bumpHp, hpMax:16+bumpHp, ac:11+bumpAc, atk:4+bumpAtk, xp:26+bumpXp, tag:"sea"};
   }
   if(tag==="road"){
     const pick = ["Bandit","Wolf","Cultist"][roll(3)-1];
@@ -1264,20 +2090,22 @@ function makeEnemy(tag){
   }
   const pick = ["Goblin","Bandit","Wolf"][roll(3)-1];
   return makeEnemyByName(pick, tag);
-}
-function makeEnemyByName(name, tag){
-  const base = {
-    "Goblin": {hp:12, ac:10, atk:3},
-    "Bandit": {hp:16, ac:11, atk:3},
-    "Wolf":   {hp:10, ac:10, atk:2},
-    "Cultist":{hp:14, ac:12, atk:3},
-    "Slime":  {hp:15, ac:10, atk:2},
-  }[name] || {hp:12, ac:10, atk:2};
-  return {name, hp:base.hp, hpMax:base.hp, ac:base.ac, atk:base.atk, tag};
+
+  function makeEnemyByName(name, tag){
+    const base = {
+      "Goblin": {hp:12, ac:10, atk:3, xp:18},
+      "Bandit": {hp:16, ac:11, atk:3, xp:22},
+      "Wolf":   {hp:10, ac:10, atk:2, xp:16},
+      "Cultist":{hp:14, ac:12, atk:3, xp:24},
+      "Slime":  {hp:15, ac:10, atk:2, xp:20},
+    }[name] || {hp:12, ac:10, atk:2, xp:18};
+    return {name, hp:base.hp+bumpHp, hpMax:base.hp+bumpHp, ac:base.ac+bumpAc, atk:base.atk+bumpAtk, xp:base.xp+bumpXp, tag};
+  }
 }
 function makeEnemyFromDungeon(e){
-  return {name:e.type, hp:e.hp, hpMax:e.hp, ac:e.ac, atk:e.atk, tag:"dungeon"};
+  return {name:e.type, hp:e.hp, hpMax:e.hp, ac:e.ac, atk:e.atk, xp:e.xp||22, tag:"dungeon"};
 }
+
 function startCombat(enemy, meta){
   state.mode="combat";
   state.enemy=enemy;
@@ -1290,10 +2118,15 @@ function endCombat(victory){
   if(victory){
     const gold=roll(12)+4;
     state.gold+=gold;
-    pushLog(`✅ Victory! You gain <b>${gold}g</b>.`);
 
-    if(roll(100)<=28){ const gear=randomGear(); state.bag.push(gear); pushLog(`📦 Loot: <b>${fmtItem(gear)}</b>`); }
+    const xpGain = state.enemy?.xp || meta.dungeonEnemyXP || 18;
+    gainXP(xpGain);
+
+    pushLog(`✅ Victory! You gain <b>${gold}g</b> and <b>${xpGain}xp</b>.`);
+
+    if(roll(100)<=26){ const gear=randomGear(); state.bag.push(gear); pushLog(`📦 Loot: <b>${fmtItem(gear)}</b>.`); }
     if(roll(100)<=22){ addToBag({type:"consumable", name:"Ration", kind:"food", qty:1}); pushLog(`🍗 Loot: <b>Ration</b>`); }
+    if(roll(100)<=14){ addToBag({type:"consumable", name:"Poultice", kind:"heal", qty:1}); pushLog(`🧴 Loot: <b>Poultice</b>`); }
 
     if(state.pendingArrival){
       const toId=state.pendingArrival;
@@ -1322,32 +2155,45 @@ function endCombat(victory){
 
   render();
 }
+
 function playerAttack(){
   if(state.mode!=="combat" || !state.enemy) return;
 
+  const s=getEffectiveStats();
+  const cls=CLASSES[state.class] || CLASSES["Fighter"];
+  const primary = cls.primary;
+  const mod = statMod(s[primary]||10);
+
   const d20=roll(20);
-  pushLog(`🎲 You roll d20: <b>${d20}</b>`);
-  if(d20 >= state.enemy.ac){
+  const total = d20 + mod + Math.floor((state.level-1)/2);
+  pushLog(`🎲 You roll d20: <b>${d20}</b> + mod <b>${mod}</b> = <b>${total}</b>`);
+
+  if(d20===20){
+    const dmg=(roll(6)+roll(6)) + getAtk();
+    state.enemy.hp -= dmg;
+    pushLog(`<span style="color:var(--good)">💥 Critical! You deal <b>${dmg}</b>.</span>`);
+  } else if(total >= state.enemy.ac){
     const dmg=roll(6)+getAtk();
     state.enemy.hp -= dmg;
     pushLog(`⚔️ Hit! You deal <b>${dmg}</b>.`);
-  } else pushLog(`❌ Miss.`);
+  } else {
+    pushLog(`❌ Miss.`);
+  }
 
   if(state.enemy.hp<=0){
     pushLog(`💀 ${state.enemy.name} defeated.`);
     endCombat(true);
     return;
   }
-
   enemyTurn();
 }
 function enemyTurn(){
   const d20=roll(20);
-  const playerAC=10+getDef();
-  pushLog(`🎲 ${state.enemy.name} rolls d20: <b>${d20}</b>`);
-  if(d20 >= playerAC){
+  const total = d20 + state.enemy.atk;
+  pushLog(`🎲 ${state.enemy.name} rolls d20: <b>${d20}</b> + atk <b>${state.enemy.atk}</b> = <b>${total}</b>`);
+  if(total >= playerAC()){
     const dmg=roll(6)+state.enemy.atk;
-    state.hp -= dmg;
+    state.hp = clamp(state.hp - dmg, 0, state.hpMax);
     pushLog(`<span style="color:var(--bad)">🩸 You take ${dmg} damage.</span>`);
   } else pushLog(`🛡️ Enemy misses.`);
 
@@ -1365,81 +2211,125 @@ function enemyTurn(){
 }
 function flee(){
   if(state.mode!=="combat") return;
-  const d20=roll(20);
-  pushLog(`🏃 Flee attempt d20: <b>${d20}</b>`);
-  if(d20>=11) endCombat(false);
+  const chk = outcomeCheck("DEX", 13);
+  pushLog(`🏃 Flee attempt: d20 <b>${chk.d20}</b> + DEX mod <b>${chk.mod}</b> = <b>${chk.total}</b>`);
+  if(chk.pass) endCombat(false);
   else { pushLog("❌ Failed to flee."); enemyTurn(); }
 }
 
-/* =========================
-   Search / Explore
-========================= */
+/* ============================================================
+   SEARCH / EXPLORE
+============================================================ */
 function searchExplore(){
   if(state.mode==="combat"){ pushLog("⚠️ Can't search during combat."); render(); return; }
   if(state.mode==="dungeon"){ dungeonSearch(); return; }
 
   passTime(20, "World search");
-  const r=roll(100);
-  if(r<=18){ const g=roll(12)+3; state.gold+=g; pushLog(`🔎 Found <b>${g}g</b>.`); }
-  else if(r<=30){ const item=randomGear(); state.bag.push(item); pushLog(`🔎 Found <b>${fmtItem(item)}</b>.`); }
-  else pushLog("🔎 Nothing useful.");
 
-  if(roll(100)<=12) startCombat(makeEnemy("ambush"), {origin:"world"});
+  const n=nodeById[state.currentNode];
+  const tt=terrainType(n.x,n.y);
+
+  // Stat check varies by class/terrain
+  let stat = "WIS";
+  if(state.class==="Rogue") stat="DEX";
+  if(state.class==="Mage") stat="INT";
+  if(tt==="desert") stat="CON";
+  if(tt==="mountains") stat="STR";
+
+  const chk = outcomeCheck(stat, 13);
+  if(chk.pass){
+    const r=roll(100);
+    if(r<=35){ const g=roll(14)+6; state.gold+=g; pushLog(`🔎 Success (${chk.total}): found <b>${g}g</b>.`); gainXP(10); }
+    else if(r<=58){ const item=randomGear(); state.bag.push(item); pushLog(`🔎 Success (${chk.total}): found <b>${fmtItem(item)}</b>.`); gainXP(12); }
+    else { addToBag({type:"consumable", name:"Ration", kind:"food", qty:1}); pushLog(`🔎 Success (${chk.total}): found <b>Ration</b>.`); gainXP(8); }
+  } else {
+    pushLog(`🔎 Search fails (${chk.total}). Nothing useful.`);
+    gainXP(2);
+  }
+
+  // Encounter chance reduced by CHA (presence)
+  const cha = outcomeCheck("CHA", 12);
+  let encounter = 12;
+  if(cha.pass) encounter = 8;
+
+  if(roll(100)<=encounter) startCombat(makeEnemy("ambush"), {origin:"world"});
   render();
 }
 
-/* =========================
-   Sleep/Eat/Buy
-========================= */
+/* ============================================================
+   SLEEP / EAT / BUY
+============================================================ */
 function canSleepHere(){
   const n=nodeById[state.currentNode];
-  return state.mode==="world" && (n.type==="town"||n.type==="camp"||n.type==="port");
+  return state.mode==="world" && (n.type==="town"||n.type==="city"||n.type==="camp"||n.type==="port"||n.type==="capital");
 }
-function sleep(){
+function sleep(isInn=false){
   if(state.mode==="combat"){ pushLog("⚠️ Can't sleep in combat."); render(); return; }
-  if(!canSleepHere()){ pushLog("🛌 You can only sleep in a Town, Camp, or Port."); render(); return; }
+  if(!canSleepHere()){ pushLog("🛌 You can only sleep in a safe location."); render(); return; }
 
   const now = state.minutes;
   const target = 8*60;
   let delta = (target - now);
   if(delta<=0) delta += 1440;
-  passTime(delta, "Sleep");
+  passTime(delta, isInn ? "Inn Sleep" : "Sleep");
 
-  const heal = 8 + roll(6);
+  const s=getEffectiveStats();
+  const heal = (isInn?10:8) + roll(6) + Math.max(0, statMod(s.CON));
   state.hp = clamp(state.hp + heal, 0, state.hpMax);
-  state.hunger = clamp(state.hunger + 3, 0, state.hungerMax);
+  state.hunger = clamp(state.hunger + (isInn?5:3), 0, state.hungerMax);
   pushLog(`<span style="color:var(--good)">🛌 Slept safely. Healed ${heal} HP.</span>`);
   render();
 }
 function eat(){
   if(state.mode==="combat"){ pushLog("⚠️ Can't eat in combat."); render(); return; }
+  // allow poultice usage from bag too (heals)
   if(countItem("food")<=0){ pushLog("🍗 No rations."); render(); return; }
   consumeItem("food",1);
+  const s=getEffectiveStats();
   state.hunger = clamp(state.hunger + 5, 0, state.hungerMax);
-  state.hp = clamp(state.hp + 2, 0, state.hpMax);
+  state.hp = clamp(state.hp + 2 + Math.max(0,statMod(s.CON)), 0, state.hpMax);
   pushLog(`<span style="color:var(--good)">🍗 Ate a ration. +Hunger, +HP.</span>`);
+  render();
+}
+function usePoultice(){
+  if(state.mode==="combat"){ pushLog("🧴 You can apply a poultice after combat."); render(); return; }
+  const has = state.bag.find(x=>x.type==="consumable" && x.kind==="heal");
+  if(!has){ pushLog("🧴 No poultices."); render(); return; }
+  consumeItem("heal",1);
+  const s=getEffectiveStats();
+  const heal = 6 + roll(6) + Math.max(0,statMod(s.WIS));
+  state.hp = clamp(state.hp + heal, 0, state.hpMax);
+  pushLog(`<span style="color:var(--good)">🧴 Applied poultice. Healed ${heal} HP.</span>`);
   render();
 }
 function canBuyHere(){
   const n=nodeById[state.currentNode];
-  return state.mode==="world" && (n.type==="town"||n.type==="port"||n.type==="camp");
+  return state.mode==="world" && (n.type==="town"||n.type==="city"||n.type==="port"||n.type==="camp"||n.type==="capital");
 }
 function buyRation(){
-  if(!canBuyHere()){ pushLog("🛒 Buy rations in town/camp/port."); render(); return; }
+  if(!canBuyHere()){ pushLog("🛒 Buy rations in safe locations."); render(); return; }
   if(state.gold<5){ pushLog("🛒 Not enough gold for a ration."); render(); return; }
   state.gold -= 5;
   addToBag({type:"consumable", name:"Ration", kind:"food", qty:1});
   pushLog("🛒 Bought <b>1 Ration</b> for 5g.");
   render();
 }
+function buyTorch(){
+  if(!canBuyHere()){ pushLog("🛒 Buy torches in safe locations."); render(); return; }
+  if(state.gold<4){ pushLog("🛒 Not enough gold for a torch."); render(); return; }
+  state.gold -= 4;
+  state.torches += 1;
+  pushLog("🕯️ Bought <b>1 Torch</b> for 4g.");
+  render();
+}
 
-/* =========================
-   Quest Board modal
-========================= */
+/* ============================================================
+   QUEST BOARD
+============================================================ */
 function openQuestBoard(){
   const n=nodeById[state.currentNode];
-  if(state.mode!=="world" || !(n.type==="town"||n.type==="camp"||n.type==="port")){
-    openModal("Quest Board", "You can only access a quest board in a Town, Camp, or Port.");
+  if(state.mode!=="world" || !(n.type==="town"||n.type==="city"||n.type==="camp"||n.type==="port"||n.type==="capital")){
+    openModal("Quest Board", "You can only access a quest board in a safe location.");
     return;
   }
 
@@ -1447,7 +2337,7 @@ function openQuestBoard(){
   let html = `<div style="margin-top:10px;color:var(--muted)">Available quests in <b>${n.name}</b>:</div><div style="margin-top:10px;display:grid;gap:10px">`;
 
   if(list.length===0){
-    html += `<div class="panel">No quests here yet.</div>`;
+    html += `<div class="panel">No quests here right now.</div>`;
   } else {
     for(const q of list){
       const st=questStatus(q.id);
@@ -1457,7 +2347,7 @@ function openQuestBoard(){
         <div class="panel">
           <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
             <div><b>${q.title}</b><div class="muted">${q.text}</div></div>
-            <div class="muted">To: <b>${nodeById[q.to].name}</b> • Reward: <b>${q.reward.gold}g</b>${q.reward.key?` + <b>${q.reward.key}</b> key`:""}</div>
+            <div class="muted">To: <b>${nodeById[q.to]?.name || q.to}</b> • Reward: <b>${q.reward.gold}g</b>${q.reward.key?` + <b>${q.reward.key}</b> key`:""} + <b>${q.reward.xp||0}xp</b></div>
           </div>
           <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
             ${st.completed ? `<button class="secondary small" disabled>Completed</button>` : ""}
@@ -1471,8 +2361,9 @@ function openQuestBoard(){
     }
   }
   html += `</div>`;
-  openModal("Quest Board", html);
+  openModal("📜 Quest Board", html);
 }
+
 function acceptQuest(qid){
   closeModal();
   const q = QUESTS.find(x=>x.id===qid);
@@ -1484,29 +2375,17 @@ function acceptQuest(qid){
   setQuestStatus(qid,{accepted:true,completed:false});
   state.activeQuestId = qid;
   addQuestItem(q.item);
-  pushLog(`📜 Quest accepted: <b>${q.title}</b>. Deliver to <b>${nodeById[q.to].name}</b>.`);
+  pushLog(`📜 Quest accepted: <b>${q.title}</b>. Deliver to <b>${nodeById[q.to]?.name || q.to}</b>.`);
   render();
 }
 
-/* =========================
-   Modal
-========================= */
-function openModal(title, html){
-  $("modalTitle").textContent=title;
-  $("modalBody").innerHTML=html;
-  $("overlay").style.display="flex";
-}
-function closeModal(){ $("overlay").style.display="none"; }
-$("closeModal").addEventListener("click", closeModal);
-$("overlay").addEventListener("click",(e)=>{ if(e.target.id==="overlay") closeModal(); });
-
-/* =========================
-   Map engine (zoom/pan/hover/route highlighting)
-========================= */
+/* ============================================================
+   MAP ENGINE (zoom/pan/hover/route highlighting) — for HUGE world
+============================================================ */
 let view = {
-  scale: 1.0,
-  minScale: 0.75,
-  maxScale: 2.25,
+  scale: 0.55,
+  minScale: 0.25,
+  maxScale: 2.6,
   ox: 0,
   oy: 0,
   dragging: false,
@@ -1515,8 +2394,6 @@ let view = {
   hoverEdge: null
 };
 
-const tooltip = $("tooltip");
-
 function resizeCanvas(){
   const r = mapCanvas.getBoundingClientRect();
   mapCanvas.width = Math.floor(r.width * devicePixelRatio);
@@ -1524,196 +2401,103 @@ function resizeCanvas(){
   ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
 }
 
-function worldToScreen(x,y){
-  return { x: x*view.scale + view.ox, y: y*view.scale + view.oy };
-}
-function screenToWorld(x,y){
-  return { x: (x - view.ox)/view.scale, y: (y - view.oy)/view.scale };
-}
+function worldToScreen(x,y){ return { x: x*view.scale + view.ox, y: y*view.scale + view.oy }; }
+function screenToWorld(x,y){ return { x: (x - view.ox)/view.scale, y: (y - view.oy)/view.scale }; }
 
-/* ===== Drawing: Sea, coastline noise, terrain shading/icons, docks ===== */
-function drawSeaBackground(r){
-  const g = ctx.createLinearGradient(0,0,0,r.height);
-  g.addColorStop(0, "rgba(22,48,140,.62)");
-  g.addColorStop(1, "rgba(8,16,52,.82)");
-  ctx.fillStyle=g;
-  ctx.fillRect(0,0,r.width,r.height);
-
-  // waves overlay (screen-space)
-  ctx.globalAlpha=0.10;
-  ctx.strokeStyle="rgba(255,255,255,.35)";
-  for(let i=0;i<10;i++){
-    ctx.beginPath();
-    const y=40+i*40;
-    ctx.moveTo(0,y);
-    ctx.bezierCurveTo(r.width*0.25,y-10,r.width*0.55,y+10,r.width,y-5);
-    ctx.stroke();
-  }
-  ctx.globalAlpha=1;
+function softCenterOnNode(nodeId){
+  const n=nodeById[nodeId];
+  if(!n) return;
+  const r = mapCanvas.getBoundingClientRect();
+  const targetOx = r.width/2 - n.x*view.scale;
+  const targetOy = r.height/2 - n.y*view.scale;
+  // blend
+  view.ox = lerp(view.ox, targetOx, 0.45);
+  view.oy = lerp(view.oy, targetOy, 0.45);
 }
 
-function drawLandAndArt(){
-  ensureMapArt();
-
-  // World-space draw
-  ctx.save();
-  ctx.translate(view.ox, view.oy);
-  ctx.scale(view.scale, view.scale);
-
-  // Land fill
-  const landGrad = ctx.createLinearGradient(80,60,860,520);
-  landGrad.addColorStop(0, "rgba(44,120,70,.90)");
-  landGrad.addColorStop(1, "rgba(18,56,36,.92)");
-  ctx.fillStyle = landGrad;
-  ctx.fill(mapArt.landPath);
-
-  // Coastline stroke + glow
-  ctx.save();
-  ctx.strokeStyle="rgba(255,255,255,.14)";
-  ctx.lineWidth=3/view.scale;
-  ctx.stroke(mapArt.landPath);
-  ctx.shadowColor="rgba(0,0,0,.35)";
-  ctx.shadowBlur=18/view.scale;
-  ctx.strokeStyle="rgba(0,0,0,.25)";
-  ctx.lineWidth=5/view.scale;
-  ctx.stroke(mapArt.landPath);
-  ctx.restore();
-
-  // Terrain shading blobs (subtle)
-  for(const b of mapArt.blobs){
-    const grad = ctx.createRadialGradient(b.x,b.y, 0, b.x,b.y, b.r);
-    grad.addColorStop(0, `rgba(0,0,0,${b.a})`);
-    grad.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(b.x,b.y,b.r,0,Math.PI*2);
-    ctx.fill();
-  }
-
-  // Terrain icons
-  for(const t of mapArt.terrain){
-    ctx.save();
-    ctx.translate(t.x, t.y);
-    ctx.rotate(t.rot);
-    ctx.scale(t.s, t.s);
-
-    if(t.type==="mountain"){
-      drawMountainIcon(0,0, 1.0/view.scale);
-    } else {
-      drawForestIcon(0,0, 1.0/view.scale);
-    }
-    ctx.restore();
-  }
-
-  // Port docks
-  for(const d of mapArt.docks){
-    ctx.save();
-    ctx.translate(d.x, d.y);
-    ctx.rotate(d.rot);
-    // dock base
-    ctx.fillStyle="rgba(229,231,235,.18)";
-    ctx.strokeStyle="rgba(255,255,255,.20)";
-    ctx.lineWidth=2/view.scale;
-    roundRect(-2, -d.w/2, d.len, d.w, 4/view.scale);
-    ctx.fill();
-    ctx.stroke();
-
-    // pilings
-    ctx.fillStyle="rgba(0,0,0,.25)";
-    for(let i=0;i<5;i++){
-      const px = (d.len*(i/4)) - 1;
-      roundRect(px, -d.w/2 - 4, 4, 8, 2/view.scale);
-      ctx.fill();
-    }
-    ctx.restore();
-  }
-
-  ctx.restore();
-}
-
-function roundRect(x,y,w,h,r){
-  const rr = Math.min(r, w/2, h/2);
-  ctx.beginPath();
-  ctx.moveTo(x+rr, y);
-  ctx.arcTo(x+w, y, x+w, y+h, rr);
-  ctx.arcTo(x+w, y+h, x, y+h, rr);
-  ctx.arcTo(x, y+h, x, y, rr);
-  ctx.arcTo(x, y, x+w, y, rr);
-  ctx.closePath();
-}
-
-function drawMountainIcon(x,y, s){
-  // simple mountain glyphs
-  ctx.save();
-  ctx.translate(x,y);
-  ctx.scale(s*14, s*14);
-
-  ctx.globalAlpha=0.55;
-  ctx.fillStyle="rgba(0,0,0,.35)";
-  ctx.beginPath();
-  ctx.moveTo(-1.2, 0.8); ctx.lineTo(0.0, -0.9); ctx.lineTo(1.2, 0.8); ctx.closePath();
-  ctx.fill();
-
-  ctx.globalAlpha=0.65;
-  ctx.fillStyle="rgba(229,231,235,.22)";
-  ctx.beginPath();
-  ctx.moveTo(-0.95, 0.8); ctx.lineTo(-0.05, -0.55); ctx.lineTo(0.85, 0.8); ctx.closePath();
-  ctx.fill();
-
-  ctx.globalAlpha=0.55;
-  ctx.fillStyle="rgba(229,231,235,.16)";
-  ctx.beginPath();
-  ctx.moveTo(-0.05, -0.55); ctx.lineTo(0.0, -0.9); ctx.lineTo(0.35, -0.35); ctx.closePath();
-  ctx.fill();
-
-  ctx.globalAlpha=1;
-  ctx.restore();
-}
-
-function drawForestIcon(x,y, s){
-  // small tree cluster glyph
-  ctx.save();
-  ctx.translate(x,y);
-  ctx.scale(s*13, s*13);
-
-  ctx.globalAlpha=0.55;
-  ctx.fillStyle="rgba(0,0,0,.28)";
-  ctx.beginPath();
-  ctx.moveTo(-0.8, 0.9); ctx.lineTo(-0.2, -0.3); ctx.lineTo(0.4, 0.9); ctx.closePath();
-  ctx.fill();
-
-  ctx.globalAlpha=0.55;
-  ctx.beginPath();
-  ctx.moveTo(-0.1, 0.9); ctx.lineTo(0.5, -0.35); ctx.lineTo(1.1, 0.9); ctx.closePath();
-  ctx.fill();
-
-  ctx.globalAlpha=0.60;
-  ctx.fillStyle="rgba(229,231,235,.18)";
-  ctx.beginPath();
-  ctx.moveTo(-0.65, 0.9); ctx.lineTo(-0.2, -0.1); ctx.lineTo(0.25, 0.9); ctx.closePath();
-  ctx.fill();
-
-  ctx.globalAlpha=0.60;
-  ctx.beginPath();
-  ctx.moveTo(0.05, 0.9); ctx.lineTo(0.5, -0.15); ctx.lineTo(0.95, 0.9); ctx.closePath();
-  ctx.fill();
-
-  ctx.globalAlpha=1;
-  ctx.restore();
-}
-
-/* ===== World draw ===== */
 function drawWorld(){
   const r=mapCanvas.getBoundingClientRect();
   ctx.clearRect(0,0,r.width,r.height);
 
-  // Sea background (screen-space)
-  drawSeaBackground(r);
+  // background: draw pre-rendered terrain (huge texture scaled to world coords)
+  if(terrainImg){
+    ctx.save();
+    ctx.translate(view.ox, view.oy);
+    ctx.scale(view.scale, view.scale);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(terrainImg, 0,0, WORLD_W, WORLD_H);
+    ctx.restore();
+  } else {
+    // fallback sea
+    const g = ctx.createLinearGradient(0,0,0,r.height);
+    g.addColorStop(0, "rgba(20,40,120,.65)");
+    g.addColorStop(1, "rgba(10,20,60,.75)");
+    ctx.fillStyle=g;
+    ctx.fillRect(0,0,r.width,r.height);
+  }
 
-  // Coastline + terrain (world-space)
-  drawLandAndArt();
+  // kingdom highlight
+  ctx.save();
+  ctx.translate(view.ox, view.oy);
+  ctx.scale(view.scale, view.scale);
+  const cap=nodeById["capital_aurelia"];
+  if(cap){
+    ctx.beginPath();
+    ctx.fillStyle="rgba(124,92,255,.10)";
+    ctx.strokeStyle="rgba(124,92,255,.30)";
+    ctx.lineWidth=8/view.scale;
+    ctx.arc(cap.x,cap.y,420,0,Math.PI*2);
+    ctx.fill();
+    ctx.stroke();
+    // walls ring
+    ctx.setLineDash([18/view.scale, 14/view.scale]);
+    ctx.strokeStyle="rgba(255,255,255,.14)";
+    ctx.lineWidth=5/view.scale;
+    ctx.beginPath();
+    ctx.arc(cap.x,cap.y,300,0,Math.PI*2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  ctx.restore();
 
-  // Routes + nodes (world-space)
+  // terrain icons overlay (mountains/trees/etc)
+  ctx.save();
+  ctx.translate(view.ox, view.oy);
+  ctx.scale(view.scale, view.scale);
+  ctx.globalAlpha=0.55;
+  ctx.fillStyle="rgba(255,255,255,.85)";
+  for(const ic of terrainIcons){
+    // skip if too far off screen (quick cull)
+    // (cull in world-space using inverse)
+    const sx = ic.x*view.scale+view.ox;
+    const sy = ic.y*view.scale+view.oy;
+    if(sx<-40 || sy<-40 || sx>r.width+40 || sy>r.height+40) continue;
+    ctx.font = `${14/view.scale}px system-ui`;
+    const ch = ic.kind==="mountain" ? "⛰️" : ic.kind==="tree" ? "🌲" : ic.kind==="dune" ? "🏜️" : "❄️";
+    ctx.fillText(ch, ic.x, ic.y);
+  }
+  ctx.globalAlpha=1;
+  ctx.restore();
+
+  // draw rivers again in world space (crisper)
+  ctx.save();
+  ctx.translate(view.ox, view.oy);
+  ctx.scale(view.scale, view.scale);
+  ctx.globalAlpha=0.85;
+  ctx.strokeStyle="rgba(147,197,253,.65)";
+  ctx.lineWidth=4/view.scale;
+  for(const river of rivers){
+    ctx.beginPath();
+    for(let i=0;i<river.length;i++){
+      const p=river[i];
+      if(i===0) ctx.moveTo(p.x,p.y); else ctx.lineTo(p.x,p.y);
+    }
+    ctx.stroke();
+  }
+  ctx.globalAlpha=1;
+  ctx.restore();
+
+  // routes + nodes
   ctx.save();
   ctx.translate(view.ox, view.oy);
   ctx.scale(view.scale, view.scale);
@@ -1721,52 +2505,55 @@ function drawWorld(){
   const here = state.currentNode;
   const neigh = new Set(neighbors(here));
 
-  // routes (curved roads + curved sea lanes)
+  // draw routes as bezier to avoid straight-line feel
+  function strokeBezier(A,B,c1,c2,style){
+    ctx.beginPath();
+    ctx.moveTo(A.x,A.y);
+    ctx.bezierCurveTo(c1.x,c1.y, c2.x,c2.y, B.x,B.y);
+    ctx.strokeStyle=style.stroke;
+    ctx.lineWidth=style.w/view.scale;
+    if(style.dash) ctx.setLineDash(style.dash.map(v=>v/view.scale));
+    else ctx.setLineDash([]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
   for(const e of world.edges){
     const A=nodeById[e.a], B=nodeById[e.b];
-
     const isFromHere = (e.a===here || e.b===here);
     const isHover = view.hoverEdge && ((view.hoverEdge.a===e.a && view.hoverEdge.b===e.b) || (view.hoverEdge.a===e.b && view.hoverEdge.b===e.a));
-    const thick = (isHover?6:(isFromHere?5:3))/view.scale;
-
-    ctx.beginPath();
-
-    if(e.ctrl){
-      ctx.moveTo(A.x, A.y);
-      ctx.quadraticCurveTo(e.ctrl.x, e.ctrl.y, B.x, B.y);
-    } else {
-      ctx.moveTo(A.x, A.y);
-      ctx.lineTo(B.x, B.y);
-    }
+    const thick = (isHover?7:(isFromHere?6:3.5));
 
     if(e.kind==="sea"){
-      ctx.setLineDash([10/view.scale,10/view.scale]);
-      ctx.strokeStyle = isHover ? "rgba(147,197,253,.92)" : "rgba(147,197,253,.50)";
-      ctx.lineWidth=thick;
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      // Fare label near curve midpoint
-      const mx = (A.x + B.x) / 2;
-      const my = (A.y + B.y) / 2;
-      const lx = e.ctrl ? (mx + e.ctrl.x) / 2 : mx;
-      const ly = e.ctrl ? (my + e.ctrl.y) / 2 : my;
-
-      ctx.fillStyle="rgba(229,231,235,.88)";
+      strokeBezier(A,B,e.c1,e.c2,{
+        stroke: isHover ? "rgba(147,197,253,.9)" : "rgba(147,197,253,.45)",
+        w: thick,
+        dash: [14,12]
+      });
+      // fare label
+      const mx=(A.x+B.x)/2, my=(A.y+B.y)/2;
+      ctx.fillStyle="rgba(229,231,235,.85)";
       ctx.font = `${12/view.scale}px system-ui`;
-      ctx.fillText(`⛴ ${e.fare}g`, lx+8, ly-8);
+      ctx.fillText(`⛴ ${e.fare}g`, mx+8, my-8);
+    } else if(e.kind==="bridge"){
+      // road + bridge accent
+      strokeBezier(A,B,e.c1,e.c2,{
+        stroke: isHover ? "rgba(251,191,36,.75)" : (isFromHere ? "rgba(251,191,36,.45)" : "rgba(251,191,36,.24)"),
+        w: thick
+      });
     } else {
-      // road casing underlay
-      ctx.save();
-      ctx.strokeStyle = "rgba(0,0,0,.35)";
-      ctx.lineWidth = (thick + 2/view.scale);
-      ctx.stroke();
-      ctx.restore();
-
-      ctx.strokeStyle = isHover ? "rgba(251,191,36,.80)" : (isFromHere ? "rgba(251,191,36,.52)" : "rgba(251,191,36,.26)");
-      ctx.lineWidth=thick;
-      ctx.stroke();
+      strokeBezier(A,B,e.c1,e.c2,{
+        stroke: isHover ? "rgba(251,191,36,.75)" : (isFromHere ? "rgba(251,191,36,.45)" : "rgba(251,191,36,.20)"),
+        w: thick
+      });
     }
+  }
+
+  // draw bridge icons where roads cross rivers
+  for(const b of bridges){
+    ctx.font = `${14/view.scale}px system-ui`;
+    ctx.fillStyle="rgba(229,231,235,.92)";
+    ctx.fillText("🌉", b.x, b.y);
   }
 
   // nodes
@@ -1775,41 +2562,42 @@ function drawWorld(){
     const isNeighbor = neigh.has(n.id);
     const isHover = view.hoverNode && view.hoverNode.id===n.id;
 
-    let fill="rgba(255,255,255,.14)", icon="•";
-    if(n.type==="town"){ fill="rgba(124,92,255,.30)"; icon="🏘️"; }
-    if(n.type==="camp"){ fill="rgba(52,211,153,.22)"; icon="⛺"; }
-    if(n.type==="port"){ fill="rgba(59,130,246,.22)"; icon="⚓"; }
-    if(n.type==="cave"){ fill="rgba(251,113,133,.18)"; icon="🕳️"; }
-    if(n.type==="forest"){ fill="rgba(34,197,94,.18)"; icon="🌲"; }
+    let fill="rgba(255,255,255,.12)", icon="•", rNode=14;
+    if(n.type==="capital"){ fill="rgba(124,92,255,.35)"; icon="🏰"; rNode=18; }
+    if(n.type==="city"){ fill="rgba(124,92,255,.22)"; icon="🏙️"; rNode=16; }
+    if(n.type==="town"){ fill="rgba(124,92,255,.18)"; icon="🏘️"; rNode=15; }
+    if(n.type==="camp"){ fill="rgba(52,211,153,.18)"; icon="⛺"; rNode=14; }
+    if(n.type==="port"){ fill="rgba(59,130,246,.20)"; icon="⚓"; rNode=15; }
+    if(n.type==="cave"){ fill="rgba(251,113,133,.16)"; icon="🕳️"; rNode=14; }
+    if(n.type==="forest"){ fill="rgba(34,197,94,.14)"; icon="🌲"; rNode=14; }
 
     if(isHere){
       ctx.beginPath();
-      ctx.fillStyle="rgba(124,92,255,.35)";
-      ctx.arc(n.x,n.y,24,0,Math.PI*2);
+      ctx.fillStyle="rgba(124,92,255,.22)";
+      ctx.arc(n.x,n.y,rNode+12,0,Math.PI*2);
       ctx.fill();
     }
 
     ctx.beginPath();
     ctx.fillStyle = fill;
-    ctx.strokeStyle = isNeighbor ? "rgba(255,255,255,.45)" : "rgba(255,255,255,.22)";
+    ctx.strokeStyle = isNeighbor ? "rgba(255,255,255,.42)" : "rgba(255,255,255,.18)";
     ctx.lineWidth = (isHover?3:2)/view.scale;
-    ctx.arc(n.x,n.y,16,0,Math.PI*2);
+    ctx.arc(n.x,n.y,rNode,0,Math.PI*2);
     ctx.fill();
     ctx.stroke();
 
     ctx.fillStyle="rgba(229,231,235,.95)";
     ctx.font = `${14/view.scale}px system-ui`;
-    ctx.fillText(icon, n.x-10, n.y+6);
+    ctx.fillText(icon, n.x-(rNode*0.65), n.y+(rNode*0.35));
 
     ctx.fillStyle = isHover ? "rgba(255,255,255,.98)" : "rgba(229,231,235,.92)";
     ctx.font = `${12/view.scale}px system-ui`;
-    ctx.fillText(n.name, n.x+20, n.y+4);
+    ctx.fillText(n.name, n.x+(rNode+10), n.y+4);
   }
 
   ctx.restore();
 }
 
-/* ===== Dungeon draw ===== */
 function drawDungeon(){
   const r=mapCanvas.getBoundingClientRect();
   ctx.clearRect(0,0,r.width,r.height);
@@ -1868,7 +2656,7 @@ function drawDungeon(){
 
   ctx.fillStyle="rgba(229,231,235,.9)";
   ctx.font="12px system-ui";
-  ctx.fillText(`${d.kind==="forest"?"Forest":"Cave"} • Keys: ${state.keys}`, 14, 16);
+  ctx.fillText(`${d.kind==="forest"?"Forest":"Cave"} • Torches: ${state.torches} • Keys: ${state.keys}`, 14, 16);
 }
 
 function drawMap(){
@@ -1876,9 +2664,9 @@ function drawMap(){
   else drawWorld();
 }
 
-/* =========================
-   World hover + click + zoom + pan
-========================= */
+/* ============================================================
+   Hover + click + zoom + pan (world)
+============================================================ */
 function canvasPoint(evt){
   const rect = mapCanvas.getBoundingClientRect();
   return {x: evt.clientX-rect.left, y: evt.clientY-rect.top, rect};
@@ -1886,7 +2674,7 @@ function canvasPoint(evt){
 function hitNodeWorld(wx,wy){
   for(const n of world.nodes){
     const dx=n.x-wx, dy=n.y-wy;
-    if(Math.sqrt(dx*dx+dy*dy)<=18) return n;
+    if(Math.sqrt(dx*dx+dy*dy)<=22) return n;
   }
   return null;
 }
@@ -1901,39 +2689,13 @@ function pointToSegmentDistance(p,a,b){
   const px=a.x+t*vx, py=a.y+t*vy;
   return Math.hypot(p.x-px,p.y-py);
 }
-function quadPoint(A, C, B, t){
-  const u=1-t;
-  return {
-    x: u*u*A.x + 2*u*t*C.x + t*t*B.x,
-    y: u*u*A.y + 2*u*t*C.y + t*t*B.y
-  };
-}
-function distanceToQuadratic(p, A, C, B, samples=22){
-  let best=1e9;
-  let prev = {x:A.x, y:A.y};
-  for(let i=1;i<=samples;i++){
-    const t=i/samples;
-    const q = quadPoint(A, C, B, t);
-    const d = pointToSegmentDistance(p, prev, q);
-    if(d<best) best=d;
-    prev=q;
-  }
-  return best;
-}
 function hitEdgeWorld(wx,wy){
+  // approximate by checking endpoints (good enough for highlight)
   let best=null, bestDist=99999;
-
   for(const e of world.edges){
     const A=nodeById[e.a], B=nodeById[e.b];
-    let dist = 99999;
-
-    if(e.ctrl){
-      dist = distanceToQuadratic({x:wx,y:wy}, A, e.ctrl, B, 22);
-    } else {
-      dist = pointToSegmentDistance({x:wx,y:wy},{x:A.x,y:A.y},{x:B.x,y:B.y});
-    }
-
-    if(dist<10 && dist<bestDist){ best=e; bestDist=dist; }
+    const dist = pointToSegmentDistance({x:wx,y:wy},{x:A.x,y:A.y},{x:B.x,y:B.y});
+    if(dist<18 && dist<bestDist){ best=e; bestDist=dist; }
   }
   return best;
 }
@@ -1958,23 +2720,29 @@ mapCanvas.addEventListener("mousemove",(evt)=>{
     const edge = edgeBetween(state.currentNode,n.id);
     const travelMin = edge ? travelTimeMinutes(state.currentNode,n.id) : null;
 
+    const tt = terrainType(n.x,n.y);
+    const tNice = tt==="woody" ? "woodland" : tt;
+
     tooltip.innerHTML = `
       <div><b>${n.name}</b> <span style="color:var(--muted)">(${n.type})</span></div>
-      ${fromHere ? `<div style="color:var(--muted);margin-top:4px">From here: ${Math.round(travelMin)} min • ${edge.kind==="sea"?`Fare: ${edge.fare}g`:"Road"}</div>` : ""}
-      <div style="color:var(--muted);margin-top:4px">Connected: ${neigh.map(id=>nodeById[id].name).join(", ")}</div>
+      <div style="color:var(--muted);margin-top:4px">Terrain: <b>${tNice}</b></div>
+      ${fromHere ? `<div style="color:var(--muted);margin-top:4px">From here: ${Math.round(travelMin)} min • ${edge.kind==="sea"?`Fare: ${edge.fare}g`:(edge.kind==="bridge"?"Bridge / Road":"Road")}</div>` : ""}
+      <div style="color:var(--muted);margin-top:4px">Connected: ${neigh.map(id=>nodeById[id].name).slice(0,6).join(", ")}${neigh.length>6?"…":""}</div>
     `;
   } else if(e){
     tooltip.style.display="block";
     tooltip.style.left = `${x+14}px`;
     tooltip.style.top = `${y+14}px`;
     const A=nodeById[e.a], B=nodeById[e.b];
-    tooltip.innerHTML = `<div><b>Route</b>: ${A.name} ↔ ${B.name}</div><div style="color:var(--muted)">${e.kind==="sea"?`Sea • Fare ${e.fare}g`:"Road"}</div>`;
+    const kind = e.kind==="sea" ? `Sea • Fare ${e.fare}g` : (e.kind==="bridge" ? "Bridge / Road" : "Road");
+    tooltip.innerHTML = `<div><b>Route</b>: ${A.name} ↔ ${B.name}</div><div style="color:var(--muted)">${kind}</div>`;
   } else {
     tooltip.style.display="none";
   }
 
   drawMap();
 });
+
 mapCanvas.addEventListener("mouseleave",()=>{
   view.hoverNode=null;
   view.hoverEdge=null;
@@ -1999,23 +2767,18 @@ window.addEventListener("mousemove",(evt)=>{
   drawMap();
 });
 
-// FIXED zoom anchoring (no drift)
 mapCanvas.addEventListener("wheel",(evt)=>{
   if(state.mode!=="world") return;
   evt.preventDefault();
-
-  const rect = mapCanvas.getBoundingClientRect();
-  const sx = evt.clientX - rect.left;
-  const sy = evt.clientY - rect.top;
-
-  const before = screenToWorld(sx, sy);
+  const {x,y}=canvasPoint(evt);
+  const before = screenToWorld(x,y);
   const delta = Math.sign(evt.deltaY);
-  const factor = (delta>0) ? 0.92 : 1.08;
-  view.scale = clamp(view.scale*factor, view.minScale, view.maxScale);
-
-  view.ox = sx - before.x * view.scale;
-  view.oy = sy - before.y * view.scale;
-
+  const factor = (delta>0) ? 0.90 : 1.10;
+  const next = clamp(view.scale*factor, view.minScale, view.maxScale);
+  view.scale = next;
+  const after = screenToWorld(x,y);
+  view.ox += (after.x-before.x)*view.scale;
+  view.oy += (after.y-before.y)*view.scale;
   drawMap();
 },{passive:false});
 
@@ -2034,15 +2797,17 @@ mapCanvas.addEventListener("click",(evt)=>{
   travelTo(hit.id);
 });
 
-/* =========================
-   Buttons wiring
-========================= */
+/* ============================================================
+   BUTTONS + KEYBOARD
+============================================================ */
 $("areaLootBtn").addEventListener("click", useAreaLoot);
 $("searchBtn").addEventListener("click", searchExplore);
-$("sleepBtn").addEventListener("click", sleep);
+$("sleepBtn").addEventListener("click", ()=>sleep(false));
 $("eatBtn").addEventListener("click", eat);
 $("questBoardBtn").addEventListener("click", openQuestBoard);
+$("charBtn").addEventListener("click", openCharacterSheet);
 $("buyFoodBtn").addEventListener("click", buyRation);
+$("buyTorchBtn").addEventListener("click", buyTorch);
 
 $("attackBtn").addEventListener("click", playerAttack);
 $("fleeBtn").addEventListener("click", flee);
@@ -2054,18 +2819,8 @@ $("resetBtn").addEventListener("click", ()=>{
   init(true);
 });
 
-window.addEventListener("resize", ()=>{
-  resizeCanvas();
-  // rebuild map art once (ctx used for hit testing)
-  mapArt.ready = false;
-  ensureMapArt();
-  drawMap();
-  render();
-});
+window.addEventListener("resize", ()=>{ resizeCanvas(); drawMap(); render(); });
 
-/* =========================
-   Keyboard movement for dungeon
-========================= */
 window.addEventListener("keydown",(e)=>{
   if(state.mode!=="dungeon" || state.mode==="combat") return;
   const k=e.key.toLowerCase();
@@ -2075,10 +2830,161 @@ window.addEventListener("keydown",(e)=>{
   if(k==="d" || e.key==="ArrowRight"){ e.preventDefault(); dungeonMove(1,0); }
 });
 
-/* =========================
-   Render UI
-========================= */
+/* ============================================================
+   CHARACTER CREATION + SHEET
+============================================================ */
+function rollStat4d6(){
+  const dice=[roll(6),roll(6),roll(6),roll(6)].sort((a,b)=>a-b);
+  return dice[1]+dice[2]+dice[3]; // drop lowest
+}
+function rollAllStats(){
+  return {
+    STR: rollStat4d6(),
+    DEX: rollStat4d6(),
+    CON: rollStat4d6(),
+    INT: rollStat4d6(),
+    WIS: rollStat4d6(),
+    CHA: rollStat4d6()
+  };
+}
+function openCharacterCreation(){
+  const raceOptions = Object.keys(RACES).map(r=>`<option value="${r}" ${state.race===r?"selected":""}>${r}</option>`).join("");
+  const classOptions = Object.keys(CLASSES).map(c=>`<option value="${c}" ${state.class===c?"selected":""}>${c}</option>`).join("");
+  const sexOptions = ["Male","Female","Non-binary","Unspecified"].map(s=>`<option value="${s}" ${state.sex===s?"selected":""}>${s}</option>`).join("");
+
+  const stats = state.stats;
+  const eff = getEffectiveStats();
+
+  const html = `
+    <div class="panel">
+      <div><b>Character Creation</b></div>
+      <div class="muted" style="margin-top:6px">Choose race/sex/class, then roll stats (4d6 drop lowest). Stats affect combat and checks.</div>
+
+      <div class="formGrid" style="margin-top:12px">
+        <div>
+          <label>Name</label>
+          <input type="text" id="cc_name" value="${escapeHtml(state.name||"Adventurer")}" />
+        </div>
+        <div>
+          <label>Race</label>
+          <select id="cc_race">${raceOptions}</select>
+          <div class="muted" style="margin-top:6px" id="cc_race_desc">${escapeHtml(RACES[state.race]?.desc||"")}</div>
+        </div>
+        <div>
+          <label>Sex</label>
+          <select id="cc_sex">${sexOptions}</select>
+        </div>
+        <div>
+          <label>Class</label>
+          <select id="cc_class">${classOptions}</select>
+          <div class="muted" style="margin-top:6px" id="cc_class_desc">${escapeHtml(CLASSES[state.class]?.desc||"")}</div>
+        </div>
+        <div class="panel" style="grid-column:span 2">
+          <div class="muted">Rerolls left: <b id="cc_rerolls">${state.rerollsLeft}</b></div>
+          <div class="row" style="margin-top:10px">
+            <button class="small" onclick="ccRollStats()">Roll Stats</button>
+            <button class="small secondary" onclick="ccApply()">Save Character</button>
+          </div>
+          <div class="muted" style="margin-top:10px">Race modifiers apply after rolling (shown below).</div>
+        </div>
+      </div>
+
+      <div class="statGrid">
+        ${statCard("STR", stats.STR, eff.STR)}
+        ${statCard("DEX", stats.DEX, eff.DEX)}
+        ${statCard("CON", stats.CON, eff.CON)}
+        ${statCard("INT", stats.INT, eff.INT)}
+        ${statCard("WIS", stats.WIS, eff.WIS)}
+        ${statCard("CHA", stats.CHA, eff.CHA)}
+      </div>
+
+      <div class="row" style="margin-top:12px">
+        <span class="muted">Tip: Fighter uses STR, Rogue uses DEX, Mage uses INT, Cleric uses WIS.</span>
+      </div>
+    </div>
+  `;
+  openModal("🧾 Character", html);
+
+  // wire change listeners for description updates
+  setTimeout(()=>{
+    const rSel = document.getElementById("cc_race");
+    const cSel = document.getElementById("cc_class");
+    if(rSel){
+      rSel.addEventListener("change", ()=>{
+        const r = rSel.value;
+        document.getElementById("cc_race_desc").textContent = RACES[r]?.desc || "";
+        // preview effective stats by temporarily applying race (no save)
+        const tmpRace = state.race;
+        state.race = r;
+        openCharacterCreation(); // quick refresh
+        state.race = tmpRace;
+      });
+    }
+    if(cSel){
+      cSel.addEventListener("change", ()=>{
+        const c = cSel.value;
+        document.getElementById("cc_class_desc").textContent = CLASSES[c]?.desc || "";
+      });
+    }
+  },0);
+}
+function openCharacterSheet(){
+  openCharacterCreation();
+}
+function statCard(key, base, eff){
+  const bm = statMod(base);
+  const em = statMod(eff);
+  const delta = eff-base;
+  const deltaTxt = delta===0 ? "" : (delta>0 ? ` <span style="color:var(--good)">(+${delta})</span>` : ` <span style="color:var(--bad)">(${delta})</span>`);
+  return `
+    <div class="statCell">
+      <div class="k">${key}</div>
+      <div class="v">${base}${deltaTxt}</div>
+      <div class="m">Mod: ${bm>=0?"+":""}${bm} • Eff Mod: ${em>=0?"+":""}${em}</div>
+    </div>
+  `;
+}
+function ccRollStats(){
+  if(state.rerollsLeft<=0){
+    pushLog("🎲 No rerolls left.");
+    render();
+    return;
+  }
+  state.rerollsLeft -= 1;
+  state.stats = rollAllStats();
+  computeDerived();
+  openCharacterCreation();
+  render();
+}
+function ccApply(){
+  const name = document.getElementById("cc_name")?.value?.trim() || "Adventurer";
+  const race = document.getElementById("cc_race")?.value || "Human";
+  const sex  = document.getElementById("cc_sex")?.value || "Unspecified";
+  const cls  = document.getElementById("cc_class")?.value || "Fighter";
+
+  state.name = name;
+  state.race = race;
+  state.sex = sex;
+  state.class = cls;
+  state.characterCreated = true;
+
+  computeDerived();
+  closeModal();
+  pushLog(`<span style="color:var(--good)">🧾 Character saved:</span> <b>${escapeHtml(state.name)}</b> — ${state.race} ${state.class}.`);
+  render();
+}
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, s => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  }[s]));
+}
+
+/* ============================================================
+   RENDER UI
+============================================================ */
 function render(){
+  computeDerived();
+
   $("hp").textContent=state.hp;
   $("hpMax").textContent=state.hpMax;
   $("atk").textContent=getAtk();
@@ -2086,31 +2992,29 @@ function render(){
   $("energy").textContent=state.energy;
   $("energyMax").textContent=state.energyMax;
   $("hunger").textContent=state.hunger;
+
   $("gold").textContent=state.gold;
   $("keys").textContent=state.keys;
   $("rationCount").textContent=countItem("food");
-
   $("clockBadge").textContent = `Day ${state.day} • ${fmtTime(state.minutes)}`;
 
-  const aq=activeQuest();
-  if(aq){
-    const st=questStatus(aq.id);
-    if(st.completed){
-      $("questTitle").textContent="Completed";
-      $("questSub").textContent=aq.title;
-    } else {
-      $("questTitle").textContent="Active";
-      $("questSub").textContent=`${aq.title} → Deliver to ${nodeById[aq.to].name}`;
-    }
-  } else {
-    $("questTitle").textContent="None";
-    $("questSub").textContent="Check quest boards.";
-  }
+  $("level").textContent = state.level;
+  $("xp").textContent = state.xp;
+  $("xpNext").textContent = xpToNext(state.level);
+
+  $("charName").textContent = state.name || "Adventurer";
+  $("charRace").textContent = state.race || "Human";
+  $("charSex").textContent = state.sex || "Unspecified";
+  $("charClass").textContent = state.class || "Fighter";
+
+  const eff=getEffectiveStats();
+  const modsLine = `Mods: STR ${fmtMod(eff.STR)} • DEX ${fmtMod(eff.DEX)} • CON ${fmtMod(eff.CON)} • INT ${fmtMod(eff.INT)} • WIS ${fmtMod(eff.WIS)} • CHA ${fmtMod(eff.CHA)}`;
+  $("charModsLine").textContent = modsLine;
 
   $("modeBadge").textContent =
     state.mode==="combat" ? "Mode: Combat" :
     state.mode==="dungeon" ? `Mode: ${(currentDungeon()?.kind==="forest")?"Forest":"Cave"}` :
-    "Mode: Exploring";
+    "Mode: World";
   $("locBadge").textContent = `Location: ${nodeById[state.currentNode]?.name || "—"}`;
 
   $("areaLootBtn").disabled = (state.mode!=="world") || !areaLootAvailable();
@@ -2118,11 +3022,11 @@ function render(){
   $("sleepBtn").disabled = !canSleepHere() || (state.mode==="combat");
   $("eatBtn").disabled = (countItem("food")<=0) || (state.mode==="combat");
   $("buyFoodBtn").disabled = !canBuyHere();
+  $("buyTorchBtn").disabled = !canBuyHere();
   $("questBoardBtn").disabled = !(state.mode==="world" && canBuyHere());
 
   $("combatRow").style.display = (state.mode==="combat") ? "flex" : "none";
   $("enemyPanel").style.display = (state.mode==="combat" && state.enemy) ? "block" : "none";
-
   if(state.enemy){
     $("enemyName").textContent=state.enemy.name;
     $("enemyHp").textContent=Math.max(0,state.enemy.hp);
@@ -2145,6 +3049,7 @@ function render(){
     <div>${state.accessory ? `<button class="small secondary" onclick="unequip('accessory')">Unequip</button>` : ""}</div>
   `;
 
+  // bag
   $("bag").innerHTML="";
   if(state.bag.length===0){
     const empty=document.createElement("div");
@@ -2157,10 +3062,16 @@ function render(){
       const d=document.createElement("div");
       d.className="itemCard";
       if(item.type==="consumable"){
+        const isFood = item.kind==="food";
+        const isHeal = item.kind==="heal";
         d.innerHTML=`
           <div><b>${item.name}</b> × ${item.qty||1}</div>
           <div class="meta">CONSUMABLE</div>
-          <button class="small" onclick="eat()">Eat</button>
+          ${
+            isFood ? `<button class="small" onclick="eat()">Eat</button>` :
+            isHeal ? `<button class="small" onclick="usePoultice()">Use</button>` :
+            `<button class="small secondary" disabled>Use</button>`
+          }
         `;
       } else if(item.type==="quest"){
         d.innerHTML=`
@@ -2179,40 +3090,69 @@ function render(){
     });
   }
 
+  // log
   $("log").innerHTML = state.log.map(x=>`<div>${x}</div>`).join("");
   $("log").scrollTop = $("log").scrollHeight;
 
+  // interact panel
   buildInteractOptions();
+
+  // map
   drawMap();
+
   save();
 }
 
-/* =========================
-   INIT
-========================= */
-function init(resetLog=false){
-  if(!nodeById[state.currentNode]) state.currentNode="stonehaven";
-  if(!nodeById[state.lastSafeNode]) state.lastSafeNode="stonehaven";
+function fmtMod(v){
+  const m=statMod(v);
+  return `${m>=0?"+":""}${m}`;
+}
 
+/* ============================================================
+   INIT
+============================================================ */
+function init(resetLog=false){
   resizeCanvas();
-  // map art depends on ctx isPointInPath; ensure canvas is ready
-  mapArt.ready = false;
-  ensureMapArt();
+
+  // build terrain + world once per load
+  buildTerrain();
+  buildWorld();
+
+  // sanity
+  if(!nodeById[state.currentNode]) state.currentNode="capital_aurelia";
+  if(!nodeById[state.lastSafeNode]) state.lastSafeNode="capital_aurelia";
+
+  // stamp current node visit if missing
+  state.nodeVisitStamp[state.currentNode] = state.nodeVisitStamp[state.currentNode] || state.visitCounter;
 
   if(state.log.length===0 || resetLog){
     state.log=[];
-    pushLog("🧭 Welcome! Travel uses TIME (not energy). Energy drains by day (1–2/day).");
-    pushLog("🗺️ World map: zoom wheel, drag to pan, hover tooltips, route highlighting.");
-    pushLog("🧭 Roads hug land. Sea lanes curve offshore. Ports have docks.");
-    pushLog("🕳️ Enter caves/forests from Interact. Dungeons persist (opened chests/enemies stay).");
-    pushLog("📜 Use Quest Boards in towns/camps/ports for multiple quests.");
+    pushLog("🧭 Welcome to the Kingdoms build!");
+    pushLog("🗺️ Huge world map: terrain regions, curved roads/sea lanes, bridges, and a capital kingdom.");
+    pushLog("🏙️ In towns/cities: visit Inn, Tavern, Shop, Church, Library, Guild.");
+    pushLog("🕳️ Caves/forests persist: opened chests/enemies stay cleared when you return.");
+    pushLog("🧾 Open Character to roll stats and choose race/sex/class — stats affect checks and combat.");
   }
 
+  // day drain init
   if(!state.energyDrainToday) startNewDay();
-  state.nodeVisitStamp[state.currentNode] = state.nodeVisitStamp[state.currentNode] || state.visitCounter;
+
+  // center view on current node at start
+  softCenterOnNode(state.currentNode);
+
+  // force character creation if not done
+  if(!state.characterCreated){
+    // give them a good first roll if empty
+    if(state.rerollsLeft===3 && state.stats.STR===10 && state.stats.DEX===10){
+      state.stats = rollAllStats();
+      computeDerived();
+    }
+    openCharacterCreation();
+  }
 
   render();
 }
+
 init();
 </script>
 </body>
