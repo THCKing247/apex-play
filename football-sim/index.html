@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Gridiron Career Sim</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Gridiron Career Sim</h1>
+      <p class="muted">Create a player, train, and simulate games to build a legacy.</p>
+    </header>
+
+    <section class="card" id="create">
+      <h2>Create Your Player</h2>
+      <div class="row">
+        <label>
+          Name
+          <input id="name" placeholder="e.g., Kenny McEachin" />
+        </label>
+        <label>
+          Position
+          <select id="pos">
+            <option>QB</option>
+            <option>RB</option>
+            <option>WR</option>
+            <option>TE</option>
+            <option>LB</option>
+            <option>CB</option>
+            <option>DL</option>
+          </select>
+        </label>
+      </div>
+
+      <button id="btnCreate">Start Career</button>
+    </section>
+
+    <section class="card hidden" id="game">
+      <div class="grid">
+        <div>
+          <h2>Player Card</h2>
+          <div class="statbox" id="playerCard"></div>
+
+          <h3>Upgrade (Spend XP)</h3>
+          <div class="row">
+            <button data-up="speed">+ Speed</button>
+            <button data-up="strength">+ Strength</button>
+            <button data-up="iq">+ Football IQ</button>
+            <button data-up="stamina">+ Stamina</button>
+          </div>
+          <p class="muted">Each upgrade costs 10 XP.</p>
+        </div>
+
+        <div>
+          <h2>Week Actions</h2>
+          <div class="row">
+            <button id="train">Train</button>
+            <button id="film">Watch Film</button>
+            <button id="rest">Rest</button>
+          </div>
+
+          <h2 style="margin-top:16px;">Simulate Game</h2>
+          <button id="play">Play This Week</button>
+
+          <h3>Game Log</h3>
+          <pre class="log" id="log"></pre>
+        </div>
+      </div>
+    </section>
+
+    <footer class="muted">
+      Built on GitHub Pages • v0.1
+    </footer>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
