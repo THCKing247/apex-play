@@ -1,167 +1,269 @@
 <!doctype html>
-<link rel="stylesheet" href="/assets/site.css" />
-
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Privacy Policy | Apex Play</title>
-
-  <meta name="description" content="Privacy Policy for Apex Play browser games." />
-
+  <title>Privacy Policy — Apex Play</title>
+  <meta name="description" content="Privacy Policy for Apex Play and Apex Dice RPG — Kingdoms." />
   <style>
-    body {
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-      margin: 0;
-      padding: 0;
-      background: #ffffff;
-      color: #111111;
-      line-height: 1.6;
+    :root{
+      --bg0:#070b1a;
+      --bg1:#0b1026;
+      --accent:#7c5cff;
+      --accent2:#2dd4bf;
+      --border:rgba(255,255,255,.14);
+      --text:#e5e7eb;
+      --muted:#a7b0c0;
+      --shadow:0 12px 38px rgba(0,0,0,.45);
+      --radius:22px;
     }
-    .wrap {
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 24px 16px 40px;
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      color:var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      background:
+        radial-gradient(1200px 700px at 18% 18%, rgba(124,92,255,.28), transparent 55%),
+        radial-gradient(900px 520px at 78% 58%, rgba(45,212,191,.18), transparent 55%),
+        linear-gradient(180deg, rgba(10,12,24,.70), rgba(10,12,24,.88)),
+        url("/assets/apex-kingdoms-cover.png") center 35% / cover no-repeat,
+        #0f1220;
+      background-attachment: fixed;
+      overflow-x:hidden;
     }
-    h1, h2, h3 {
-      line-height: 1.3;
+    .grid{
+      position:fixed; inset:0; z-index:-2;
+      background-image:
+        linear-gradient(rgba(255,255,255,.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.06) 1px, transparent 1px);
+      background-size: 64px 64px;
+      mask-image: radial-gradient(700px 500px at 30% 30%, rgba(0,0,0,1), rgba(0,0,0,.15), transparent 70%);
+      opacity:.18;
+      pointer-events:none;
     }
-    h1 {
-      margin-bottom: 8px;
+    canvas#stars{ position:fixed; inset:0; z-index:-3; width:100%; height:100%; }
+    .wrap{ max-width:980px; margin:0 auto; padding:28px 18px 70px; }
+    .top{
+      display:flex; align-items:center; justify-content:space-between;
+      padding:14px 16px;
+      border:1px solid var(--border);
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.05));
+      border-radius: 999px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
     }
-    h2 {
-      margin-top: 28px;
+    .brand{ display:flex; align-items:center; gap:12px; }
+    .logo{
+      width:40px; height:40px; border-radius: 14px;
+      display:grid; place-items:center;
+      background: radial-gradient(circle at 30% 30%, rgba(124,92,255,.9), rgba(124,92,255,.18));
+      border:1px solid rgba(255,255,255,.16);
+      font-weight:900;
+      color:#fff;
     }
-    a {
-      color: #1a73e8;
-      text-decoration: none;
+    .brand .t{ display:flex; flex-direction:column; line-height:1.1; }
+    .brand .t b{ font-size:14px; letter-spacing:.2px; }
+    .brand .t span{ font-size:12px; color:var(--muted); }
+    .links{ display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
+    .links a{
+      color:var(--muted);
+      text-decoration:none;
+      font-size:13px;
+      padding:8px 10px;
+      border-radius: 999px;
     }
-    a:hover {
-      text-decoration: underline;
+    .links a:hover{ background: rgba(255,255,255,.06); color:var(--text); }
+    .card{
+      margin-top:18px;
+      border:1px solid var(--border);
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.05));
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      padding: 22px;
     }
-    .muted {
-      color: #555;
-      font-size: 14px;
+    h1{ margin:0 0 6px; font-size: 34px; letter-spacing:-.01em; }
+    .sub{ margin:0; color:var(--muted); font-size: 13px; }
+    h2{ margin:18px 0 8px; font-size: 16px; color:#dfe6ff; }
+    p, li{ color: var(--text); opacity: .95; font-size: 14px; line-height: 1.55; }
+    ul{ margin:10px 0 0 18px; padding:0; }
+    .note{
+      margin-top:14px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.20);
+      border-radius: 16px;
+      padding: 12px 12px;
+      color: var(--muted);
+      font-size: 13px;
     }
-    footer {
-      margin-top: 40px;
-      font-size: 14px;
-      color: #555;
+    .pill{
+      display:inline-block;
+      font-size:12px;
+      color:#cbd5ff;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.20);
+      padding:6px 10px;
+      border-radius: 999px;
+      margin-right:8px;
+      margin-top:8px;
     }
-  </style>
+    footer{
+      margin-top:18px;
+      color: rgba(255,255,255,.50);
+      font-size:12px;
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+    footer a{ color: rgba(255,255,255,.62); text-decoration:none; }
+    footer a:hover{ color: rgba(255,255,255,.85); }
+</style>
 </head>
-
 <body>
-  <main class="wrap">
-    <h1>Privacy Policy</h1>
-    <p class="muted">Last updated: <strong>January 2025</strong></p>
+  <canvas id="stars" aria-hidden="true"></canvas>
+  <div class="grid" aria-hidden="true"></div>
 
-    <p>
-      Apex Play (“we”, “us”, or “our”) operates the website
-      <strong>https://play.apextsgroup.com</strong> (the “Site”).
-      This page explains how information is collected, used, and protected
-      when you use our browser-based games.
-    </p>
+  <div class="wrap">
+    <div class="top">
+      <div class="brand">
+        <div class="logo">A</div>
+        <div class="t">
+          <b>Apex Play</b>
+          <span>Browser games by ApexTSGroup</span>
+        </div>
+      </div>
+      <nav class="links">
+        <a href="/">Home</a>
+        <a href="/kingdoms/">Play</a>
+        <a href="/terms.html">Terms</a>
+      </nav>
+    </div>
 
-    <h2>Information We Collect</h2>
+    <main class="card">
+      <h1>Privacy Policy</h1>
+      <p class="sub">Last updated: December 25, 2025</p>
 
-    <h3>Automatically Collected Information</h3>
-    <p>
-      When you visit Apex Play, certain information may be collected automatically,
-      including your IP address, browser type, device information, and general usage
-      data. This information is used to operate and improve the Site.
-    </p>
+      <div class="pill">Cloud Saves</div>
+      <div class="pill">Ads & Cookies</div>
+      <div class="pill">Game Telemetry (minimal)</div>
 
-    <h3>Local Storage</h3>
-    <p>
-      Our games may use <strong>localStorage</strong> or similar browser storage
-      technologies to save game progress, preferences, or settings directly on
-      your device. This data is stored locally in your browser and is not transmitted
-      to our servers.
-    </p>
+      <p>
+        This Privacy Policy explains how Apex Play (“we,” “us,” or “our”) collects, uses, and shares information when you
+        visit or play our browser games (including Apex Dice RPG — Kingdoms) on this site.
+      </p>
 
-    <h2>Cookies</h2>
-    <p>
-      Apex Play and third-party partners may use cookies or similar technologies
-      to improve user experience, analyze traffic, and display advertisements.
-      Cookies are small data files stored on your device.
-    </p>
+      <h2>Information we collect</h2>
+      <ul>
+        <li><b>Account information (optional):</b> If you create an account for cloud saves, we collect the email address you provide and authentication metadata required to sign you in.</li>
+        <li><b>Game save data (optional):</b> If you use cloud saves, we store your game progress/state so you can load it from another device.</li>
+        <li><b>Basic technical data:</b> Your browser type, device information, IP address, and approximate location (derived from IP) may be processed by our infrastructure and service providers for security and performance.</li>
+        <li><b>Cookies and similar technologies:</b> We and our partners may use cookies/local storage to keep you signed in, remember preferences, measure traffic, and serve ads.</li>
+      </ul>
 
-    <h2>Advertising</h2>
-    <p>
-      We may display advertisements provided by third-party advertising partners,
-      including <strong>Google AdSense</strong>.
-    </p>
+      <h2>How we use information</h2>
+      <ul>
+        <li>Provide and operate the site and games (including cloud saves).</li>
+        <li>Maintain security, prevent abuse, and troubleshoot bugs.</li>
+        <li>Improve gameplay experience and site performance.</li>
+        <li>Serve and measure advertising (if enabled), including limiting repetitive ads and reporting ad performance.</li>
+      </ul>
 
-    <p>
-      Google and its partners use cookies to serve ads based on a user’s prior visits
-      to this and other websites. Google’s use of advertising cookies enables it and
-      its partners to serve ads to users based on their visits to this site and/or
-      other sites on the internet.
-    </p>
+      <h2>Cloud saves and accounts</h2>
+      <p>
+        Cloud saves are optional. If you don’t sign in, your progress may be stored locally in your browser (and won’t follow you to other devices).
+        If you do sign in, your save data is stored in our database so you can load it elsewhere.
+      </p>
 
-    <p>
-      Users may opt out of personalized advertising by visiting:
-      <a href="https://www.google.com/settings/ads" target="_blank" rel="noopener noreferrer">
-        https://www.google.com/settings/ads
-      </a>
-    </p>
+      <h2>Advertising (Google AdSense) and third parties</h2>
+      <p>
+        We may use third‑party advertising services (such as Google AdSense) to display ads. These services may use cookies or similar technologies
+        to measure ad performance and, depending on your settings/region, to personalize ads.
+      </p>
+      <ul>
+        <li><b>Ad measurement:</b> ad views, clicks, and related device identifiers may be used to measure effectiveness and prevent fraud.</li>
+        <li><b>Personalization:</b> in some regions, personalization may require consent and may be limited based on your choices.</li>
+      </ul>
 
-    <p>
-      You can learn more about how Google manages data in advertising products here:
-      <a href="https://policies.google.com/technologies/ads" target="_blank" rel="noopener noreferrer">
-        https://policies.google.com/technologies/ads
-      </a>
-    </p>
+      <h2>Your choices</h2>
+      <ul>
+        <li><b>Cookies:</b> You can control cookies via your browser settings. Some site features (like sign‑in) may not work correctly if cookies are disabled.</li>
+        <li><b>Ad settings:</b> If Google ads are shown, you can manage ad personalization using Google’s ad settings and opt‑out tools.</li>
+        <li><b>Account and saves:</b> You may request deletion of your cloud save/account data by contacting us (see “Contact”).</li>
+      </ul>
 
-    <h2>Third-Party Privacy Policies</h2>
-    <p>
-      Apex Play’s Privacy Policy does not apply to other advertisers or websites.
-      We advise you to consult the respective Privacy Policies of third-party ad servers
-      or websites for more detailed information about their practices and instructions
-      on how to opt out of certain options.
-    </p>
+      <h2>Data retention</h2>
+      <p>
+        We retain cloud save data for as long as your account remains active or as needed to provide the service. We may retain limited logs for security,
+        analytics, and troubleshooting for a reasonable period.
+      </p>
 
-    <h2>Children’s Information</h2>
-    <p>
-      Apex Play does not knowingly collect any Personal Identifiable Information
-      from children under the age of 13. If you believe that your child has provided
-      personal information on this Site, please contact us and we will promptly
-      remove such information from our records.
-    </p>
+      <h2>Children’s privacy</h2>
+      <p>
+        Our site is not intended for children under 13. If you believe a child has provided personal information, contact us and we’ll take appropriate steps.
+      </p>
 
-    <h2>How We Use Information</h2>
-    <p>
-      Information collected is used to:
-    </p>
-    <ul>
-      <li>Operate and maintain the Site</li>
-      <li>Improve game functionality and performance</li>
-      <li>Analyze usage trends</li>
-      <li>Display advertisements</li>
-    </ul>
+      <h2>International visitors</h2>
+      <p>
+        If you access the site from outside the United States, your information may be processed in the United States or other locations where our service providers operate.
+      </p>
 
-    <h2>Your Consent</h2>
-    <p>
-      By using Apex Play, you consent to this Privacy Policy and agree to its terms.
-    </p>
+      <h2>Changes to this policy</h2>
+      <p>
+        We may update this policy from time to time. We will revise the “Last updated” date above when changes are made.
+      </p>
 
-    <h2>Updates to This Policy</h2>
-    <p>
-      We may update this Privacy Policy from time to time. Any changes will be posted
-      on this page with an updated revision date.
-    </p>
+      <h2>Contact</h2>
+      <p>
+        For privacy questions or requests (including account/save deletion), please contact us through our main website contact options at <b>apextsgroup.com</b>.
+      </p>
 
-    <h2>Contact</h2>
-    <p>
-      If you have any questions about this Privacy Policy, you may contact us through
-      the main Apex Technical Solutions Group website.
-    </p>
+      <div class="note">
+        Tip: To confirm the game image path is working, try opening <code>/assets/apex-kingdoms-cover.png</code> on your domain.
+      </div>
 
-    <footer>
-      © 2025 Apex Play •
-      <a href="/">Back to Apex Play</a>
-    </footer>
-  </main>
+      <footer>
+        <span>© <span id="y"></span> Apex Play</span>
+        <span><a href="/">Home</a> · <a href="/terms.html">Terms</a></span>
+      </footer>
+    </main>
+  </div>
+
+
+  <script>
+    // Simple starfield
+    const canvas = document.getElementById('stars');
+    const ctx = canvas.getContext('2d');
+    let W=0,H=0,stars=[];
+    function resize(){
+      const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+      W = canvas.width = Math.floor(window.innerWidth * dpr);
+      H = canvas.height = Math.floor(window.innerHeight * dpr);
+      canvas.style.width = window.innerWidth + "px";
+      canvas.style.height = window.innerHeight + "px";
+      stars = Array.from({length: Math.floor((window.innerWidth*window.innerHeight)/18000)}, () => ({
+        x: Math.random()*W, y: Math.random()*H, r: (Math.random()*1.6+0.4)*dpr, a: Math.random()*0.6+0.15, s: (Math.random()*0.25+0.05)*dpr
+      }));
+    }
+    function tick(){
+      ctx.clearRect(0,0,W,H);
+      for(const p of stars){
+        p.y += p.s;
+        if(p.y > H){ p.y = -10; p.x = Math.random()*W; }
+        ctx.globalAlpha = p.a;
+        ctx.beginPath();
+        ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+        ctx.fillStyle = "#fff";
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      requestAnimationFrame(tick);
+    }
+    window.addEventListener('resize', resize);
+    resize(); tick();
+    document.getElementById("y").textContent = new Date().getFullYear();
+  </script>
+
 </body>
 </html>
