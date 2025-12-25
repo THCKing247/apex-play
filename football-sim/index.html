@@ -8,73 +8,167 @@
 </head>
 <body>
   <div class="app">
-    <header>
-      <h1>Gridiron Career Sim</h1>
-      <p class="muted">Create a player, train, and simulate games to build a legacy.</p>
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo"></div>
+        <div>
+          <h1>Gridiron Career Sim</h1>
+          <p class="muted">Madden-style career • build a player • get drafted • become a legend</p>
+        </div>
+      </div>
+
+      <div class="top-actions">
+        <button id="btnContinue" class="ghost">Continue</button>
+        <button id="btnNew" class="primary">New Career</button>
+        <button id="btnWipe" class="danger ghost">Wipe Save</button>
+      </div>
     </header>
 
-    <section class="card" id="create">
-      <h2>Create Your Player</h2>
+    <!-- SCREEN: Home -->
+    <section class="card screen" id="screen-home">
+      <h2>Home</h2>
+      <p class="muted">Start a new career or continue where you left off.</p>
+
       <div class="row">
-        <label>
-          Name
-          <input id="name" placeholder="e.g., Kenny McEachin" />
-        </label>
-        <label>
-          Position
-          <select id="pos">
-            <option>QB</option>
-            <option>RB</option>
-            <option>WR</option>
-            <option>TE</option>
-            <option>LB</option>
-            <option>CB</option>
-            <option>DL</option>
-          </select>
-        </label>
-      </div>
-
-      <button id="btnCreate">Start Career</button>
-    </section>
-
-    <section class="card hidden" id="game">
-      <div class="grid">
-        <div>
-          <h2>Player Card</h2>
-          <div class="statbox" id="playerCard"></div>
-
-          <h3>Upgrade (Spend XP)</h3>
-          <div class="row">
-            <button data-up="speed">+ Speed</button>
-            <button data-up="strength">+ Strength</button>
-            <button data-up="iq">+ Football IQ</button>
-            <button data-up="stamina">+ Stamina</button>
-          </div>
-          <p class="muted">Each upgrade costs 10 XP.</p>
+        <div class="panel">
+          <h3>What’s in this build</h3>
+          <ul class="list">
+            <li>Player Builder (archetypes + point-buy)</li>
+            <li>Ratings system + positional caps</li>
+            <li>Persistent saves (LocalStorage)</li>
+            <li>Career structure ready for Combine → Draft → Season</li>
+          </ul>
         </div>
 
-        <div>
-          <h2>Week Actions</h2>
-          <div class="row">
-            <button id="train">Train</button>
-            <button id="film">Watch Film</button>
-            <button id="rest">Rest</button>
-          </div>
-
-          <h2 style="margin-top:16px;">Simulate Game</h2>
-          <button id="play">Play This Week</button>
-
-          <h3>Game Log</h3>
-          <pre class="log" id="log"></pre>
+        <div class="panel">
+          <h3>Next systems to add</h3>
+          <ul class="list">
+            <li>Combine drills + draft stock</li>
+            <li>Team selection/draft + depth chart</li>
+            <li>Weekly training + game-by-game simulation</li>
+            <li>Contracts, injuries, awards, progression trees</li>
+          </ul>
         </div>
       </div>
     </section>
 
-    <footer class="muted">
-      Built on GitHub Pages • v0.1
-    </footer>
-  </div>
+    <!-- SCREEN: Builder -->
+    <section class="card screen hidden" id="screen-builder">
+      <div class="screen-head">
+        <h2>Build Your Player</h2>
+        <div class="muted">Step <span id="builderStep">1</span> / 3</div>
+      </div>
 
-  <script src="game.js"></script>
-</body>
-</html>
+      <!-- Step 1 -->
+      <div class="builder-step" data-step="1">
+        <h3>Identity</h3>
+        <div class="row">
+          <label>
+            Name
+            <input id="bName" placeholder="e.g., Kenny McEachin" />
+          </label>
+
+          <label>
+            Position
+            <select id="bPos">
+              <option value="QB">QB</option>
+              <option value="RB">RB</option>
+              <option value="WR">WR</option>
+              <option value="TE">TE</option>
+              <option value="CB">CB</option>
+              <option value="LB">LB</option>
+              <option value="DL">DL</option>
+            </select>
+          </label>
+
+          <label>
+            Handedness
+            <select id="bHand">
+              <option value="Right">Right</option>
+              <option value="Left">Left</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="row">
+          <label>
+            Hometown
+            <input id="bTown" placeholder="City, State" />
+          </label>
+          <label>
+            College (optional)
+            <input id="bCollege" placeholder="e.g., UCF" />
+          </label>
+        </div>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="builder-step hidden" data-step="2">
+        <h3>Physicals</h3>
+        <div class="row">
+          <label>
+            Height
+            <select id="bHeight">
+              <!-- generated by JS -->
+            </select>
+          </label>
+
+          <label>
+            Weight (lbs)
+            <input id="bWeight" type="number" min="150" max="380" value="210" />
+          </label>
+
+          <label>
+            Age
+            <input id="bAge" type="number" min="18" max="28" value="21" />
+          </label>
+        </div>
+
+        <p class="muted">Physicals influence speed/strength/stamina baselines, like a real career mode.</p>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="builder-step hidden" data-step="3">
+        <h3>Archetype + Ratings</h3>
+
+        <div class="row">
+          <label>
+            Archetype
+            <select id="bArch"></select>
+          </label>
+          <div class="panel mini">
+            <div class="muted">Points remaining</div>
+            <div class="big" id="pointsLeft">0</div>
+          </div>
+          <div class="panel mini">
+            <div class="muted">Overall (OVR)</div>
+            <div class="big" id="ovrPreview">0</div>
+          </div>
+        </div>
+
+        <div class="ratings">
+          <div class="rating">
+            <div class="rating-head">
+              <b>Speed</b> <span class="muted" id="capSpeed"></span>
+            </div>
+            <div class="rating-controls">
+              <button class="ghost" data-attr="speed" data-dir="-1">-</button>
+              <div class="num" id="valSpeed">0</div>
+              <button data-attr="speed" data-dir="1">+</button>
+            </div>
+          </div>
+
+          <div class="rating">
+            <div class="rating-head">
+              <b>Strength</b> <span class="muted" id="capStrength"></span>
+            </div>
+            <div class="rating-controls">
+              <button class="ghost" data-attr="strength" data-dir="-1">-</button>
+              <div class="num" id="valStrength">0</div>
+              <button data-attr="strength" data-dir="1">+</button>
+            </div>
+          </div>
+
+          <div class="rating">
+            <div class="rating-head">
+              <b>Agility</b> <span class="muted" id="
