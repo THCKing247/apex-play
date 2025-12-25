@@ -445,16 +445,16 @@ input, select{
             <span class="smallMuted">Node types</span>
           </div>
           <div class="legendGrid">
-            <div class="legendItem"><span class="legendIcon">⭐</span>Capital</div>
-            <div class="legendItem"><span class="legendIcon">🏙️</span>City</div>
-            <div class="legendItem"><span class="legendIcon">🏘️</span>Town</div>
+            <div class="legendItem"><span class="legendIcon">★</span>Capital</div>
+            <div class="legendItem"><span class="legendIcon">■</span>City</div>
+            <div class="legendItem"><span class="legendIcon">●</span>Town</div>
             <div class="legendItem"><span class="legendIcon">⚓</span>Port</div>
-            <div class="legendItem"><span class="legendIcon">🏰</span>Castle</div>
-            <div class="legendItem"><span class="legendIcon">🕳️</span>Cave</div>
-            <div class="legendItem"><span class="legendIcon">⛺</span>Camp</div>
-            <div class="legendItem"><span class="legendIcon">🌲</span>Forest</div>
-            <div class="legendItem"><span class="legendIcon">🗿</span>Ruins</div>
-            <div class="legendItem"><span class="legendIcon">❗</span>Landmark</div>
+            <div class="legendItem"><span class="legendIcon">♜</span>Castle</div>
+            <div class="legendItem"><span class="legendIcon">▼</span>Cave</div>
+            <div class="legendItem"><span class="legendIcon">▲</span>Camp</div>
+            <div class="legendItem"><span class="legendIcon">⬢</span>Forest</div>
+            <div class="legendItem"><span class="legendIcon">◆</span>Ruins</div>
+            <div class="legendItem"><span class="legendIcon">✦</span>Landmark</div>
           </div>
           <div class="legendKingdoms">
             <span class="kchip"><span class="kdot" style="background:rgba(124,92,255,.9)"></span>Valoria</span>
@@ -1274,7 +1274,7 @@ function genNodes(){
   // Core capitals / major cities
   placeOnLand("Aurelia (Capital)", "capital", 7600, 5200, {population: 480000, bigCity:true, establishments:["church","tavern","inn","weapon","armor","food","misc","library","guild","bank","property","jobs","stable"]});
   placeOnLand("Kragholm (Capital)", "capital", 15600, 6900, {population: 410000, bigCity:true, establishments:["church","tavern","inn","weapon","armor","food","misc","library","guild","bank","property","jobs","stable"]});
-  placeOnLand("Eldspire", "city", 11800, 12150, {population: 155000, bigCity:true, establishments:["church","tavern","inn","weapon","armor","food","misc","library","guild","bank","property","jobs","stable"]});
+  placeNearLand("Eldspire", "city", 11800, 12150, {population: 155000, bigCity:true, establishments:["church","tavern","inn","weapon","armor","food","misc","library","guild","bank","property","jobs","stable"]});
   placeNearLand("Sablegate", "city", 22800, 9800, {population: 210000, bigCity:true, establishments:["church","tavern","inn","weapon","armor","food","misc","library","guild","bank","property","jobs","stable"]});
 
   // Ports along coast
@@ -1366,6 +1366,30 @@ function genNodes(){
       n.kingdom = (n.name.includes("Aurelia") ? "Valoria" : "Kragmire");
       n.biome = biomeAt(n.x,n.y);
     }
+  }
+
+
+  // Snap any misplaced nodes onto land (prevents "in water" orphans)
+  function snapNodeToLand(n){
+    if(isLand(n.x,n.y)) return;
+    // First try straight north (toward land)
+    for(let i=0;i<140;i++){
+      const yy = n.y - i*120;
+      if(isLand(n.x, yy)){ n.y = yy; n.biome = biomeAt(n.x,n.y); return; }
+    }
+    // Spiral search fallback
+    const step = 240;
+    for(let rr=240; rr<6500; rr+=step){
+      for(let a=0; a<Math.PI*2; a+=Math.PI/12){
+        const xx = n.x + Math.cos(a)*rr;
+        const yy = n.y + Math.sin(a)*rr;
+        if(isLand(xx,yy)){ n.x=xx; n.y=yy; n.biome = biomeAt(n.x,n.y); return; }
+      }
+    }
+  }
+  for(const n of nodes){
+    if(n.impassable) continue;
+    snapNodeToLand(n);
   }
 
   return nodes;
@@ -4764,6 +4788,39 @@ function nodeFillByKingdom(k){
          "rgba(59,130,246,.92)";
 }
 
+function typeFillByType(t){
+  return (t==="capital") ? "rgba(251,191,36,.96)" :
+         (t==="city") ? "rgba(147,197,253,.94)" :
+         (t==="town") ? "rgba(167,243,208,.94)" :
+         (t==="castle") ? "rgba(216,180,254,.94)" :
+         (t==="port") ? "rgba(125,211,252,.94)" :
+         (t==="cave") ? "rgba(226,232,240,.92)" :
+         (t==="forest") ? "rgba(134,239,172,.94)" :
+         (t==="camp") ? "rgba(253,230,138,.94)" :
+         (t==="ruins") ? "rgba(203,213,225,.90)" :
+         (t==="landmark") ? "rgba(244,114,182,.92)" :
+         "rgba(226,232,240,.90)";
+}
+function typeGlyph(t){
+  return (t==="capital") ? "★" :
+         (t==="city") ? "C" :
+         (t==="town") ? "T" :
+         (t==="castle") ? "♜" :
+         (t==="port") ? "⚓" :
+         (t==="cave") ? "▼" :
+         (t==="forest") ? "F" :
+         (t==="camp") ? "▲" :
+         (t==="ruins") ? "R" :
+         (t==="landmark") ? "✦" : "";
+}
+function kingdomStrokeByKingdom(k){
+  return (k==="Valoria") ? "rgba(124,92,255,.95)" :
+         (k==="Kragmire")? "rgba(251,113,133,.92)" :
+         (k==="Eldwyn") ? "rgba(52,211,153,.92)" :
+         "rgba(59,130,246,.92)";
+}
+
+
 function drawNodeGlyph(n, sx, sy, isHere){
   const base = (n.type==="capital") ? 11 :
                (n.type==="city") ? 9 :
@@ -4777,8 +4834,8 @@ function drawNodeGlyph(n, sx, sy, isHere){
                (n.type==="landmark") ? 12 : 6;
 
   const r = base * devicePixelRatio;
-  const fill = isHere ? "rgba(251,191,36,.98)" : nodeFillByKingdom(n.kingdom);
-  const stroke = isHere ? "rgba(251,191,36,.98)" : "rgba(255,255,255,.26)";
+  const fill = isHere ? "rgba(251,191,36,.98)" : typeFillByType(n.type);
+  const stroke = isHere ? "rgba(251,191,36,.98)" : kingdomStrokeByKingdom(n.kingdom);
 
   ctx.save();
   ctx.translate(sx,sy);
@@ -4860,6 +4917,17 @@ function drawNodeGlyph(n, sx, sy, isHere){
 
   ctx.fill();
   ctx.stroke();
+
+  // label glyph to make node types obvious at a glance
+  const g = typeGlyph(n.type);
+  if(g && !isHere){
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = "rgba(0,0,0,.55)";
+    ctx.font = `${Math.max(9, Math.round(r*0.9))}px ui-sans-serif, system-ui`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(g, 0, 1*devicePixelRatio);
+  }
 
   // extra marks
   ctx.shadowBlur = 0;
