@@ -3173,17 +3173,6 @@ window.traderShortcut = function(toId){
   closeModal();
   passTime(18, "Shortcut attempt");
   if(roll(100) <= 55){
-    pushLog(`<span style="color:var(--warn)">🕳️ It was a trap — bandits spring out!</span>`);
-    state.pendingArrival = toId;
-    startCombat(makeEnemy("bandits"), {origin:"road_shortcut"});
-    render();
-  } else {
-    pushLog(`<span style="color:var(--good)">🧭 The shortcut works. You arrive early.</span>`);
-    enterNode(toId);
-    render();
-  }
-};
-
 /* =========================
    Frostspire time sink (NO ENTRANCE)
 ========================= */
@@ -4621,5 +4610,3 @@ render();
 
 </body>
 </html>
-
-
