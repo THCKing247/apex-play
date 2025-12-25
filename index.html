@@ -1,8 +1,8 @@
 <html lang="en"><head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Apex Play — Apex Kingdoms - Dice RPG</title>
-  <meta name="description" content="Play Apex Kingdoms — Dice RPG in your browser. Quest log, map search, and cloud saves.">
+  <title>Apex Play — Apex Kingdoms</title>
+  <meta name="description" content="Play Apex Kingdoms in your browser. Quest log, map search, and cloud saves.">
   <style>
     :root{
       --bg0:#070b1a;
@@ -10,7 +10,6 @@
       --accent:#7c5cff;
       --accent2:#2dd4bf;
       --card:rgba(255,255,255,.08);
-      --card2:rgba(255,255,255,.06);
       --border:rgba(255,255,255,.14);
       --text:#e5e7eb;
       --muted:#a7b0c0;
@@ -30,7 +29,6 @@
     }
 
     /* background FX */
-    .bg-layer{ position:fixed; inset:0; z-index:-2; }
     .grid{
       position:fixed; inset:0; z-index:-2;
       background-image:
@@ -97,17 +95,26 @@
       backdrop-filter: blur(10px);
       position:relative;
       overflow:hidden;
+      min-height: 360px;
     }
     .hero-left::before{
       content:"";
-      position:absolute; inset:-40px;
-      background: url("./assets/apex-kingdoms-hero.svg") center/cover no-repeat;
-      opacity:.45;
-      filter: saturate(1.1);
+      position:absolute; inset:-60px;
+      background: url("./assets/apex-kingdoms-cover.png") center 35%/cover no-repeat;
+      opacity:.34;
+      filter: saturate(1.05);
       transform: scale(1.06);
       pointer-events:none;
     }
-    .hero-left > *{ position:relative; }
+    .hero-left::after{
+      content:"";
+      position:absolute; inset:0;
+      background: radial-gradient(800px 480px at 20% 20%, rgba(124,92,255,.30), transparent 60%),
+                  linear-gradient(180deg, rgba(7,11,26,.25), rgba(7,11,26,.55));
+      pointer-events:none;
+    }
+    .hero-left > *{ position:relative; z-index:1; }
+
     h1{
       margin:0 0 10px;
       font-size: 52px;
@@ -180,7 +187,7 @@
       aspect-ratio: 16 / 9;
       border-radius: 18px;
       border:1px solid rgba(255,255,255,.14);
-      background: url("./assets/apex-kingdoms-card.svg") center/cover no-repeat;
+      background: url("./assets/apex-kingdoms-cover.png") center 55%/cover no-repeat;
       box-shadow: 0 12px 28px rgba(0,0,0,.35);
     }
     .featured h3{ margin:0; font-size:18px; }
@@ -218,7 +225,7 @@
     }
     .game-card .img{
       height: 180px;
-      background: url("./assets/apex-kingdoms-card.svg") center/cover no-repeat;
+      background: url("./assets/apex-kingdoms-cover.png") center 60%/cover no-repeat;
     }
     .game-card .body{ padding:14px 14px 16px; }
     .tag-row{ display:flex; gap:8px; flex-wrap:wrap; margin:8px 0 12px; }
@@ -284,11 +291,11 @@
 
         <!-- CHANGE THIS if your game URL is different -->
         <script>
-          window.APEX_GAME_URL = "./apex-kingdoms/"; // <-- put your game folder here
+          window.APEX_GAME_URL = "./kingdoms/"; // <-- put your game folder here
         </script>
 
         <div class="cta">
-          <a class="btn primary" id="playNow" href="./apex-kingdoms/">▶ Play Apex Kingdoms</a>
+          <a class="btn primary" id="playNow" href="./kingdoms/">▶ Play Apex Kingdoms</a>
           <a class="btn" href="#games">Browse games</a>
         </div>
 
@@ -320,7 +327,7 @@
             <div class="pill"><small>Save</small><b>Cloud</b></div>
           </div>
 
-          <a class="btn primary" href="./apex-kingdoms/">Play now</a>
+          <a class="btn primary" href="./kingdoms/">Play now</a>
         </div>
       </aside>
     </section>
@@ -344,12 +351,11 @@
           </p>
           <div class="play" style="margin-top:12px;">
             <span style="color:rgba(255,255,255,.55);font-size:12px;">Updated</span>
-            <a href="./apex-kingdoms/">Play Now →</a>
+            <a href="./kingdoms/">Play Now →</a>
           </div>
         </div>
       </article>
 
-      <!-- Placeholder for your next games -->
       <article class="game-card" style="opacity:.55">
         <div class="img" style="background: linear-gradient(135deg, rgba(124,92,255,.25), rgba(45,212,191,.18));"></div>
         <div class="body">
@@ -394,8 +400,8 @@
   <script>
     // Keep the Play buttons in sync with APEX_GAME_URL if you edit it.
     (function(){
-      const url = window.APEX_GAME_URL || "./apex-kingdoms/";
-      const links = document.querySelectorAll('a[href="./apex-kingdoms/"]');
+      const url = window.APEX_GAME_URL || "./kingdoms/";
+      const links = document.querySelectorAll('a[href="./kingdoms/"]');
       links.forEach(a => a.setAttribute("href", url));
       document.getElementById("y").textContent = new Date().getFullYear();
     })();
