@@ -106,16 +106,28 @@
     ` : ``}
 
     <!-- hair -->
-    ${av.base === "human" && av.hairStyle !== "none" ? `
-      <path d="
-        M30 42
-        C34 18, 86 18, 90 42
-        L90 40
-        C86 26, 34 26, 30 40
-        Z
-      " fill="${hair}" />
-      ${av.hairStyle === "bun" ? `<circle cx="60" cy="12" r="10" fill="${hair}" />` : ``}
-    ` : ``}
+${av.base === "human" && av.hairStyle !== "none" ? `
+  <path d="
+    M26 40
+    C28 18, 92 18, 94 40
+    C88 32, 78 30, 60 30
+    C42 30, 32 32, 26 40
+    Z
+  " fill="${hair}" />
+  
+  ${av.hairStyle === "short" ? `
+    <path d="
+      M30 42
+      C36 34, 84 34, 90 42
+      Z
+    " fill="${hair}" />
+  ` : ``}
+
+  ${av.hairStyle === "bun" ? `
+    <circle cx="60" cy="14" r="9" fill="${hair}" />
+  ` : ``}
+` : ``}
+
 
     <!-- eyes -->
     ${av.eyesStyle === "happy" ? `
