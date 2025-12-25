@@ -2,15 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Apex Play – Idle Clicker</title>
+<title>Apex Play – Dice RPG</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
 :root{
   --bg0:#070b1a;
   --bg1:#0b1026;
-  --stroke:rgba(255,255,255,.14);
   --accent:#7c5cff;
+  --card:rgba(255,255,255,.08);
+  --border:rgba(255,255,255,.14);
   --text:#e5e7eb;
   --muted:#9ca3af;
 }
@@ -19,265 +20,230 @@
 body{
   margin:0;
   font-family:system-ui,-apple-system,Segoe UI,Roboto;
-  color:var(--text);
   background:
     radial-gradient(1200px 600px at 60% -10%, #7c5cff55, transparent 60%),
     linear-gradient(180deg,var(--bg0),var(--bg1));
+  color:var(--text);
   min-height:100vh;
-}
-
-canvas,.bg-animated,*::before{
-  pointer-events:none !important;
 }
 
 .wrap{
   max-width:1200px;
   margin:auto;
   padding:32px;
-  position:relative;
-  z-index:2;
 }
 
+h1{margin-bottom:6px}
+h2,h3{margin:16px 0 8px}
+
 .card{
-  background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.02));
-  border:1px solid var(--stroke);
-  border-radius:24px;
-  padding:24px;
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:20px;
+  padding:20px;
   backdrop-filter:blur(14px);
 }
 
-.game{
+.grid{
   display:grid;
   grid-template-columns:1fr 420px;
-  gap:28px;
+  gap:24px;
 }
 
-button,select,input{
-  background:rgba(0,0,0,.35);
-  color:var(--text);
-  border:1px solid var(--stroke);
-  border-radius:12px;
-  padding:10px 12px;
-}
-
-button.primary{
+button{
   background:linear-gradient(135deg,#7c5cff,#5f4cff);
   border:none;
-  font-size:18px;
-  padding:16px;
+  color:white;
+  padding:12px 16px;
+  border-radius:12px;
+  cursor:pointer;
+  font-size:16px;
 }
 
-.controls{
+button.secondary{
+  background:rgba(0,0,0,.35);
+  border:1px solid var(--border);
+}
+
+.stats{
   display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:14px;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
 }
 
-label{
-  font-size:12px;
-  color:var(--muted);
+.stat{
+  background:rgba(0,0,0,.3);
+  border-radius:12px;
+  padding:10px;
+  text-align:center;
 }
 
-.avatar-box{
-  height:460px;
-  border-radius:20px;
-  background:radial-gradient(circle at top,#0b1026,#050814);
-  display:flex;
-  align-items:center;
-  justify-content:center;
+.inventory{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:12px;
 }
 
-.avatar-svg,
-.avatar-svg svg{
-  pointer-events:none;
+.slot{
+  background:rgba(0,0,0,.35);
+  border:1px dashed var(--border);
+  border-radius:12px;
+  padding:10px;
+  min-height:70px;
+  text-align:center;
+  font-size:14px;
+}
+
+.slot strong{display:block;font-size:12px;color:var(--muted)}
+
+.log{
+  background:rgba(0,0,0,.4);
+  border-radius:12px;
+  padding:12px;
+  height:180px;
+  overflow:auto;
+  font-size:14px;
 }
 </style>
 </head>
 
 <body>
 <div class="wrap">
-<h1>Apex Play – Idle Clicker</h1>
+<h1>🎲 Apex Dice RPG</h1>
+<p class="muted">Turn-based D&D-style dice combat. Progress saves locally.</p>
 
-<div class="game">
+<div class="grid">
 
-<!-- LEFT -->
+<!-- LEFT: GAME -->
 <div class="card">
-<h2>Coins: <span id="coins">0</span></h2>
-<button id="clickBtn" class="primary" style="width:100%;margin-bottom:20px">
-Click to Earn
-</button>
 
-<h3>Avatar Builder</h3>
-
-<div class="controls">
-<label>Base
-<select id="base">
-<option value="human">Human</option>
-<option value="robot">Robot</option>
-</select>
-</label>
-
-<label>Hair
-<select id="hair">
-<option value="none">None</option>
-<option value="short">Short</option>
-<option value="bun">Bun</option>
-</select>
-</label>
-
-<label>Hair Color
-<input type="color" id="hairColor" value="#2d2d2d">
-</label>
-
-<label>Eyes
-<select id="eyes">
-<option value="default">Default</option>
-<option value="happy">Happy</option>
-<option value="sad">Sad</option>
-</select>
-</label>
-
-<label>Mouth
-<select id="mouth">
-<option value="smile">Smile</option>
-<option value="neutral">Neutral</option>
-<option value="frown">Frown</option>
-</select>
-</label>
-
-<label>Skin
-<input type="color" id="skin" value="#f1c27d">
-</label>
-
-<label>Shirt
-<select id="shirt">
-<option value="tee">Tee</option>
-<option value="jacket">Jacket</option>
-</select>
-</label>
-
-<label>Shirt Color
-<input type="color" id="shirtColor" value="#7c5cff">
-</label>
-
-<label>Pants
-<select id="pants">
-<option value="jeans">Jeans</option>
-<option value="shorts">Shorts</option>
-</select>
-</label>
-
-<label>Pants Color
-<input type="color" id="pantsColor" value="#111827">
-</label>
+<h2>Player</h2>
+<div class="stats">
+  <div class="stat">❤️ HP<br><strong id="hp">20</strong></div>
+  <div class="stat">⚔️ Attack<br><strong id="atk">2</strong></div>
+  <div class="stat">🛡️ Defense<br><strong id="def">1</strong></div>
 </div>
 
-<div style="margin-top:16px;display:flex;gap:12px">
-<button id="saveAvatar">Save Avatar</button>
-<button id="reset">Reset Save</button>
-</div>
+<h2 style="margin-top:20px">Actions</h2>
+<button onclick="attack()">Attack (d20)</button>
+<button class="secondary" onclick="loot()">Search for Loot</button>
+
+<h3>Combat Log</h3>
+<div class="log" id="log"></div>
+
 </div>
 
-<!-- RIGHT -->
+<!-- RIGHT: INVENTORY -->
 <div class="card">
-<h3>Preview</h3>
-<div class="avatar-box">
-<div id="avatar" class="avatar-svg"></div>
+<h2>Equipment</h2>
+<div class="inventory">
+  <div class="slot" id="weaponSlot"><strong>Weapon</strong>None</div>
+  <div class="slot" id="armorSlot"><strong>Armor</strong>None</div>
+  <div class="slot" id="accessorySlot"><strong>Accessory</strong>None</div>
+  <div class="slot"><strong>Gold</strong><span id="gold">0</span></div>
 </div>
+
+<h3 style="margin-top:20px">Backpack</h3>
+<div class="inventory" id="bag"></div>
 </div>
 
 </div>
 </div>
 
 <script>
-const save = JSON.parse(localStorage.getItem("apexSave")||"{}");
-let coins = save.coins || 0;
-
-const avatar = save.avatar || {
-base:"human",
-hair:"short",
-hairColor:"#2d2d2d",
-eyes:"default",
-mouth:"smile",
-skin:"#f1c27d",
-shirt:"tee",
-shirtColor:"#7c5cff",
-pants:"jeans",
-pantsColor:"#111827"
+/* ---------- GAME STATE ---------- */
+let state = JSON.parse(localStorage.getItem("diceRPG")) || {
+  hp:20,
+  atk:2,
+  def:1,
+  gold:0,
+  weapon:null,
+  armor:null,
+  accessory:null,
+  bag:[]
 };
 
-const $ = id=>document.getElementById(id);
+/* ---------- HELPERS ---------- */
+const log = msg=>{
+  const l=document.getElementById("log");
+  l.innerHTML+=msg+"<br>";
+  l.scrollTop=l.scrollHeight;
+};
 
-function svgAvatar(a){
-const skin = a.base==="robot" ? "#cbd5e1" : a.skin;
+const roll = sides => Math.floor(Math.random()*sides)+1;
 
-const shirtShape = a.shirt==="jacket"
-? `<path d="M38 96 Q60 88 82 96 V140 Q60 148 38 140 Z" fill="${a.shirtColor}"/>`
-: `<rect x="40" y="96" width="40" height="44" rx="18" fill="${a.shirtColor}"/>`;
-
-const pantsTop = 140;
-const pantsHeight = a.pants==="shorts" ? 24 : 44;
-
-return `
-<svg viewBox="0 0 120 200" width="210">
-
-<!-- HEAD -->
-<ellipse cx="60" cy="42" rx="28" ry="32" fill="${skin}"/>
-
-<!-- HAIR (HUMAN ONLY) -->
-${a.base==="human" && a.hair!=="none" ? `
-<path d="M28 38 C30 16,90 16,92 38 C86 30,76 28,60 28 C44 28,34 30,28 38 Z" fill="${a.hairColor}"/>
-${a.hair==="bun" ? `<circle cx="60" cy="12" r="8" fill="${a.hairColor}"/>`:""}
-`:""}
-
-<!-- EYES -->
-${a.eyes==="happy" ? `
-<path d="M44 46c4 4 8 4 12 0" stroke="#000" stroke-width="2" fill="none"/>
-<path d="M64 46c4 4 8 4 12 0" stroke="#000" stroke-width="2" fill="none"/>
-` : a.eyes==="sad" ? `
-<path d="M44 50c4-4 8-4 12 0" stroke="#000" stroke-width="2" fill="none"/>
-<path d="M64 50c4-4 8-4 12 0" stroke="#000" stroke-width="2" fill="none"/>
-` : `
-<circle cx="48" cy="46" r="4"/><circle cx="72" cy="46" r="4"/>
-`}
-
-<!-- MOUTH -->
-${a.mouth==="smile" ? `<path d="M48 64c6 6 18 6 24 0" stroke="#000" stroke-width="2" fill="none"/>`
-: a.mouth==="frown" ? `<path d="M48 70c6-6 18-6 24 0" stroke="#000" stroke-width="2" fill="none"/>`
-: `<line x1="48" y1="66" x2="72" y2="66" stroke="#000" stroke-width="2"/>`}
-
-<!-- NECK -->
-<rect x="54" y="72" width="12" height="10" rx="6" fill="${skin}"/>
-
-<!-- ARMS -->
-<rect x="26" y="102" width="12" height="46" rx="6" fill="${skin}"/>
-<rect x="82" y="102" width="12" height="46" rx="6" fill="${skin}"/>
-
-<!-- SHIRT -->
-${shirtShape}
-
-<!-- PANTS -->
-<rect x="46" y="${pantsTop}" width="12" height="${pantsHeight}" rx="6" fill="${a.pantsColor}"/>
-<rect x="62" y="${pantsTop}" width="12" height="${pantsHeight}" rx="6" fill="${a.pantsColor}"/>
-
-</svg>`;
-}
-
+/* ---------- UI ---------- */
 function render(){
-$("coins").textContent = coins;
-$("avatar").innerHTML = svgAvatar(avatar);
+  hp.textContent=state.hp;
+  atk.textContent=state.atk;
+  def.textContent=state.def;
+  gold.textContent=state.gold;
+
+  weaponSlot.innerHTML=`<strong>Weapon</strong>${state.weapon?.name||"None"}`;
+  armorSlot.innerHTML=`<strong>Armor</strong>${state.armor?.name||"None"}`;
+  accessorySlot.innerHTML=`<strong>Accessory</strong>${state.accessory?.name||"None"}`;
+
+  bag.innerHTML="";
+  state.bag.forEach((item,i)=>{
+    const d=document.createElement("div");
+    d.className="slot";
+    d.innerHTML=`${item.name}<br><button onclick="equip(${i})">Equip</button>`;
+    bag.appendChild(d);
+  });
+
+  localStorage.setItem("diceRPG",JSON.stringify(state));
 }
 
-["base","hair","eyes","mouth","shirt","pants"].forEach(k=>{
-$(k).onchange=e=>{avatar[k]=e.target.value;render();};
-});
-["hairColor","skin","shirtColor","pantsColor"].forEach(k=>{
-$(k).oninput=e=>{avatar[k]=e.target.value;render();};
-});
+/* ---------- GAME ACTIONS ---------- */
+function attack(){
+  const d20 = roll(20);
+  const dmg = roll(6)+state.atk;
+  log(`🎲 You roll d20: <b>${d20}</b>`);
+  if(d20>=10){
+    log(`⚔️ Hit! You deal ${dmg} damage.`);
+  }else{
+    log(`❌ Miss!`);
+  }
+}
 
-$("clickBtn").onclick=()=>{coins++;render();};
-$("saveAvatar").onclick=()=>localStorage.setItem("apexSave",JSON.stringify({coins,avatar}));
-$("reset").onclick=()=>{localStorage.removeItem("apexSave");location.reload();};
+function loot(){
+  const items=[
+    {type:"weapon",name:"Sword (+2 ATK)",atk:2},
+    {type:"armor",name:"Leather Armor (+2 DEF)",def:2},
+    {type:"accessory",name:"Ring of Luck (+1 ATK)",atk:1},
+    {type:"gold",name:"Gold Pouch",gold:10}
+  ];
+  const item = items[Math.floor(Math.random()*items.length)];
+  if(item.type==="gold"){
+    state.gold+=item.gold;
+    log(`💰 Found ${item.gold} gold!`);
+  }else{
+    state.bag.push(item);
+    log(`📦 Found ${item.name}`);
+  }
+  render();
+}
+
+function equip(i){
+  const item = state.bag.splice(i,1)[0];
+  if(item.type==="weapon"){
+    if(state.weapon) state.atk-=state.weapon.atk||0;
+    state.weapon=item;
+    state.atk+=item.atk||0;
+  }
+  if(item.type==="armor"){
+    if(state.armor) state.def-=state.armor.def||0;
+    state.armor=item;
+    state.def+=item.def||0;
+  }
+  if(item.type==="accessory"){
+    if(state.accessory) state.atk-=state.accessory.atk||0;
+    state.accessory=item;
+    state.atk+=item.atk||0;
+  }
+  log(`🧩 Equipped ${item.name}`);
+  render();
+}
 
 render();
 </script>
