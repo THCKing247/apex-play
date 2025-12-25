@@ -4180,8 +4180,15 @@ function drawWorld(){
       const {sx,sy} = worldToScreen(wx,wy);
       const {sx:sx2,sy:sy2} = worldToScreen(wx+step, wy+step);
       const w = (sx2-sx), h=(sy2-sy);
-      ctx.fillStyle = land ? tint : "rgba(20,48,119,.20)";
-      ctx.fillRect(sx,sy,w,h);
+      if (land) {
+  // add terrain tint + soft noise shading
+  const shade = 0.08 + 0.05*Math.random();
+  ctx.fillStyle = `rgba(72,255,146,${shade})`; // greenish land tint
+} else {
+  const shade = 0.05 + 0.04*Math.random();
+  ctx.fillStyle = `rgba(36,92,200,${shade})`; // blue ocean tint
+}
+ctx.fillRect(sx,sy,w,h);
     }
   }
 
@@ -4243,7 +4250,12 @@ function drawWorld(){
                  "rgba(59,130,246,.85)";
     ctx.fillStyle = isHere ? "rgba(251,191,36,.95)" : fill;
     ctx.fill();
-
+if (isHere) {
+  ctx.shadowColor = "rgba(255,255,150,0.8)";
+  ctx.shadowBlur = 15;
+} else {
+  ctx.shadowBlur = 0;
+}
     ctx.lineWidth = 2*devicePixelRatio;
     ctx.strokeStyle = isHere ? "rgba(251,191,36,.95)" : "rgba(255,255,255,.20)";
     ctx.stroke();
@@ -4402,7 +4414,7 @@ $("mapWrap").addEventListener("wheel", (e)=>{
   const sy = (e.clientY - rect.top)  * devicePixelRatio;
 
   const before = screenToWorld(sx,sy);
-  view.zoom = clamp(view.zoom * factor, 0.018, 0.13);
+  view.zoom = clamp(view.zoom * factor, 0.008, 0.18);
   const after = screenToWorld(sx,sy);
 
   // keep point under cursor stable
@@ -4588,7 +4600,7 @@ function initAfterLoad(forceCenter=false){
     state.currentNode = slug("Aurelia (Capital)");
     state.lastSafeNode = state.currentNode;
   }
-
+centerOnNode(state.currentNode);
   // refresh spell slots and spells list sanity
   if(state.characterCreated){
     refreshSpellSlotsToMax();
