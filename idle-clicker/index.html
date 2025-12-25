@@ -10,7 +10,7 @@
   --bg0:#070b1a;
   --bg1:#0b1026;
   --glass:rgba(255,255,255,.06);
-  --stroke:rgba(255,255,255,.12);
+  --stroke:rgba(255,255,255,.14);
   --accent:#7c5cff;
   --text:#e5e7eb;
   --muted:#9ca3af;
@@ -28,14 +28,14 @@ body{
   min-height:100vh;
 }
 
-/* BACKGROUND FX (VISUAL ONLY) */
+/* DECORATIVE LAYERS NEVER BLOCK INPUT */
+canvas,
 .bg-animated,
-.bg-animated::before,
-.bg-grid,
-canvas{
+.bg-animated *{
   pointer-events:none !important;
 }
 
+/* LAYOUT */
 .wrap{
   max-width:1200px;
   margin:auto;
@@ -46,24 +46,24 @@ canvas{
 
 h1,h2,h3{margin:0 0 16px}
 
-/* GLASS CARDS */
+/* GLASS CARD */
 .card{
   background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.02));
   border:1px solid var(--stroke);
   border-radius:24px;
   padding:24px;
-  backdrop-filter:blur(12px);
+  backdrop-filter:blur(14px);
   box-shadow:0 30px 80px rgba(0,0,0,.45);
 }
 
-/* GAME GRID */
+/* GRID */
 .game{
   display:grid;
   grid-template-columns:1fr 420px;
   gap:28px;
 }
 
-/* BUTTONS */
+/* CONTROLS */
 button,select,input{
   background:rgba(0,0,0,.35);
   color:var(--text);
@@ -78,7 +78,6 @@ button.primary{
   padding:16px;
 }
 
-/* CONTROLS */
 .controls{
   display:grid;
   grid-template-columns:1fr 1fr;
@@ -91,7 +90,7 @@ label{
 
 /* AVATAR */
 .avatar-box{
-  height:420px;
+  height:440px;
   border-radius:20px;
   background:radial-gradient(circle at top,#0b1026,#050814);
   display:flex;
@@ -119,87 +118,86 @@ label{
 
   <div class="game">
 
-    <!-- LEFT -->
-    <div class="card game">
-      <div>
-        <h2>Coins: <span id="coins">0</span></h2>
-        <button id="clickBtn" class="primary" style="width:100%;margin-bottom:20px">
-          Click to Earn
-        </button>
+    <!-- LEFT PANEL -->
+    <div class="card">
+      <h2>Coins: <span id="coins">0</span></h2>
 
-        <h3>Avatar Builder</h3>
+      <button id="clickBtn" class="primary" style="width:100%;margin-bottom:20px">
+        Click to Earn
+      </button>
 
-        <div class="controls">
-          <label>Base
-            <select id="base">
-              <option value="human">Human</option>
-              <option value="robot">Robot</option>
-            </select>
-          </label>
+      <h3>Avatar Builder</h3>
 
-          <label>Hair
-            <select id="hair">
-              <option value="none">None</option>
-              <option value="short">Short</option>
-              <option value="bun">Bun</option>
-            </select>
-          </label>
+      <div class="controls">
+        <label>Base
+          <select id="base">
+            <option value="human">Human</option>
+            <option value="robot">Robot</option>
+          </select>
+        </label>
 
-          <label>Hair Color
-            <input type="color" id="hairColor" value="#2d2d2d">
-          </label>
+        <label>Hair
+          <select id="hair">
+            <option value="none">None</option>
+            <option value="short">Short</option>
+            <option value="bun">Bun</option>
+          </select>
+        </label>
 
-          <label>Eyes
-            <select id="eyes">
-              <option value="default">Default</option>
-              <option value="happy">Happy</option>
-              <option value="sad">Sad</option>
-            </select>
-          </label>
+        <label>Hair Color
+          <input type="color" id="hairColor" value="#2d2d2d">
+        </label>
 
-          <label>Mouth
-            <select id="mouth">
-              <option value="smile">Smile</option>
-              <option value="neutral">Neutral</option>
-              <option value="frown">Frown</option>
-            </select>
-          </label>
+        <label>Eyes
+          <select id="eyes">
+            <option value="default">Default</option>
+            <option value="happy">Happy</option>
+            <option value="sad">Sad</option>
+          </select>
+        </label>
 
-          <label>Skin
-            <input type="color" id="skin" value="#f1c27d">
-          </label>
+        <label>Mouth
+          <select id="mouth">
+            <option value="smile">Smile</option>
+            <option value="neutral">Neutral</option>
+            <option value="frown">Frown</option>
+          </select>
+        </label>
 
-          <label>Shirt
-            <select id="shirt">
-              <option value="tee">Tee</option>
-              <option value="jacket">Jacket</option>
-            </select>
-          </label>
+        <label>Skin
+          <input type="color" id="skin" value="#f1c27d">
+        </label>
 
-          <label>Shirt Color
-            <input type="color" id="shirtColor" value="#7c5cff">
-          </label>
+        <label>Shirt
+          <select id="shirt">
+            <option value="tee">Tee</option>
+            <option value="jacket">Jacket</option>
+          </select>
+        </label>
 
-          <label>Pants
-            <select id="pants">
-              <option value="jeans">Jeans</option>
-              <option value="shorts">Shorts</option>
-            </select>
-          </label>
+        <label>Shirt Color
+          <input type="color" id="shirtColor" value="#7c5cff">
+        </label>
 
-          <label>Pants Color
-            <input type="color" id="pantsColor" value="#111827">
-          </label>
-        </div>
+        <label>Pants
+          <select id="pants">
+            <option value="jeans">Jeans</option>
+            <option value="shorts">Shorts</option>
+          </select>
+        </label>
 
-        <div style="margin-top:16px;display:flex;gap:12px">
-          <button id="saveAvatar">Save Avatar</button>
-          <button id="reset">Reset Save</button>
-        </div>
+        <label>Pants Color
+          <input type="color" id="pantsColor" value="#111827">
+        </label>
+      </div>
+
+      <div style="margin-top:16px;display:flex;gap:12px">
+        <button id="saveAvatar">Save Avatar</button>
+        <button id="reset">Reset Save</button>
       </div>
     </div>
 
-    <!-- RIGHT -->
+    <!-- RIGHT PANEL -->
     <div class="card">
       <h3>Preview</h3>
       <div class="avatar-box">
@@ -215,6 +213,7 @@ label{
 </div>
 
 <script>
+/* LOAD SAVE */
 const save = JSON.parse(localStorage.getItem("apexSave")||"{}");
 let coins = save.coins || 0;
 
@@ -233,28 +232,65 @@ const avatar = save.avatar || {
 
 const $ = id=>document.getElementById(id);
 
+/* AVATAR RENDERER (BITLIFE-STYLE FULL BODY) */
 function svgAvatar(a){
   const skin = a.base==="robot" ? "#cbd5e1" : a.skin;
+
+  let eyes = `
+    <circle cx="48" cy="48" r="4" fill="#000"/>
+    <circle cx="72" cy="48" r="4" fill="#000"/>
+  `;
+  if(a.eyes==="happy"){
+    eyes = `
+      <path d="M42 48c4 4 8 4 12 0" stroke="#000" stroke-width="2" fill="none"/>
+      <path d="M66 48c4 4 8 4 12 0" stroke="#000" stroke-width="2" fill="none"/>
+    `;
+  }
+  if(a.eyes==="sad"){
+    eyes = `
+      <path d="M42 52c4-4 8-4 12 0" stroke="#000" stroke-width="2" fill="none"/>
+      <path d="M66 52c4-4 8-4 12 0" stroke="#000" stroke-width="2" fill="none"/>
+    `;
+  }
+
+  const pantsY = a.pants==="shorts" ? 132 : 122;
+  const pantsH = a.pants==="shorts" ? 26 : 44;
+
   return `
-<svg viewBox="0 0 120 180" width="200">
-  <ellipse cx="60" cy="46" rx="30" ry="34" fill="${skin}"/>
+<svg viewBox="0 0 120 190" width="200">
+  <ellipse cx="60" cy="46" rx="28" ry="32" fill="${skin}"/>
+
   ${a.hair!=="none"?`
     <path d="
-      M26 38
-      C28 18,92 18,94 38
-      C88 32,78 30,60 30
-      C42 30,32 32,26 38
+      M28 38
+      C30 18,90 18,92 38
+      C86 32,76 30,60 30
+      C44 30,34 32,28 38
       Z
     " fill="${a.hairColor}"/>
     ${a.hair==="bun"?`<circle cx="60" cy="14" r="9" fill="${a.hairColor}"/>`:""}
   `:""}
-  <circle cx="48" cy="48" r="4"/><circle cx="72" cy="48" r="4"/>
-  ${a.mouth==="smile"?`<path d="M48 64c6 6 18 6 24 0" stroke="#000" stroke-width="2" fill="none"/>`:
-    a.mouth==="frown"?`<path d="M48 70c6-6 18-6 24 0" stroke="#000" stroke-width="2" fill="none"/>`:
-    `<line x1="48" y1="66" x2="72" y2="66" stroke="#000" stroke-width="2"/>`}
-  <rect x="30" y="82" width="60" height="40" rx="20" fill="${a.shirtColor}"/>
-  <rect x="42" y="124" width="14" height="40" rx="7" fill="${a.pantsColor}"/>
-  <rect x="64" y="124" width="14" height="40" rx="7" fill="${a.pantsColor}"/>
+
+  ${eyes}
+
+  ${a.mouth==="smile"?`
+    <path d="M48 64c6 6 18 6 24 0" stroke="#000" stroke-width="2" fill="none"/>
+  `:a.mouth==="frown"?`
+    <path d="M48 70c6-6 18-6 24 0" stroke="#000" stroke-width="2" fill="none"/>
+  `:`
+    <line x1="48" y1="66" x2="72" y2="66" stroke="#000" stroke-width="2"/>
+  `}
+
+  <!-- ARMS -->
+  <rect x="26" y="90" width="12" height="42" rx="6" fill="${skin}" opacity=".9"/>
+  <rect x="82" y="90" width="12" height="42" rx="6" fill="${skin}" opacity=".9"/>
+
+  <!-- TORSO -->
+  <rect x="38" y="84" width="44" height="40" rx="20" fill="${a.shirtColor}"/>
+
+  <!-- PANTS -->
+  <rect x="46" y="${pantsY}" width="12" height="${pantsH}" rx="6" fill="${a.pantsColor}"/>
+  <rect x="62" y="${pantsY}" width="12" height="${pantsH}" rx="6" fill="${a.pantsColor}"/>
 </svg>`;
 }
 
