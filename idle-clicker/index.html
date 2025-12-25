@@ -1,10 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Apex Play – Dice RPG</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+<meta charset="UTF-8" />
+<title>Apex Dice RPG</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <style>
 :root{
   --bg0:#070b1a;
@@ -14,6 +13,8 @@
   --border:rgba(255,255,255,.14);
   --text:#e5e7eb;
   --muted:#9ca3af;
+  --good:#34d399;
+  --bad:#fb7185;
 }
 *{box-sizing:border-box}
 body{
@@ -25,22 +26,24 @@ body{
   color:var(--text);
   min-height:100vh;
 }
-.wrap{max-width:1200px;margin:auto;padding:32px}
-h1{margin:0 0 6px}
-p{margin:0 0 18px;color:var(--muted)}
+.wrap{max-width:1300px;margin:auto;padding:28px}
+h1{margin:0 0 6px;font-size:34px}
+p{margin:0 0 16px;color:var(--muted)}
 .card{
   background:var(--card);
   border:1px solid var(--border);
   border-radius:20px;
-  padding:20px;
+  padding:18px;
   backdrop-filter:blur(14px);
+  box-shadow:0 30px 80px rgba(0,0,0,.35);
 }
-.grid{display:grid;grid-template-columns:1fr 420px;gap:24px}
+.grid{display:grid;grid-template-columns:1fr 420px;gap:18px;align-items:start}
+.row{display:flex;gap:12px;flex-wrap:wrap}
 button{
   background:linear-gradient(135deg,#7c5cff,#5f4cff);
   border:none;color:#fff;
   padding:12px 16px;border-radius:12px;cursor:pointer;
-  font-size:16px;
+  font-size:15px;
 }
 button.secondary{
   background:rgba(0,0,0,.35);
@@ -51,18 +54,69 @@ button.small{
   padding:8px 10px;
   border-radius:10px;
 }
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+button:disabled{
+  opacity:.45;
+  cursor:not-allowed;
+}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
 .stat{
   background:rgba(0,0,0,.3);
-  border-radius:12px;padding:10px;text-align:center;
+  border-radius:14px;padding:10px;text-align:center;
 }
+.stat strong{font-size:18px}
+.badge{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:6px 10px;border-radius:999px;
+  background:rgba(0,0,0,.35);
+  border:1px solid var(--border);
+  color:var(--muted);
+  font-size:12px;
+}
+.log{
+  background:rgba(0,0,0,.4);
+  border-radius:14px;
+  padding:12px;
+  height:210px;
+  overflow:auto;
+  font-size:14px;
+}
+hr{border:none;border-top:1px solid var(--border);margin:14px 0}
+
+/* Map */
+.mapWrap{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:12px;
+}
+.mapTitle{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+.mapCanvas{
+  width:100%;
+  height:430px;
+  border-radius:16px;
+  background:rgba(0,0,0,.35);
+  border:1px solid var(--border);
+  overflow:hidden;
+  position:relative;
+}
+.mapCanvas canvas{
+  width:100%;
+  height:100%;
+  display:block;
+}
+
+/* Inventory */
 .inventory{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
 .slot{
   background:rgba(0,0,0,.35);
   border:1px dashed var(--border);
-  border-radius:12px;
+  border-radius:14px;
   padding:10px;
-  min-height:76px;
+  min-height:80px;
   text-align:center;
   font-size:14px;
   display:flex;
@@ -72,19 +126,11 @@ button.small{
 }
 .slot strong{display:block;font-size:12px;color:var(--muted)}
 .slot .itemName{line-height:1.2}
-.log{
-  background:rgba(0,0,0,.4);
-  border-radius:12px;
-  padding:12px;
-  height:220px;
-  overflow:auto;
-  font-size:14px;
-}
-.bagGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.bagGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:10px}
 .itemCard{
   background:rgba(0,0,0,.35);
   border:1px solid var(--border);
-  border-radius:12px;
+  border-radius:14px;
   padding:10px;
   display:flex;
   flex-direction:column;
@@ -92,43 +138,83 @@ button.small{
   min-height:92px;
 }
 .itemCard .meta{font-size:12px;color:var(--muted)}
-hr{border:none;border-top:1px solid var(--border);margin:16px 0}
+
+/* Modal */
+.overlay{
+  position:fixed; inset:0;
+  background:rgba(0,0,0,.55);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:18px;
+  z-index:50;
+}
+.modal{
+  width:min(720px, 96vw);
+  background:rgba(15,18,40,.92);
+  border:1px solid var(--border);
+  border-radius:18px;
+  padding:16px;
+  box-shadow:0 40px 120px rgba(0,0,0,.55);
+}
+.modal .top{
+  display:flex;justify-content:space-between;align-items:center;gap:10px;
+}
+.modal h3{margin:0}
+.modal p{margin:6px 0 0;color:var(--muted)}
 </style>
 </head>
 
 <body>
 <div class="wrap">
   <h1>🎲 Apex Dice RPG</h1>
-  <p>Turn-based D&D-style dice combat. Progress saves locally.</p>
+  <p>Explore the region, trigger encounters, and delve into caves with fog-of-war.</p>
 
   <div class="grid">
-
-    <!-- LEFT: GAME -->
+    <!-- LEFT: MAP + ACTIONS + LOG -->
     <div class="card">
-      <h2>Player</h2>
+      <div class="mapWrap">
+        <div class="mapTitle">
+          <div>
+            <div class="badge" id="modeBadge">Mode: Exploring</div>
+            <div class="badge" id="locBadge">Location: —</div>
+          </div>
+          <div class="row">
+            <button class="secondary" id="searchBtn">Search / Explore</button>
+            <button class="secondary" id="restBtn">Rest (Town/Camp)</button>
+          </div>
+        </div>
+
+        <div class="mapCanvas">
+          <canvas id="map"></canvas>
+        </div>
+
+        <div class="row" id="combatRow" style="display:none">
+          <button id="attackBtn">Attack (d20)</button>
+          <button class="secondary" id="fleeBtn">Flee</button>
+        </div>
+
+        <div id="enemyPanel" style="display:none;margin-top:6px">
+          <div class="badge">Enemy: <b id="enemyName"></b> • HP <b id="enemyHp"></b> • DEF <b id="enemyDef"></b></div>
+        </div>
+
+        <hr>
+
+        <h3 style="margin:0 0 8px">Combat Log</h3>
+        <div class="log" id="log"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT: PLAYER + INVENTORY -->
+    <div class="card">
+      <h2 style="margin:0">Player</h2>
       <div class="stats">
         <div class="stat">❤️ HP<br><strong id="hp">20</strong></div>
         <div class="stat">⚔️ Attack<br><strong id="atk">2</strong></div>
         <div class="stat">🛡️ Defense<br><strong id="def">1</strong></div>
       </div>
 
-      <h2 style="margin-top:20px">Actions</h2>
-      <div style="display:flex;gap:12px;flex-wrap:wrap">
-        <button id="attackBtn">Attack (d20)</button>
-        <button class="secondary" id="lootBtn">Search for Loot</button>
-        <button class="secondary" id="resetBtn">Reset Game</button>
-      </div>
-
-      <hr>
-
-      <h3>Combat Log</h3>
-      <div class="log" id="log"></div>
-    </div>
-
-    <!-- RIGHT: INVENTORY -->
-    <div class="card">
-      <h2>Equipment</h2>
-
+      <h3 style="margin:18px 0 10px">Equipment</h3>
       <div class="inventory">
         <div class="slot" id="weaponSlot"></div>
         <div class="slot" id="armorSlot"></div>
@@ -140,40 +226,299 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0}
         </div>
       </div>
 
-      <h3 style="margin-top:18px">Backpack</h3>
+      <h3 style="margin:18px 0 10px">Backpack</h3>
       <div class="bagGrid" id="bag"></div>
-    </div>
 
+      <hr>
+      <div class="row">
+        <button class="secondary" id="lootBtn">Search for Loot</button>
+        <button class="secondary" id="resetBtn">Reset Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal for messages -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="top">
+      <h3 id="modalTitle">Notice</h3>
+      <button class="secondary small" id="closeModal">Close</button>
+    </div>
+    <p id="modalBody"></p>
   </div>
 </div>
 
 <script>
-/* ---------- STATE ---------- */
-let state = JSON.parse(localStorage.getItem("diceRPG")) || {
-  hp:20,
-  atkBase:2,
-  defBase:1,
-  gold:0,
-  weapon:null,
-  armor:null,
-  accessory:null,
-  bag:[],
-  log:[]
-};
+/* ================================
+   SAVE + STATE
+================================ */
+const SAVE_KEY = "apexDiceRpg_v2";
 
+const defaultState = () => ({
+  // player
+  hp: 20,
+  hpMax: 20,
+  atkBase: 2,
+  defBase: 1,
+  gold: 0,
+
+  // equipment
+  weapon: null,
+  armor: null,
+  accessory: null,
+  bag: [],
+  log: [],
+
+  // world mode
+  mode: "world", // "world" | "cave" | "combat"
+  currentNode: "stonehaven",
+  lastSafeNode: "stonehaven",
+
+  // combat
+  enemy: null,
+
+  // cave exploration (fog-of-war)
+  cave: {
+    activeCaveId: null,
+    w: 18,
+    h: 12,
+    // generated per cave
+    tiles: [], // "wall" | "floor" | "entrance" | "exit" (floor)
+    seen: [],  // boolean
+    px: 2, py: 2
+  }
+});
+
+let state = JSON.parse(localStorage.getItem(SAVE_KEY) || "null") || defaultState();
+
+/* ================================
+   DOM HELPERS
+================================ */
 const $ = id => document.getElementById(id);
-
-/* ---------- HELPERS ---------- */
-const roll = sides => Math.floor(Math.random()*sides)+1;
+const mapCanvas = $("map");
+const ctx = mapCanvas.getContext("2d");
 
 function pushLog(msg){
   state.log.push(msg);
-  // keep last 200 lines
-  if(state.log.length>200) state.log = state.log.slice(-200);
+  if(state.log.length > 250) state.log = state.log.slice(-250);
 }
 
 function save(){
-  localStorage.setItem("diceRPG", JSON.stringify(state));
+  localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+}
+
+function roll(sides){ return Math.floor(Math.random()*sides)+1; }
+function clamp(n,min,max){ return Math.max(min, Math.min(max, n)); }
+
+/* ================================
+   CONTENT: WORLD MAP
+   Nodes connected by roads
+================================ */
+const world = {
+  nodes: [
+    { id:"stonehaven",  name:"Stonehaven (Town)", type:"town",  x:120, y:160 },
+    { id:"pinewatch",   name:"Pinewatch (Camp)", type:"camp",  x:260, y:95 },
+    { id:"emberrest",   name:"Emberrest (Town)", type:"town",  x:310, y:260 },
+    { id:"redfen",      name:"Redfen (Camp)",    type:"camp",  x:470, y:210 },
+    { id:"grandport",   name:"Grandport (Port)", type:"port",  x:610, y:120 },
+    { id:"cave_mourn",  name:"Mournroot Cave",   type:"cave",  x:520, y:320 },
+    { id:"cave_salt",   name:"Saltwind Grotto",  type:"cave",  x:690, y:280 },
+  ],
+  edges: [
+    ["stonehaven","pinewatch"],
+    ["stonehaven","emberrest"],
+    ["pinewatch","emberrest"],
+    ["emberrest","redfen"],
+    ["redfen","grandport"],
+    ["redfen","cave_mourn"],
+    ["grandport","cave_salt"],
+    ["cave_mourn","cave_salt"],
+  ]
+};
+
+const nodeById = Object.fromEntries(world.nodes.map(n=>[n.id,n]));
+
+/* ================================
+   CAVE GENERATION (simple but solid)
+   Dark until explored (seen[][])
+================================ */
+function makeCave(caveId){
+  const w = state.cave.w, h = state.cave.h;
+
+  // start with walls
+  const tiles = Array.from({length:h}, ()=>Array.from({length:w}, ()=>"wall"));
+  const seen  = Array.from({length:h}, ()=>Array.from({length:w}, ()=>false));
+
+  // carve a simple random-walk cave
+  let x = 2, y = 2;
+  tiles[y][x] = "entrance";
+  const steps = 240;
+
+  for(let i=0;i<steps;i++){
+    tiles[y][x] = "floor";
+    const dir = roll(4);
+    if(dir===1) x++;
+    if(dir===2) x--;
+    if(dir===3) y++;
+    if(dir===4) y--;
+    x = clamp(x, 1, w-2);
+    y = clamp(y, 1, h-2);
+  }
+
+  // ensure entrance
+  tiles[2][2] = "entrance";
+
+  // choose an "exit" (deep-ish floor)
+  let exitX = w-3, exitY = h-3;
+  for(let tries=0; tries<200; tries++){
+    const rx = roll(w-4)+1;
+    const ry = roll(h-4)+1;
+    if(tiles[ry][rx]==="floor" && (Math.abs(rx-2)+Math.abs(ry-2) > 10)){
+      exitX = rx; exitY = ry; break;
+    }
+  }
+  tiles[exitY][exitX] = "exit";
+
+  state.cave.activeCaveId = caveId;
+  state.cave.tiles = tiles;
+  state.cave.seen = seen;
+  state.cave.px = 2;
+  state.cave.py = 2;
+
+  // reveal start area a bit
+  revealAround(state.cave.px, state.cave.py, 2);
+
+  pushLog(`🕯️ Entered ${nodeById[caveId].name}. It's dark…`);
+}
+
+function revealAround(px, py, radius){
+  const w = state.cave.w, h = state.cave.h;
+  for(let yy=py-radius; yy<=py+radius; yy++){
+    for(let xx=px-radius; xx<=px+radius; xx++){
+      if(xx>=0 && yy>=0 && xx<w && yy<h){
+        state.cave.seen[yy][xx] = true;
+      }
+    }
+  }
+}
+
+/* ================================
+   COMBAT
+   Attack only in combat mode
+================================ */
+function startCombat(sourceLabel){
+  // create an enemy
+  const enemies = [
+    { name:"Goblin", hp: 12, def: 10, atk: 2 },
+    { name:"Bandit", hp: 16, def: 11, atk: 3 },
+    { name:"Wolf",   hp: 10, def: 10, atk: 2 },
+    { name:"Cultist",hp: 14, def: 12, atk: 3 },
+  ];
+  const e = enemies[Math.floor(Math.random()*enemies.length)];
+  state.enemy = { ...e, hpMax: e.hp };
+
+  state.mode = "combat";
+  pushLog(`⚠️ Encounter! A <b>${state.enemy.name}</b> appears (${sourceLabel}).`);
+}
+
+function endCombat(victory){
+  if(victory){
+    const gold = roll(12) + 4;
+    state.gold += gold;
+    pushLog(`✅ Victory! You loot <b>${gold}</b> gold.`);
+    // small chance drop
+    if(roll(100) <= 30){
+      const drop = randomItem();
+      state.bag.push(drop);
+      pushLog(`📦 Found <b>${fmtItem(drop)}</b> on the body.`);
+    }
+  } else {
+    pushLog(`🏃 You escape!`);
+  }
+  state.enemy = null;
+  state.mode = state.cave.activeCaveId ? "cave" : "world";
+}
+
+function playerAttack(){
+  if(state.mode !== "combat" || !state.enemy) return;
+
+  const d20 = roll(20);
+  pushLog(`🎲 You roll d20: <b>${d20}</b>`);
+
+  // enemy "def" here acts like AC threshold
+  if(d20 >= state.enemy.def){
+    const dmg = roll(6) + getAtk();
+    state.enemy.hp -= dmg;
+    pushLog(`⚔️ Hit! You deal <b>${dmg}</b> damage.`);
+  } else {
+    pushLog(`❌ Miss.`);
+  }
+
+  if(state.enemy.hp <= 0){
+    pushLog(`💀 ${state.enemy.name} is defeated.`);
+    endCombat(true);
+    render();
+    return;
+  }
+
+  // enemy turn
+  enemyTurn();
+  render();
+}
+
+function enemyTurn(){
+  const d20 = roll(20);
+  const playerAC = 10 + getDef(); // simple
+  pushLog(`🎲 ${state.enemy.name} rolls d20: <b>${d20}</b>`);
+  if(d20 >= playerAC){
+    const dmg = roll(6) + state.enemy.atk;
+    state.hp -= dmg;
+    pushLog(`<span style="color:var(--bad)">🩸 You take ${dmg} damage.</span>`);
+  } else {
+    pushLog(`🛡️ ${state.enemy.name} misses.`);
+  }
+
+  if(state.hp <= 0){
+    state.hp = 1;
+    pushLog(`<b style="color:var(--bad)">☠️ You collapse… and wake up at the last safe place.</b>`);
+    // send player to last safe node
+    state.mode = "world";
+    state.currentNode = state.lastSafeNode;
+    state.cave.activeCaveId = null;
+    state.cave.tiles = [];
+    state.cave.seen = [];
+    state.enemy = null;
+  }
+}
+
+function flee(){
+  if(state.mode !== "combat") return;
+  const d20 = roll(20);
+  pushLog(`🏃 Attempt to flee… d20: <b>${d20}</b>`);
+  if(d20 >= 11){
+    endCombat(false);
+  } else {
+    pushLog(`❌ Failed to flee!`);
+    enemyTurn();
+  }
+  render();
+}
+
+/* ================================
+   INVENTORY (no stacking)
+================================ */
+function randomItem(){
+  const table = [
+    {type:"weapon", name:"Sword", atk:2},
+    {type:"weapon", name:"Dagger", atk:1},
+    {type:"weapon", name:"Warhammer", atk:3},
+    {type:"armor",  name:"Leather Armor", def:2},
+    {type:"armor",  name:"Chain Shirt", def:3},
+    {type:"accessory", name:"Ring of Luck", atk:1},
+    {type:"accessory", name:"Amulet of Guarding", def:1},
+  ];
+  return table[Math.floor(Math.random()*table.length)];
 }
 
 function fmtItem(item){
@@ -184,141 +529,427 @@ function fmtItem(item){
   return parts.length ? `${item.name} (${parts.join(", ")})` : item.name;
 }
 
-function recalcDerived(){
-  // Derived stats = base + equipped bonuses
-  const atkBonus = (state.weapon?.atk||0) + (state.accessory?.atk||0);
-  const defBonus = (state.armor?.def||0) + (state.accessory?.def||0);
-  state.atk = state.atkBase + atkBonus;
-  state.def = state.defBase + defBonus;
+function getAtk(){
+  return state.atkBase + (state.weapon?.atk||0) + (state.accessory?.atk||0);
+}
+function getDef(){
+  return state.defBase + (state.armor?.def||0) + (state.accessory?.def||0);
 }
 
-/* ---------- EQUIP SWAP (NO STACKING) ---------- */
 function equipFromBag(index){
   const item = state.bag[index];
   if(!item) return;
-
-  // Remove from bag first (so swapping back doesn't duplicate)
   state.bag.splice(index,1);
 
-  if(item.type === "weapon"){
-    // swap out existing weapon back to bag
+  if(item.type==="weapon"){
     if(state.weapon) state.bag.push(state.weapon);
     state.weapon = item;
     pushLog(`🧩 Equipped Weapon: <b>${fmtItem(item)}</b>`);
   }
-
-  if(item.type === "armor"){
+  if(item.type==="armor"){
     if(state.armor) state.bag.push(state.armor);
     state.armor = item;
     pushLog(`🧩 Equipped Armor: <b>${fmtItem(item)}</b>`);
   }
-
-  if(item.type === "accessory"){
+  if(item.type==="accessory"){
     if(state.accessory) state.bag.push(state.accessory);
     state.accessory = item;
     pushLog(`🧩 Equipped Accessory: <b>${fmtItem(item)}</b>`);
   }
-
-  recalcDerived();
   render();
 }
 
 function unequip(slot){
-  if(slot==="weapon" && state.weapon){
-    state.bag.push(state.weapon);
-    pushLog(`📦 Unequipped Weapon: <b>${fmtItem(state.weapon)}</b>`);
-    state.weapon=null;
-  }
-  if(slot==="armor" && state.armor){
-    state.bag.push(state.armor);
-    pushLog(`📦 Unequipped Armor: <b>${fmtItem(state.armor)}</b>`);
-    state.armor=null;
-  }
-  if(slot==="accessory" && state.accessory){
-    state.bag.push(state.accessory);
-    pushLog(`📦 Unequipped Accessory: <b>${fmtItem(state.accessory)}</b>`);
-    state.accessory=null;
-  }
-  recalcDerived();
-  render();
-}
-
-/* ---------- GAME ACTIONS ---------- */
-function attack(){
-  const d20 = roll(20);
-  pushLog(`🎲 You roll d20: <b>${d20}</b>`);
-  if(d20 >= 10){
-    const dmg = roll(6) + state.atk;
-    pushLog(`⚔️ Hit! You deal <b>${dmg}</b> damage.`);
-  } else {
-    pushLog(`❌ Miss!`);
-  }
+  if(slot==="weapon" && state.weapon){ state.bag.push(state.weapon); pushLog(`📦 Unequipped Weapon: <b>${fmtItem(state.weapon)}</b>`); state.weapon=null; }
+  if(slot==="armor" && state.armor){ state.bag.push(state.armor); pushLog(`📦 Unequipped Armor: <b>${fmtItem(state.armor)}</b>`); state.armor=null; }
+  if(slot==="accessory" && state.accessory){ state.bag.push(state.accessory); pushLog(`📦 Unequipped Accessory: <b>${fmtItem(state.accessory)}</b>`); state.accessory=null; }
   render();
 }
 
 function loot(){
-  const table = [
-    {type:"weapon", name:"Sword", atk:2},
-    {type:"weapon", name:"Dagger", atk:1},
-    {type:"armor", name:"Leather Armor", def:2},
-    {type:"armor", name:"Chain Shirt", def:3},
-    {type:"accessory", name:"Ring of Luck", atk:1},
-    {type:"accessory", name:"Amulet of Guarding", def:1},
-    {type:"gold", name:"Gold Pouch", gold:10},
-    {type:"gold", name:"Coin Cache", gold:25}
-  ];
-  const item = table[Math.floor(Math.random()*table.length)];
-
-  if(item.type==="gold"){
-    state.gold += item.gold;
-    pushLog(`💰 Found <b>${item.gold}</b> gold.`);
+  // loot works anywhere except combat (to keep flow clean)
+  if(state.mode==="combat"){ pushLog(`⚠️ Can't loot during combat.`); render(); return; }
+  const r = roll(100);
+  if(r <= 35){
+    const gold = roll(15)+5;
+    state.gold += gold;
+    pushLog(`💰 Found <b>${gold}</b> gold.`);
   } else {
+    const item = randomItem();
     state.bag.push(item);
-    pushLog(`📦 Found <b>${fmtItem(item)}</b>`);
+    pushLog(`📦 Found <b>${fmtItem(item)}</b>.`);
   }
   render();
 }
 
-function hardReset(){
-  localStorage.removeItem("diceRPG");
-  location.reload();
+/* ================================
+   TRAVEL + MODES
+================================ */
+function canTravelTo(toId){
+  if(state.mode==="combat") return false;
+  // must be connected
+  return world.edges.some(([a,b]) => (a===state.currentNode && b===toId) || (b===state.currentNode && a===toId));
 }
 
-/* ---------- RENDER ---------- */
+function travelTo(toId){
+  if(!canTravelTo(toId)) return;
+  const from = nodeById[state.currentNode];
+  const to = nodeById[toId];
+
+  state.currentNode = toId;
+
+  // leaving cave returns to world
+  if(state.mode==="cave"){
+    state.mode = "world";
+    state.cave.activeCaveId = null;
+    state.cave.tiles = [];
+    state.cave.seen = [];
+  }
+
+  pushLog(`🧭 Traveled from <b>${from.name}</b> to <b>${to.name}</b>.`);
+
+  // Random encounter chance on roads (except towns/camps)
+  const encounterChance = (to.type==="town"||to.type==="camp") ? 10 : 22;
+  if(roll(100) <= encounterChance){
+    startCombat("on the road");
+  }
+
+  // set last safe node when arriving at town/camp
+  if(to.type==="town" || to.type==="camp"){
+    state.lastSafeNode = toId;
+  }
+
+  // Enter cave prompt if destination is cave
+  if(to.type==="cave" && state.mode!=="combat"){
+    openModal(
+      "Cave Entrance",
+      `You stand before <b>${to.name}</b>. Entering will be dark until you explore.<br><br>
+       <button class="small" onclick="enterCave('${toId}')">Enter Cave</button>
+       <button class="small secondary" onclick="closeModal()">Stay Outside</button>`
+    );
+  }
+
+  render();
+}
+
+function enterCave(caveId){
+  closeModal();
+  state.mode = "cave";
+  makeCave(caveId);
+  // caves are dangerous: chance of immediate encounter
+  if(roll(100) <= 18){
+    startCombat("inside the cave");
+  }
+  render();
+}
+
+function rest(){
+  const n = nodeById[state.currentNode];
+  if(!(n.type==="town"||n.type==="camp")){
+    pushLog(`⛺ You can only rest in a Town or Camp.`);
+    render(); return;
+  }
+  if(state.mode==="combat"){ pushLog(`⚠️ Can't rest in combat.`); render(); return; }
+  const heal = roll(6)+6;
+  state.hp = Math.min(state.hpMax, state.hp + heal);
+  pushLog(`<span style="color:var(--good)">🛌 Rested at ${n.name}. Healed ${heal} HP.</span>`);
+  // small chance of camp encounter
+  if(n.type==="camp" && roll(100) <= 12){
+    startCombat("at camp");
+  }
+  render();
+}
+
+function searchExplore(){
+  if(state.mode==="combat"){ pushLog(`⚠️ Can't search during combat.`); render(); return; }
+
+  if(state.mode==="cave"){
+    // reveal tiles around player and possibly move them
+    const moveDir = roll(4);
+    let nx = state.cave.px + (moveDir===1?1:moveDir===2?-1:0);
+    let ny = state.cave.py + (moveDir===3?1:moveDir===4?-1:0);
+    nx = clamp(nx, 0, state.cave.w-1);
+    ny = clamp(ny, 0, state.cave.h-1);
+
+    // only step onto non-wall tiles that are revealed via exploration
+    if(state.cave.tiles[ny][nx] !== "wall"){
+      state.cave.px = nx;
+      state.cave.py = ny;
+      pushLog(`🕯️ You creep deeper into the cave…`);
+    } else {
+      pushLog(`🪨 You feel rock in the darkness and turn back.`);
+    }
+    revealAround(state.cave.px, state.cave.py, 2);
+
+    // chance of encounter
+    if(roll(100) <= 20){
+      startCombat("in the cave");
+    }
+    render();
+    return;
+  }
+
+  // world search: small chance find gold or item, small chance encounter
+  const r = roll(100);
+  if(r <= 18){
+    const gold = roll(12)+3;
+    state.gold += gold;
+    pushLog(`🔎 You search the area and find <b>${gold}</b> gold.`);
+  } else if(r <= 30){
+    const item = randomItem();
+    state.bag.push(item);
+    pushLog(`🔎 You find <b>${fmtItem(item)}</b> tucked away.`);
+  } else {
+    pushLog(`🔎 You search around… nothing useful.`);
+  }
+
+  if(roll(100) <= 12){
+    startCombat("during your search");
+  }
+
+  render();
+}
+
+/* ================================
+   MAP RENDERING
+================================ */
+function resizeCanvas(){
+  const r = mapCanvas.getBoundingClientRect();
+  mapCanvas.width = Math.floor(r.width * devicePixelRatio);
+  mapCanvas.height = Math.floor(r.height * devicePixelRatio);
+  ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+}
+
+function drawWorld(){
+  const r = mapCanvas.getBoundingClientRect();
+  ctx.clearRect(0,0,r.width,r.height);
+
+  // subtle stars
+  ctx.globalAlpha = 0.18;
+  for(let i=0;i<70;i++){
+    const x = (i*37)%r.width;
+    const y = (i*91)%r.height;
+    ctx.fillStyle="#ffffff";
+    ctx.fillRect(x,y,1,1);
+  }
+  ctx.globalAlpha = 1;
+
+  // roads
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = "rgba(255,255,255,.18)";
+  for(const [a,b] of world.edges){
+    const A = nodeById[a], B = nodeById[b];
+    ctx.beginPath();
+    ctx.moveTo(A.x, A.y);
+    ctx.lineTo(B.x, B.y);
+    ctx.stroke();
+  }
+
+  // nodes
+  for(const n of world.nodes){
+    const isHere = n.id === state.currentNode;
+
+    // node color by type
+    let fill = "rgba(255,255,255,.12)";
+    if(n.type==="town") fill = "rgba(124,92,255,.28)";
+    if(n.type==="camp") fill = "rgba(52,211,153,.22)";
+    if(n.type==="port") fill = "rgba(59,130,246,.22)";
+    if(n.type==="cave") fill = "rgba(251,113,133,.18)";
+
+    // outer glow for current
+    if(isHere){
+      ctx.beginPath();
+      ctx.fillStyle = "rgba(124,92,255,.35)";
+      ctx.arc(n.x, n.y, 20, 0, Math.PI*2);
+      ctx.fill();
+    }
+
+    ctx.beginPath();
+    ctx.fillStyle = fill;
+    ctx.strokeStyle = "rgba(255,255,255,.22)";
+    ctx.lineWidth = 2;
+    ctx.arc(n.x, n.y, 14, 0, Math.PI*2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = "rgba(229,231,235,.95)";
+    ctx.font = "12px system-ui";
+    ctx.fillText(n.name.replace(/\s*\(.*?\)\s*/g,""), n.x+18, n.y+4);
+  }
+}
+
+function drawCave(){
+  const r = mapCanvas.getBoundingClientRect();
+  ctx.clearRect(0,0,r.width,r.height);
+
+  const w = state.cave.w, h = state.cave.h;
+  const pad = 16;
+  const cell = Math.min((r.width-pad*2)/w, (r.height-pad*2)/h);
+
+  // background
+  ctx.fillStyle = "rgba(0,0,0,.35)";
+  ctx.fillRect(0,0,r.width,r.height);
+
+  for(let y=0;y<h;y++){
+    for(let x=0;x<w;x++){
+      const sx = pad + x*cell;
+      const sy = pad + y*cell;
+
+      const isSeen = state.cave.seen[y]?.[x];
+      const t = state.cave.tiles[y]?.[x] || "wall";
+
+      if(!isSeen){
+        // darkness (fog of war)
+        ctx.fillStyle = "rgba(0,0,0,.85)";
+        ctx.fillRect(sx,sy,cell,cell);
+        continue;
+      }
+
+      // seen tiles
+      if(t==="wall"){
+        ctx.fillStyle = "rgba(255,255,255,.10)";
+      } else {
+        ctx.fillStyle = "rgba(255,255,255,.18)";
+      }
+      ctx.fillRect(sx,sy,cell,cell);
+
+      if(t==="entrance"){
+        ctx.fillStyle = "rgba(52,211,153,.8)";
+        ctx.fillRect(sx+cell*0.25, sy+cell*0.25, cell*0.5, cell*0.5);
+      }
+      if(t==="exit"){
+        ctx.fillStyle = "rgba(124,92,255,.85)";
+        ctx.fillRect(sx+cell*0.25, sy+cell*0.25, cell*0.5, cell*0.5);
+      }
+    }
+  }
+
+  // player marker
+  const px = pad + state.cave.px*cell + cell/2;
+  const py = pad + state.cave.py*cell + cell/2;
+  ctx.beginPath();
+  ctx.fillStyle = "rgba(251,191,36,.95)";
+  ctx.arc(px,py, Math.max(4, cell*0.22), 0, Math.PI*2);
+  ctx.fill();
+
+  // label
+  ctx.fillStyle = "rgba(229,231,235,.9)";
+  ctx.font = "12px system-ui";
+  ctx.fillText("Cave: Fog-of-War (Search/Explore to reveal)", 16, 18);
+}
+
+function drawMap(){
+  if(state.mode==="cave" || (state.cave.activeCaveId && state.mode!=="world")){
+    drawCave();
+  } else {
+    drawWorld();
+  }
+}
+
+/* Map click handling for world travel */
+function canvasToWorldPos(evt){
+  const rect = mapCanvas.getBoundingClientRect();
+  const x = evt.clientX - rect.left;
+  const y = evt.clientY - rect.top;
+  return {x,y};
+}
+
+function handleMapClick(evt){
+  if(state.mode!=="world") return; // no clicking while in cave/combat
+  const {x,y} = canvasToWorldPos(evt);
+
+  // find clicked node
+  const hit = world.nodes.find(n => {
+    const dx = n.x - x;
+    const dy = n.y - y;
+    return Math.sqrt(dx*dx + dy*dy) <= 16;
+  });
+  if(!hit) return;
+
+  if(hit.id === state.currentNode) return;
+
+  if(!canTravelTo(hit.id)){
+    pushLog(`🚫 No road from here to ${hit.name}.`);
+    render();
+    return;
+  }
+
+  travelTo(hit.id);
+}
+
+/* ================================
+   MODAL
+================================ */
+function openModal(title, html){
+  $("modalTitle").textContent = title;
+  $("modalBody").innerHTML = html;
+  $("overlay").style.display="flex";
+}
+function closeModal(){
+  $("overlay").style.display="none";
+}
+$("closeModal").addEventListener("click", closeModal);
+$("overlay").addEventListener("click", (e)=>{ if(e.target.id==="overlay") closeModal(); });
+
+/* ================================
+   RENDER UI
+================================ */
 function render(){
-  recalcDerived();
+  // derived stats
+  const atk = getAtk();
+  const def = getDef();
 
   $("hp").textContent = state.hp;
-  $("atk").textContent = state.atk;
-  $("def").textContent = state.def;
+  $("atk").textContent = atk;
+  $("def").textContent = def;
   $("gold").textContent = state.gold;
 
-  // equipment slots with Unequip
+  // mode badge + loc
+  $("modeBadge").textContent =
+    state.mode==="combat" ? "Mode: Combat" :
+    state.mode==="cave"   ? "Mode: Cave" : "Mode: Exploring";
+
+  $("locBadge").textContent = `Location: ${nodeById[state.currentNode]?.name || "—"}`;
+
+  // action buttons
+  $("combatRow").style.display = (state.mode==="combat") ? "flex" : "none";
+  $("enemyPanel").style.display = (state.mode==="combat" && state.enemy) ? "block" : "none";
+
+  $("attackBtn").disabled = (state.mode!=="combat");
+  $("fleeBtn").disabled = (state.mode!=="combat");
+  $("searchBtn").disabled = (state.mode==="combat");
+  $("restBtn").disabled = (state.mode==="combat");
+
+  if(state.enemy){
+    $("enemyName").textContent = state.enemy.name;
+    $("enemyHp").textContent = Math.max(0, state.enemy.hp);
+    $("enemyDef").textContent = state.enemy.def;
+  }
+
+  // equipment slots
   $("weaponSlot").innerHTML = `
     <strong>Weapon</strong>
     <div class="itemName">${state.weapon ? fmtItem(state.weapon) : "None"}</div>
     <div>${state.weapon ? `<button class="small secondary" onclick="unequip('weapon')">Unequip</button>` : ""}</div>
   `;
-
   $("armorSlot").innerHTML = `
     <strong>Armor</strong>
     <div class="itemName">${state.armor ? fmtItem(state.armor) : "None"}</div>
     <div>${state.armor ? `<button class="small secondary" onclick="unequip('armor')">Unequip</button>` : ""}</div>
   `;
-
   $("accessorySlot").innerHTML = `
     <strong>Accessory</strong>
     <div class="itemName">${state.accessory ? fmtItem(state.accessory) : "None"}</div>
     <div>${state.accessory ? `<button class="small secondary" onclick="unequip('accessory')">Unequip</button>` : ""}</div>
   `;
 
-  // bag items
+  // backpack
   $("bag").innerHTML = "";
   if(state.bag.length===0){
     const empty = document.createElement("div");
     empty.className="itemCard";
     empty.style.gridColumn="1 / -1";
-    empty.innerHTML = `<div class="meta">Backpack is empty. Click “Search for Loot”.</div>`;
+    empty.innerHTML = `<div class="meta">Backpack is empty. Use “Search for Loot”.</div>`;
     $("bag").appendChild(empty);
   } else {
     state.bag.forEach((item,i)=>{
@@ -335,18 +966,48 @@ function render(){
 
   // log
   $("log").innerHTML = state.log.map(x=>`<div>${x}</div>`).join("");
+  $("log").scrollTop = $("log").scrollHeight;
 
+  drawMap();
   save();
 }
 
-/* ---------- BIND UI ---------- */
-$("attackBtn").addEventListener("click", attack);
+/* ================================
+   BUTTON WIRING
+================================ */
+$("attackBtn").addEventListener("click", playerAttack);
+$("fleeBtn").addEventListener("click", flee);
+$("searchBtn").addEventListener("click", searchExplore);
+$("restBtn").addEventListener("click", rest);
 $("lootBtn").addEventListener("click", loot);
-$("resetBtn").addEventListener("click", hardReset);
+$("resetBtn").addEventListener("click", ()=>{
+  localStorage.removeItem(SAVE_KEY);
+  state = defaultState();
+  pushLog("🧹 Save reset.");
+  render();
+});
 
-// first-time derived stats
-recalcDerived();
-render();
+mapCanvas.addEventListener("click", handleMapClick);
+window.addEventListener("resize", ()=>{ resizeCanvas(); render(); });
+
+/* ================================
+   INIT
+================================ */
+function init(){
+  // ensure starting node exists
+  if(!nodeById[state.currentNode]) state.currentNode = "stonehaven";
+  if(!nodeById[state.lastSafeNode]) state.lastSafeNode = "stonehaven";
+
+  resizeCanvas();
+
+  if(state.log.length===0){
+    pushLog(`🧭 Welcome! Click connected locations on the map to travel.`);
+    pushLog(`🕯️ Enter a cave to experience fog-of-war. Use Search/Explore to reveal.`);
+  }
+
+  render();
+}
+init();
 </script>
 </body>
 </html>
