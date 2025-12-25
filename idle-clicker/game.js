@@ -13,82 +13,236 @@
     return String(x);
   };
 
-  // ===== Avatar system =====
-  const AVATAR_NAMES = {
-    robot: "Robot",
-    human: "Human",
-    alien: "Alien"
+  // ========= Avatar Builder Options =========
+  const OPTIONS = {
+    base: [
+      { id: "human", label: "Human" },
+      { id: "robot", label: "Robot" }
+    ],
+    hair: [
+      { id: "none", label: "None" },
+      { id: "short", label: "Short" },
+      { id: "spike", label: "Spiky" },
+      { id: "bun", label: "Bun" }
+    ],
+    eyes: [
+      { id: "normal", label: "Normal" },
+      { id: "happy", label: "Happy" },
+      { id: "sleepy", label: "Sleepy" },
+      { id: "cyber", label: "Cyber" }
+    ],
+    mouth: [
+      { id: "smile", label: "Smile" },
+      { id: "flat", label: "Flat" },
+      { id: "open", label: "Open" }
+    ],
+    ears: [
+      { id: "round", label: "Round" },
+      { id: "small", label: "Small" },
+      { id: "pointy", label: "Pointy" }
+    ],
+    shirt: [
+      { id: "tee", label: "T-Shirt" },
+      { id: "hoodie", label: "Hoodie" },
+      { id: "jacket", label: "Jacket" }
+    ],
+    pants: [
+      { id: "jeans", label: "Jeans" },
+      { id: "shorts", label: "Shorts" },
+      { id: "tech", label: "Tech Pants" }
+    ],
+    glasses: [
+      { id: "none", label: "None" },
+      { id: "round", label: "Round" },
+      { id: "square", label: "Square" },
+      { id: "visor", label: "Visor" }
+    ]
   };
 
-  const COLOR_PRESETS = [
-    "#7c5cff", // purple
-    "#22d3ee", // cyan
-    "#34d399", // green
-    "#f97316", // orange
-    "#ef4444", // red
-    "#e879f9", // pink
-    "#a3e635", // lime
-    "#ffffff"  // white
-  ];
+  const DEFAULT_AVATAR = {
+    base: "human",
+    skinColor: "#ffd6b0",
+    hairStyle: "short",
+    hairColor: "#111827",
+    eyesStyle: "normal",
+    mouthStyle: "smile",
+    earsStyle: "round",
+    shirtStyle: "hoodie",
+    shirtColor: "#7c5cff",
+    pantsStyle: "jeans",
+    pantsColor: "#111827",
+    glassesStyle: "none",
+    glassesColor: "#22d3ee"
+  };
 
-  function svgAvatar(type, color) {
-    const c = color || "#7c5cff";
-    // Simple “flat” SVGs designed to look good at small sizes
-    if (type === "human") {
-      return `
-      <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Human avatar">
-        <defs>
-          <linearGradient id="g" x1="0" x2="1" y1="0" y2="1">
-            <stop offset="0" stop-color="${c}" stop-opacity="0.95"/>
-            <stop offset="1" stop-color="#22d3ee" stop-opacity="0.55"/>
-          </linearGradient>
-        </defs>
-        <rect width="64" height="64" rx="18" fill="rgba(0,0,0,.18)"/>
-        <circle cx="32" cy="26" r="14" fill="url(#g)"/>
-        <rect x="16" y="40" width="32" height="16" rx="10" fill="rgba(255,255,255,.10)" stroke="rgba(255,255,255,.14)"/>
-        <circle cx="27" cy="25" r="2" fill="rgba(0,0,0,.55)"/>
-        <circle cx="37" cy="25" r="2" fill="rgba(0,0,0,.55)"/>
-        <path d="M27 31c3 3 7 3 10 0" stroke="rgba(0,0,0,.50)" stroke-width="2" fill="none" stroke-linecap="round"/>
-      </svg>`;
+  function safePick(value, list, fallback) {
+    return list.some(x => x.id === value) ? value : fallback;
+  }
+
+  // ========= SVG Renderer =========
+  function svgAvatar(a) {
+    const av = { ...DEFAULT_AVATAR, ...(a || {}) };
+
+    // sanitize options
+    av.base = safePick(av.base, OPTIONS.base, DEFAULT_AVATAR.base);
+    av.hairStyle = safePick(av.hairStyle, OPTIONS.hair, DEFAULT_AVATAR.hairStyle);
+    av.eyesStyle = safePick(av.eyesStyle, OPTIONS.eyes, DEFAULT_AVATAR.eyesStyle);
+    av.mouthStyle = safePick(av.mouthStyle, OPTIONS.mouth, DEFAULT_AVATAR.mouthStyle);
+    av.earsStyle = safePick(av.earsStyle, OPTIONS.ears, DEFAULT_AVATAR.earsStyle);
+    av.shirtStyle = safePick(av.shirtStyle, OPTIONS.shirt, DEFAULT_AVATAR.shirtStyle);
+    av.pantsStyle = safePick(av.pantsStyle, OPTIONS.pants, DEFAULT_AVATAR.pantsStyle);
+    av.glassesStyle = safePick(av.glassesStyle, OPTIONS.glasses, DEFAULT_AVATAR.glassesStyle);
+
+    const skin = av.base === "robot" ? "#9CA3AF" : av.skinColor;
+    const hair = av.hairColor;
+    const shirt = av.shirtColor;
+    const pants = av.pantsColor;
+    const glasses = av.glassesColor;
+
+    // Base shapes
+    const head = av.base === "robot"
+      ? `<rect x="18" y="12" width="28" height="26" rx="10" fill="${skin}" stroke="rgba(255,255,255,.18)"/>`
+      : `<circle cx="32" cy="24" r="14" fill="${skin}" stroke="rgba(255,255,255,.12)"/>`;
+
+    // Ears (human only)
+    let ears = "";
+    if (av.base === "human") {
+      if (av.earsStyle === "round") {
+        ears = `
+          <circle cx="18" cy="24" r="4" fill="${skin}" opacity="0.95"/>
+          <circle cx="46" cy="24" r="4" fill="${skin}" opacity="0.95"/>`;
+      } else if (av.earsStyle === "small") {
+        ears = `
+          <circle cx="19" cy="24" r="3" fill="${skin}" opacity="0.95"/>
+          <circle cx="45" cy="24" r="3" fill="${skin}" opacity="0.95"/>`;
+      } else {
+        // pointy
+        ears = `
+          <path d="M18 24 L12 20 L14 30 Z" fill="${skin}" opacity="0.95"/>
+          <path d="M46 24 L52 20 L50 30 Z" fill="${skin}" opacity="0.95"/>`;
+      }
     }
 
-    if (type === "alien") {
-      return `
-      <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Alien avatar">
-        <defs>
-          <linearGradient id="g" x1="0" x2="1" y1="0" y2="1">
-            <stop offset="0" stop-color="${c}" stop-opacity="0.95"/>
-            <stop offset="1" stop-color="#34d399" stop-opacity="0.55"/>
-          </linearGradient>
-        </defs>
-        <rect width="64" height="64" rx="18" fill="rgba(0,0,0,.18)"/>
-        <path d="M32 10c10 0 18 8 18 18 0 16-8 26-18 26S14 44 14 28c0-10 8-18 18-18z" fill="url(#g)"/>
-        <ellipse cx="24" cy="30" rx="6" ry="9" fill="rgba(0,0,0,.50)"/>
-        <ellipse cx="40" cy="30" rx="6" ry="9" fill="rgba(0,0,0,.50)"/>
-        <path d="M28 44c3 2 5 2 8 0" stroke="rgba(0,0,0,.45)" stroke-width="2" fill="none" stroke-linecap="round"/>
-        <circle cx="18" cy="18" r="2" fill="rgba(255,255,255,.30)"/>
-        <circle cx="46" cy="16" r="2" fill="rgba(255,255,255,.22)"/>
-      </svg>`;
+    // Hair (human only)
+    let hairLayer = "";
+    if (av.base === "human") {
+      if (av.hairStyle === "short") {
+        hairLayer = `<path d="M18 22c2-10 24-10 28 0v2H18z" fill="${hair}" opacity="0.95"/>`;
+      } else if (av.hairStyle === "spike") {
+        hairLayer = `
+          <path d="M18 22c2-10 24-10 28 0v2H18z" fill="${hair}" opacity="0.92"/>
+          <path d="M22 12l3 8h-6zM32 10l3 10h-6zM42 12l3 8h-6z" fill="${hair}" opacity="0.92"/>`;
+      } else if (av.hairStyle === "bun") {
+        hairLayer = `
+          <path d="M18 22c2-10 24-10 28 0v2H18z" fill="${hair}" opacity="0.92"/>
+          <circle cx="32" cy="10" r="5" fill="${hair}" opacity="0.92"/>`;
+      } else {
+        hairLayer = "";
+      }
     }
 
-    // default robot
+    // Eyes
+    let eyes = "";
+    if (av.base === "robot") {
+      if (av.eyesStyle === "cyber") {
+        eyes = `<rect x="22" y="20" width="20" height="8" rx="4" fill="rgba(0,0,0,.35)"/>
+                <circle cx="28" cy="24" r="2" fill="${glasses}"/>
+                <circle cx="36" cy="24" r="2" fill="${glasses}"/>`;
+      } else {
+        eyes = `<circle cx="28" cy="24" r="2" fill="rgba(0,0,0,.55)"/>
+                <circle cx="36" cy="24" r="2" fill="rgba(0,0,0,.55)"/>`;
+      }
+    } else {
+      if (av.eyesStyle === "happy") {
+        eyes = `<path d="M24 24c2 2 4 2 6 0" stroke="rgba(0,0,0,.55)" stroke-width="2" fill="none" stroke-linecap="round"/>
+                <path d="M34 24c2 2 4 2 6 0" stroke="rgba(0,0,0,.55)" stroke-width="2" fill="none" stroke-linecap="round"/>`;
+      } else if (av.eyesStyle === "sleepy") {
+        eyes = `<path d="M24 24h6" stroke="rgba(0,0,0,.55)" stroke-width="2" stroke-linecap="round"/>
+                <path d="M34 24h6" stroke="rgba(0,0,0,.55)" stroke-width="2" stroke-linecap="round"/>`;
+      } else if (av.eyesStyle === "cyber") {
+        eyes = `<circle cx="28" cy="24" r="2" fill="${glasses}"/>
+                <circle cx="36" cy="24" r="2" fill="${glasses}"/>`;
+      } else {
+        eyes = `<circle cx="28" cy="24" r="2" fill="rgba(0,0,0,.55)"/>
+                <circle cx="36" cy="24" r="2" fill="rgba(0,0,0,.55)"/>`;
+      }
+    }
+
+    // Mouth
+    let mouth = "";
+    if (av.mouthStyle === "smile") {
+      mouth = `<path d="M27 32c3 3 7 3 10 0" stroke="rgba(0,0,0,.50)" stroke-width="2" fill="none" stroke-linecap="round"/>`;
+    } else if (av.mouthStyle === "flat") {
+      mouth = `<path d="M27 33h10" stroke="rgba(0,0,0,.50)" stroke-width="2" stroke-linecap="round"/>`;
+    } else {
+      mouth = `<ellipse cx="32" cy="34" rx="4" ry="3" fill="rgba(0,0,0,.45)"/>`;
+    }
+
+    // Clothing (body)
+    const body = `
+      <rect x="16" y="38" width="32" height="18" rx="10" fill="rgba(255,255,255,.10)" stroke="rgba(255,255,255,.14)"/>
+    `;
+
+    // Shirt styles
+    let shirtLayer = "";
+    if (av.shirtStyle === "tee") {
+      shirtLayer = `<rect x="18" y="40" width="28" height="12" rx="7" fill="${shirt}" opacity="0.92"/>`;
+    } else if (av.shirtStyle === "hoodie") {
+      shirtLayer = `
+        <rect x="18" y="40" width="28" height="14" rx="8" fill="${shirt}" opacity="0.92"/>
+        <path d="M26 40c2 4 10 4 12 0" stroke="rgba(0,0,0,.25)" stroke-width="2" fill="none" stroke-linecap="round"/>`;
+    } else {
+      // jacket
+      shirtLayer = `
+        <rect x="18" y="40" width="28" height="14" rx="8" fill="${shirt}" opacity="0.78"/>
+        <path d="M32 40v14" stroke="rgba(255,255,255,.25)" stroke-width="2" stroke-linecap="round"/>`;
+    }
+
+    // Pants styles (small visible)
+    let pantsLayer = "";
+    if (av.pantsStyle === "jeans") {
+      pantsLayer = `<rect x="20" y="52" width="24" height="8" rx="4" fill="${pants}" opacity="0.92"/>`;
+    } else if (av.pantsStyle === "shorts") {
+      pantsLayer = `<rect x="20" y="52" width="24" height="6" rx="4" fill="${pants}" opacity="0.92"/>`;
+    } else {
+      pantsLayer = `<rect x="20" y="52" width="24" height="8" rx="2" fill="${pants}" opacity="0.92"/>`;
+    }
+
+    // Glasses
+    let glassesLayer = "";
+    if (av.glassesStyle === "round") {
+      glassesLayer = `
+        <circle cx="27" cy="24" r="5" fill="rgba(0,0,0,.18)" stroke="${glasses}" stroke-width="2"/>
+        <circle cx="37" cy="24" r="5" fill="rgba(0,0,0,.18)" stroke="${glasses}" stroke-width="2"/>
+        <path d="M32 24h0" stroke="${glasses}" stroke-width="2" stroke-linecap="round"/>`;
+    } else if (av.glassesStyle === "square") {
+      glassesLayer = `
+        <rect x="22" y="19" width="10" height="10" rx="3" fill="rgba(0,0,0,.18)" stroke="${glasses}" stroke-width="2"/>
+        <rect x="32" y="19" width="10" height="10" rx="3" fill="rgba(0,0,0,.18)" stroke="${glasses}" stroke-width="2"/>
+        <path d="M32 24h0" stroke="${glasses}" stroke-width="2" stroke-linecap="round"/>`;
+    } else if (av.glassesStyle === "visor") {
+      glassesLayer = `
+        <rect x="21" y="18" width="22" height="12" rx="6" fill="rgba(0,0,0,.25)" stroke="${glasses}" stroke-width="2"/>
+        <path d="M23 24h18" stroke="${glasses}" stroke-width="2" stroke-linecap="round" opacity="0.8"/>`;
+    }
+
+    const baseLabel = av.base === "robot" ? "Robot" : "Human";
+
     return `
-    <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Robot avatar">
-      <defs>
-        <linearGradient id="g" x1="0" x2="1" y1="0" y2="1">
-          <stop offset="0" stop-color="${c}" stop-opacity="0.95"/>
-          <stop offset="1" stop-color="#7c5cff" stop-opacity="0.55"/>
-        </linearGradient>
-      </defs>
-      <rect width="64" height="64" rx="18" fill="rgba(0,0,0,.18)"/>
-      <rect x="16" y="18" width="32" height="30" rx="12" fill="url(#g)"/>
-      <rect x="22" y="24" width="20" height="10" rx="6" fill="rgba(0,0,0,.35)"/>
-      <circle cx="28" cy="29" r="2" fill="rgba(255,255,255,.75)"/>
-      <circle cx="36" cy="29" r="2" fill="rgba(255,255,255,.75)"/>
-      <path d="M26 40h12" stroke="rgba(0,0,0,.45)" stroke-width="2" stroke-linecap="round"/>
-      <path d="M32 10v6" stroke="rgba(255,255,255,.35)" stroke-width="2" stroke-linecap="round"/>
-      <circle cx="32" cy="9" r="3" fill="rgba(34,211,238,.70)"/>
-    </svg>`;
+      <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${baseLabel} avatar">
+        <rect width="64" height="64" rx="18" fill="rgba(0,0,0,.18)"/>
+        ${ears}
+        ${head}
+        ${hairLayer}
+        ${glassesLayer}
+        ${eyes}
+        ${mouth}
+        ${body}
+        ${shirtLayer}
+        ${pantsLayer}
+        ${av.base === "robot" ? `<circle cx="32" cy="10" r="3" fill="rgba(34,211,238,.70)"/>` : ``}
+      </svg>
+    `;
   }
 
   // ----- state -----
@@ -96,15 +250,11 @@
     coins: 0,
     perClick: 1,
     perSecond: 0,
-
     clickCost: 10,
     idleCost: 25,
-
     clickLevel: 0,
     idleLevel: 0,
-
-    avatar: { type: "robot", color: "#7c5cff" },
-
+    avatar: { ...DEFAULT_AVATAR },
     lastSeen: now()
   };
 
@@ -119,9 +269,18 @@
     s.clickLevel = Math.max(0, Math.floor(clampNum(s.clickLevel, 0)));
     s.idleLevel = Math.max(0, Math.floor(clampNum(s.idleLevel, 0)));
 
-    if (!s.avatar || typeof s.avatar !== "object") s.avatar = { type: "robot", color: "#7c5cff" };
-    s.avatar.type = (s.avatar.type in AVATAR_NAMES) ? s.avatar.type : "robot";
-    s.avatar.color = typeof s.avatar.color === "string" ? s.avatar.color : "#7c5cff";
+    if (!s.avatar || typeof s.avatar !== "object") s.avatar = { ...DEFAULT_AVATAR };
+    s.avatar = { ...DEFAULT_AVATAR, ...s.avatar };
+
+    // normalize options
+    s.avatar.base = safePick(s.avatar.base, OPTIONS.base, DEFAULT_AVATAR.base);
+    s.avatar.hairStyle = safePick(s.avatar.hairStyle, OPTIONS.hair, DEFAULT_AVATAR.hairStyle);
+    s.avatar.eyesStyle = safePick(s.avatar.eyesStyle, OPTIONS.eyes, DEFAULT_AVATAR.eyesStyle);
+    s.avatar.mouthStyle = safePick(s.avatar.mouthStyle, OPTIONS.mouth, DEFAULT_AVATAR.mouthStyle);
+    s.avatar.earsStyle = safePick(s.avatar.earsStyle, OPTIONS.ears, DEFAULT_AVATAR.earsStyle);
+    s.avatar.shirtStyle = safePick(s.avatar.shirtStyle, OPTIONS.shirt, DEFAULT_AVATAR.shirtStyle);
+    s.avatar.pantsStyle = safePick(s.avatar.pantsStyle, OPTIONS.pants, DEFAULT_AVATAR.pantsStyle);
+    s.avatar.glassesStyle = safePick(s.avatar.glassesStyle, OPTIONS.glasses, DEFAULT_AVATAR.glassesStyle);
 
     s.lastSeen = clampNum(s.lastSeen, now());
     return s;
@@ -137,15 +296,12 @@
 
       state = repairState({ ...state, ...saved });
 
-      // offline earnings
       const elapsedSec = Math.floor(Math.max(0, now() - state.lastSeen) / 1000);
       if (elapsedSec > 0 && state.perSecond > 0) {
         state.coins += elapsedSec * state.perSecond;
       }
       state.lastSeen = now();
-    } catch {
-      // ignore corrupted saves
-    }
+    } catch { /* ignore */ }
   }
 
   function save() {
@@ -153,24 +309,29 @@
     localStorage.setItem(SAVE_KEY, JSON.stringify(state));
   }
 
+  function fillSelect(selectEl, list) {
+    selectEl.innerHTML = "";
+    for (const opt of list) {
+      const o = document.createElement("option");
+      o.value = opt.id;
+      o.textContent = opt.label;
+      selectEl.appendChild(o);
+    }
+  }
+
   document.addEventListener("DOMContentLoaded", () => {
-    // Stats
     const elCoins = document.getElementById("coins");
     const elPerClick = document.getElementById("perClick");
     const elPerSecond = document.getElementById("perSecond");
-
     const elClickCost = document.getElementById("clickCost");
     const elIdleCost = document.getElementById("idleCost");
-
     const elClickLevel = document.getElementById("clickLevel");
     const elIdleLevel = document.getElementById("idleLevel");
 
-    // Buttons
     const btnClick = document.getElementById("clickBtn");
     const btnUpClick = document.getElementById("upgradeClick");
     const btnUpIdle = document.getElementById("upgradeIdle");
     const btnReset = document.getElementById("resetBtn");
-
     const status = document.getElementById("status");
 
     // Avatar UI
@@ -188,17 +349,23 @@
     const previewName = document.getElementById("previewName");
     const previewSub = document.getElementById("previewSub");
 
-    const colorRow = document.getElementById("colorRow");
+    // base buttons
+    const baseHuman = document.getElementById("baseHuman");
+    const baseRobot = document.getElementById("baseRobot");
 
-    const optRobot = document.getElementById("opt-robot");
-    const optHuman = document.getElementById("opt-human");
-    const optAlien = document.getElementById("opt-alien");
-
-    const miniRobot = document.getElementById("mini-robot");
-    const miniHuman = document.getElementById("mini-human");
-    const miniAlien = document.getElementById("mini-alien");
-
-    if (!btnClick || !btnUpClick || !btnUpIdle) return;
+    // selects/inputs
+    const hairStyle = document.getElementById("hairStyle");
+    const hairColor = document.getElementById("hairColor");
+    const eyesStyle = document.getElementById("eyesStyle");
+    const mouthStyle = document.getElementById("mouthStyle");
+    const earsStyle = document.getElementById("earsStyle");
+    const skinColor = document.getElementById("skinColor");
+    const shirtStyle = document.getElementById("shirtStyle");
+    const shirtColor = document.getElementById("shirtColor");
+    const pantsStyle = document.getElementById("pantsStyle");
+    const pantsColor = document.getElementById("pantsColor");
+    const glassesStyle = document.getElementById("glassesStyle");
+    const glassesColor = document.getElementById("glassesColor");
 
     const setStatus = (msg) => {
       if (!status) return;
@@ -208,106 +375,7 @@
       setStatus._t = setTimeout(() => (status.style.opacity = "0.85"), 900);
     };
 
-    // Avatar modal temp selection
-    let draft = { type: "robot", color: "#7c5cff" };
-
-    const renderAvatarEverywhere = () => {
-      const type = state.avatar?.type || "robot";
-      const color = state.avatar?.color || "#7c5cff";
-
-      if (avatarBadge) avatarBadge.innerHTML = svgAvatar(type, color);
-      if (avatarName) avatarName.textContent = AVATAR_NAMES[type] || "Avatar";
-      if (avatarSub) avatarSub.textContent = `Color: ${color.toUpperCase()}`;
-
-      // minis
-      if (miniRobot) miniRobot.innerHTML = svgAvatar("robot", draft.color);
-      if (miniHuman) miniHuman.innerHTML = svgAvatar("human", draft.color);
-      if (miniAlien) miniAlien.innerHTML = svgAvatar("alien", draft.color);
-    };
-
-    const setSelectedOption = () => {
-      for (const el of [optRobot, optHuman, optAlien]) el?.classList.remove("selected");
-      if (draft.type === "robot") optRobot?.classList.add("selected");
-      if (draft.type === "human") optHuman?.classList.add("selected");
-      if (draft.type === "alien") optAlien?.classList.add("selected");
-    };
-
-    const renderPreview = () => {
-      if (previewName) previewName.textContent = AVATAR_NAMES[draft.type] || "Avatar";
-      if (previewSub) previewSub.textContent = `Color: ${draft.color.toUpperCase()}`;
-      if (previewAvatar) previewAvatar.innerHTML = svgAvatar(draft.type, draft.color);
-
-      // update minis with current color
-      if (miniRobot) miniRobot.innerHTML = svgAvatar("robot", draft.color);
-      if (miniHuman) miniHuman.innerHTML = svgAvatar("human", draft.color);
-      if (miniAlien) miniAlien.innerHTML = svgAvatar("alien", draft.color);
-
-      // color selection UI
-      if (colorRow) {
-        [...colorRow.querySelectorAll(".color-btn")].forEach(btn => {
-          btn.classList.toggle("selected", btn.dataset.color === draft.color);
-        });
-      }
-      setSelectedOption();
-    };
-
-    const openModal = () => {
-      draft = { ...state.avatar };
-      renderPreview();
-      if (modal) {
-        modal.style.display = "flex";
-        modal.setAttribute("aria-hidden", "false");
-      }
-    };
-
-    const closeModal = () => {
-      if (modal) {
-        modal.style.display = "none";
-        modal.setAttribute("aria-hidden", "true");
-      }
-    };
-
-    // Build color buttons
-    if (colorRow) {
-      colorRow.innerHTML = "";
-      for (const c of COLOR_PRESETS) {
-        const b = document.createElement("button");
-        b.className = "color-btn";
-        b.type = "button";
-        b.style.background = c;
-        b.dataset.color = c;
-        b.addEventListener("click", () => {
-          draft.color = c;
-          renderPreview();
-        });
-        colorRow.appendChild(b);
-      }
-    }
-
-    // Avatar option clicks
-    optRobot?.addEventListener("click", () => { draft.type = "robot"; renderPreview(); });
-    optHuman?.addEventListener("click", () => { draft.type = "human"; renderPreview(); });
-    optAlien?.addEventListener("click", () => { draft.type = "alien"; renderPreview(); });
-
-    openAvatar?.addEventListener("click", openModal);
-    closeAvatar?.addEventListener("click", closeModal);
-    cancelAvatar?.addEventListener("click", closeModal);
-
-    // Close modal if clicking outside
-    modal?.addEventListener("click", (e) => {
-      if (e.target === modal) closeModal();
-    });
-
-    applyAvatar?.addEventListener("click", () => {
-      state.avatar = { ...draft };
-      save();
-      renderAvatarEverywhere();
-      setStatus(`Avatar saved ✔ (${AVATAR_NAMES[state.avatar.type]})`);
-      closeModal();
-    });
-
-    // ----- Game update -----
-    const update = () => {
+    const updateGameUI = () => {
       elCoins.textContent = fmt(state.coins);
       elPerClick.textContent = fmt(state.perClick);
       elPerSecond.textContent = fmt(state.perSecond);
@@ -322,54 +390,165 @@
       btnUpIdle.disabled = state.coins < state.idleCost;
     };
 
-    // init
+    const renderAvatarCard = () => {
+      if (avatarBadge) avatarBadge.innerHTML = svgAvatar(state.avatar);
+      if (avatarName) avatarName.textContent = (state.avatar.base === "robot") ? "Robot" : "Human";
+      if (avatarSub) avatarSub.textContent =
+        `${state.avatar.hairStyle} hair • ${state.avatar.shirtStyle} • ${state.avatar.pantsStyle} • ${state.avatar.glassesStyle} glasses`;
+    };
+
+    // Draft while modal open
+    let draft = { ...DEFAULT_AVATAR };
+
+    const syncControlsFromDraft = () => {
+      baseHuman.classList.toggle("active", draft.base === "human");
+      baseRobot.classList.toggle("active", draft.base === "robot");
+
+      hairStyle.value = draft.hairStyle;
+      hairColor.value = draft.hairColor;
+      eyesStyle.value = draft.eyesStyle;
+      mouthStyle.value = draft.mouthStyle;
+      earsStyle.value = draft.earsStyle;
+      skinColor.value = draft.skinColor;
+      shirtStyle.value = draft.shirtStyle;
+      shirtColor.value = draft.shirtColor;
+      pantsStyle.value = draft.pantsStyle;
+      pantsColor.value = draft.pantsColor;
+      glassesStyle.value = draft.glassesStyle;
+      glassesColor.value = draft.glassesColor;
+
+      // Disable human-only controls when robot
+      const humanOnly = [hairStyle, hairColor, earsStyle, skinColor];
+      for (const el of humanOnly) el.disabled = (draft.base === "robot");
+
+      // If robot, still allow glasses/shirt/pants/eyes/mouth
+    };
+
+    const renderPreview = () => {
+      if (previewAvatar) previewAvatar.innerHTML = svgAvatar(draft);
+      if (previewName) previewName.textContent = (draft.base === "robot") ? "Robot" : "Human";
+      if (previewSub) previewSub.textContent = `Hair: ${draft.hairStyle} • Eyes: ${draft.eyesStyle} • Outfit: ${draft.shirtStyle}/${draft.pantsStyle}`;
+      syncControlsFromDraft();
+    };
+
+    const openModal = () => {
+      draft = { ...state.avatar }; // opens with current build (not “auto selecting”, just loading your saved build)
+      renderPreview();
+      modal.style.display = "flex";
+      modal.setAttribute("aria-hidden", "false");
+    };
+
+    const closeModal = () => {
+      modal.style.display = "none";
+      modal.setAttribute("aria-hidden", "true");
+    };
+
+    // Populate selects
+    fillSelect(hairStyle, OPTIONS.hair);
+    fillSelect(eyesStyle, OPTIONS.eyes);
+    fillSelect(mouthStyle, OPTIONS.mouth);
+    fillSelect(earsStyle, OPTIONS.ears);
+    fillSelect(shirtStyle, OPTIONS.shirt);
+    fillSelect(pantsStyle, OPTIONS.pants);
+    fillSelect(glassesStyle, OPTIONS.glasses);
+
+    // Base toggle
+    baseHuman.addEventListener("click", () => { draft.base = "human"; renderPreview(); });
+    baseRobot.addEventListener("click", () => { draft.base = "robot"; renderPreview(); });
+
+    // Change handlers
+    const bind = (el, key, isColor = false) => {
+      el.addEventListener("change", () => {
+        draft[key] = isColor ? el.value : el.value;
+        renderPreview();
+      });
+      el.addEventListener("input", () => {
+        // for color inputs live update
+        if (el.type === "color") {
+          draft[key] = el.value;
+          renderPreview();
+        }
+      });
+    };
+
+    bind(hairStyle, "hairStyle");
+    bind(hairColor, "hairColor", true);
+    bind(eyesStyle, "eyesStyle");
+    bind(mouthStyle, "mouthStyle");
+    bind(earsStyle, "earsStyle");
+    bind(skinColor, "skinColor", true);
+    bind(shirtStyle, "shirtStyle");
+    bind(shirtColor, "shirtColor", true);
+    bind(pantsStyle, "pantsStyle");
+    bind(pantsColor, "pantsColor", true);
+    bind(glassesStyle, "glassesStyle");
+    bind(glassesColor, "glassesColor", true);
+
+    // Modal controls
+    openAvatar.addEventListener("click", openModal);
+    closeAvatar.addEventListener("click", closeModal);
+    cancelAvatar.addEventListener("click", closeModal);
+
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) closeModal();
+    });
+
+    applyAvatar.addEventListener("click", () => {
+      // if robot, ensure human-only still safe
+      if (draft.base === "robot") {
+        draft.hairStyle = "none";
+        draft.earsStyle = "round";
+      }
+      state.avatar = { ...draft };
+      save();
+      renderAvatarCard();
+      setStatus("Avatar saved ✔");
+      closeModal();
+    });
+
+    // Game init
     load();
     state = repairState(state);
     save();
 
-    // initial avatar render
+    // initial UI
+    renderAvatarCard();
     draft = { ...state.avatar };
-    renderAvatarEverywhere();
+    syncControlsFromDraft();
     renderPreview();
 
-    update();
+    updateGameUI();
     setStatus("Loaded ✔ (auto-saves)");
 
-    // click
+    // Gameplay
     btnClick.addEventListener("click", () => {
       state.coins += state.perClick;
-      update();
+      updateGameUI();
       save();
     });
 
-    // upgrades
     btnUpClick.addEventListener("click", () => {
       if (state.coins < state.clickCost) return;
-
       state.coins -= state.clickCost;
       state.clickLevel += 1;
       state.perClick += 1;
       state.clickCost = Math.floor(state.clickCost * 1.60 + 1);
-
-      update();
+      updateGameUI();
       save();
       setStatus(`Click Power upgraded ✔ (Level ${state.clickLevel})`);
     });
 
     btnUpIdle.addEventListener("click", () => {
       if (state.coins < state.idleCost) return;
-
       state.coins -= state.idleCost;
       state.idleLevel += 1;
       state.perSecond += 1;
       state.idleCost = Math.floor(state.idleCost * 1.70 + 1);
-
-      update();
+      updateGameUI();
       save();
       setStatus(`Idle Income upgraded ✔ (Level ${state.idleLevel})`);
     });
 
-    // reset
     btnReset?.addEventListener("click", () => {
       const ok = confirm("Reset your save? This clears local progress on this device.");
       if (!ok) return;
@@ -379,15 +558,13 @@
         coins: 0, perClick: 1, perSecond: 0,
         clickCost: 10, idleCost: 25,
         clickLevel: 0, idleLevel: 0,
-        avatar: { type: "robot", color: "#7c5cff" },
+        avatar: { ...DEFAULT_AVATAR },
         lastSeen: now()
       });
 
       save();
-      draft = { ...state.avatar };
-      renderAvatarEverywhere();
-      renderPreview();
-      update();
+      renderAvatarCard();
+      updateGameUI();
       setStatus("Save reset ✔");
     });
 
@@ -395,7 +572,7 @@
     setInterval(() => {
       if (state.perSecond > 0) {
         state.coins += state.perSecond;
-        update();
+        updateGameUI();
       }
       save();
     }, 1000);
