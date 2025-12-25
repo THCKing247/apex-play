@@ -1,258 +1,1320 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Gridiron Career Sim</title>
-  <link rel="stylesheet" href="./style.css" />
-</head>
-<body>
-  <div class="app">
-    <header class="topbar">
-      <div class="brand">
-        <div class="logo"></div>
-        <div>
-          <h1>Gridiron Career Sim</h1>
-          <p class="muted">Madden-style career • build a player • get drafted • become a legend</p>
-        </div>
-      </div>
+/* v0.3 HS→College→Draft Foundation */
+const $ = (id) => document.getElementById(id);
+const SAVE_KEY = "gridiron_career_v03";
 
-      <div class="top-actions">
-        <button id="btnContinue" class="ghost" type="button">Continue</button>
-        <button id="btnNew" class="primary" type="button">New Career</button>
-        <button id="btnWipe" class="danger ghost" type="button">Wipe Save</button>
-      </div>
-    </header>
+const clamp = (n,a,b) => Math.max(a, Math.min(b, n));
+const rnd = (min,max) => Math.floor(Math.random()*(max-min+1))+min;
+const pick = (arr) => arr[Math.floor(Math.random()*arr.length)];
+const fmtMoney = (n) => `$${Math.max(0, Math.floor(n)).toLocaleString()}`;
 
-    <!-- SCREEN: Home -->
-    <section class="card screen" id="screen-home">
-      <h2>Home</h2>
-      <p class="muted">Start a new career or continue where you left off.</p>
+function logLine(msg){
+  const el = $("log");
+  el.textContent = `${msg}\n` + (el.textContent || "");
+}
 
+function showScreen(name){
+  ["home","builder","career"].forEach(s=>{
+    const el = $(`screen-${s}`);
+    el.classList.toggle("hidden", s !== name);
+  });
+}
+
+function save(){
+  localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+  logLine("Saved.");
+}
+function load(){
+  const raw = localStorage.getItem(SAVE_KEY);
+  if(!raw) return false;
+  try{
+    state = JSON.parse(raw);
+    return !!state?.player;
+  }catch{
+    return false;
+  }
+}
+function wipe(){
+  localStorage.removeItem(SAVE_KEY);
+  state = makeNewCareer();
+  $("log").textContent = "";
+  showScreen("home");
+}
+
+function calcOVR(p){
+  const r = getEffectiveRatings(p);
+  const avg = (...nums) => Math.round(nums.reduce((s,n)=>s+n,0)/nums.length);
+  if(p.pos === "QB") return avg(r.awareness, r.speed, r.agility, r.stamina, r.strength);
+  if(["RB","WR","CB"].includes(p.pos)) return avg(r.speed, r.agility, r.awareness, r.stamina, r.strength);
+  if(["TE","LB","DL"].includes(p.pos)) return avg(r.strength, r.stamina, r.awareness, r.speed, r.agility);
+  return avg(r.speed, r.strength, r.agility, r.awareness, r.stamina);
+}
+
+/* ---------------- Data ---------------- */
+const ARCHETYPES = {
+  QB: [
+    { id:"FieldGeneral", name:"Field General", boosts:{ awareness:+6 }, caps:{ speed:85, strength:78, agility:84, awareness:95, stamina:90 } },
+    { id:"Scrambler", name:"Scrambler", boosts:{ speed:+6, agility:+4 }, caps:{ speed:92, strength:76, agility:92, awareness:90, stamina:90 } },
+    { id:"StrongArm", name:"Strong Arm", boosts:{ strength:+6 }, caps:{ speed:86, strength:88, agility:84, awareness:92, stamina:90 } },
+  ],
+  RB: [
+    { id:"Elusive", name:"Elusive Back", boosts:{ speed:+6, agility:+6 }, caps:{ speed:95, strength:82, agility:95, awareness:88, stamina:92 } },
+    { id:"Power", name:"Power Back", boosts:{ strength:+8 }, caps:{ speed:90, strength:92, agility:86, awareness:86, stamina:95 } },
+    { id:"Receiving", name:"Receiving Back", boosts:{ agility:+6, awareness:+4 }, caps:{ speed:93, strength:80, agility:92, awareness:92, stamina:90 } },
+  ],
+  WR: [
+    { id:"DeepThreat", name:"Deep Threat", boosts:{ speed:+8 }, caps:{ speed:96, strength:78, agility:92, awareness:88, stamina:90 } },
+    { id:"RouteRunner", name:"Route Runner", boosts:{ agility:+8, awareness:+4 }, caps:{ speed:93, strength:76, agility:96, awareness:92, stamina:90 } },
+    { id:"Physical", name:"Physical", boosts:{ strength:+6 }, caps:{ speed:92, strength:88, agility:88, awareness:88, stamina:92 } },
+  ],
+  TE: [
+    { id:"Vertical", name:"Vertical Threat", boosts:{ speed:+4, awareness:+2 }, caps:{ speed:88, strength:90, agility:86, awareness:90, stamina:92 } },
+    { id:"Blocking", name:"Blocking TE", boosts:{ strength:+8, stamina:+4 }, caps:{ speed:84, strength:95, agility:82, awareness:88, stamina:96 } },
+  ],
+  CB: [
+    { id:"Man", name:"Man-to-Man", boosts:{ speed:+6, agility:+6 }, caps:{ speed:96, strength:74, agility:96, awareness:90, stamina:90 } },
+    { id:"Zone", name:"Zone", boosts:{ awareness:+8 }, caps:{ speed:92, strength:74, agility:92, awareness:95, stamina:90 } },
+  ],
+  LB: [
+    { id:"RunStopper", name:"Run Stopper", boosts:{ strength:+8, stamina:+2 }, caps:{ speed:88, strength:95, agility:86, awareness:92, stamina:96 } },
+    { id:"Coverage", name:"Coverage LB", boosts:{ speed:+4, awareness:+6 }, caps:{ speed:90, strength:90, agility:90, awareness:95, stamina:94 } },
+  ],
+  DL: [
+    { id:"PowerRusher", name:"Power Rusher", boosts:{ strength:+10 }, caps:{ speed:84, strength:96, agility:84, awareness:90, stamina:94 } },
+    { id:"SpeedRusher", name:"Speed Rusher", boosts:{ speed:+4, agility:+4 }, caps:{ speed:88, strength:92, agility:88, awareness:88, stamina:92 } },
+  ]
+};
+
+const COLLEGES = [
+  // 5★
+  { id:"ALP", name:"Alpine University", stars:5, prestige:95 },
+  { id:"ATL", name:"Atlantic State", stars:5, prestige:93 },
+  { id:"PAC", name:"Pacific Tech", stars:5, prestige:92 },
+  // 4★
+  { id:"RIV", name:"Riverview", stars:4, prestige:85 },
+  { id:"MID", name:"Midland", stars:4, prestige:84 },
+  { id:"GUL", name:"Gulf Coast U", stars:4, prestige:83 },
+  // 3★
+  { id:"NOR", name:"North Valley", stars:3, prestige:75 },
+  { id:"DES", name:"Desert State", stars:3, prestige:74 },
+  { id:"CAP", name:"Capital College", stars:3, prestige:73 },
+  // 2★
+  { id:"PIN", name:"Pine Ridge", stars:2, prestige:65 },
+  { id:"SOU", name:"Southern Plains", stars:2, prestige:64 },
+  // 1★
+  { id:"LAK", name:"Lakeview", stars:1, prestige:55 },
+  { id:"HIL", name:"Hillcrest", stars:1, prestige:53 },
+];
+
+const SHOP_ITEMS = [
+  // Equipment boosts (carry into pros)
+  { id:"cleats1", name:"Performance Cleats", type:"equipment", cost:350, effects:{ speed:+1 }, social:+0, equipSlot:"feet", desc:"+1 Speed (equipped)" },
+  { id:"gloves1", name:"Receiver Gloves", type:"equipment", cost:300, effects:{ agility:+1 }, social:+0, equipSlot:"hands", desc:"+1 Agility (equipped)" },
+  { id:"brace1", name:"Compression Gear", type:"equipment", cost:250, effects:{ stamina:+1 }, social:+0, equipSlot:"body", desc:"+1 Stamina (equipped)" },
+  // Clothes boosts (college)
+  { id:"fit1", name:"Fresh Fit Outfit", type:"clothes", cost:220, effects:{}, social:+3, equipSlot:"style", desc:"+3 Social (equipped)" },
+  { id:"watch1", name:"Nice Watch", type:"clothes", cost:600, effects:{}, social:+6, equipSlot:"style2", desc:"+6 Social (equipped)" },
+  // Non-gear “helpers”
+  { id:"tutor1", name:"Tutoring Sessions", type:"service", cost:180, effects:{}, social:+0, gradeBoost:+6, equipSlot:null, desc:"+6 Grades instantly" },
+];
+
+// Simple pro teams list (draft target). Full NFL setup later.
+const PRO_TEAMS = Array.from({length:32}).map((_,i)=>({
+  id:`T${i+1}`,
+  name:`Pro Team ${i+1}`,
+  need: pick(["QB","RB","WR","TE","CB","LB","DL"]),
+}));
+
+/* ---------------- Career State ---------------- */
+function makeNewCareer(){
+  return {
+    meta:{ version:"0.3", createdAt:Date.now() },
+    phase:"BUILDER", // HS, COLLEGE, DRAFT, PRO
+    week:1,
+    year:1, // HS 1-4, College 1-4, Pro seasons
+    seasonWins:0,
+    seasonLosses:0,
+    player:null,
+    life:{
+      grades:70,
+      social:50,
+      fatigue:15,
+      money:0,
+    },
+    hs:{
+      teamName:"",
+      recruit:{ rating:0, stars:1, rank:9999 },
+      interest:[], // [{collegeId, interest, offered}]
+      offers:[], // [collegeId]
+      stats:{ games:0, yards:0, tds:0, ints:0, tackles:0, sacks:0 },
+    },
+    college:{
+      collegeId:null,
+      gpa:70,
+      money:0,
+      stats:{ games:0, yards:0, tds:0, ints:0, tackles:0, sacks:0 },
+      inventory:[], // [{itemId, owned:true}]
+      equipped:{}, // slot->itemId
+      declared:false,
+      draftProjection:null, // {round, pick, text}
+    },
+    draft:{
+      declared:false,
+      invitedCombine:false,
+      interviewsDone:false,
+      board:[], // computed
+      result:null, // {teamId, round, pick} or null if undrafted
+    },
+    pro:{
+      teamId:null,
+      salary:0,
+      season:1,
+      yearsPro:0,
+      money:0,
+      stats:{ games:0, yards:0, tds:0, ints:0, tackles:0, sacks:0 },
+    }
+  };
+}
+
+let state = makeNewCareer();
+
+/* ---------------- Builder Logic ---------------- */
+let builder = { step:1, points:22, min:55, ratings:null, start:null, caps:null, archId:null };
+
+function buildHeightOptions(){
+  const sel = $("bHeight");
+  const heights = [];
+  for(let ft=5; ft<=7; ft++){
+    for(let inch=0; inch<=11; inch++){
+      if(ft===5 && inch<0) continue;
+      if(ft===7 && inch>2) continue;
+      heights.push(`${ft}'${inch}"`);
+    }
+  }
+  sel.innerHTML = heights.map(h=>`<option value="${h}">${h}</option>`).join("");
+  sel.value = `6'0"`;
+}
+
+function baseRatingsFromPhysical(pos, heightStr, weight, age){
+  let speed=66, strength=66, agility=66, awareness=64, stamina=68;
+
+  const [ftPart, inchPart] = heightStr.split("'");
+  const ft = parseInt(ftPart,10);
+  const inches = parseInt(inchPart.replace('"',''),10);
+  const totalInches = ft*12 + inches;
+
+  const w = clamp(weight, 150, 380);
+  strength += Math.round((w - 200) / 14);
+  speed -= Math.round((w - 200) / 22);
+  agility -= Math.round((w - 200) / 24);
+
+  strength += Math.round((totalInches - 70) / 7);
+  agility -= Math.round((totalInches - 70) / 10);
+
+  const a = clamp(age, 14, 18);
+  if(a <= 15){ speed += 2; agility += 2; }
+  if(a >= 17){ awareness += 2; stamina += 1; }
+
+  if(pos === "QB"){ awareness += 4; stamina += 2; }
+  if(pos === "RB"){ speed += 4; agility += 3; }
+  if(pos === "WR"){ speed += 5; agility += 4; }
+  if(pos === "TE"){ strength += 6; stamina += 3; }
+  if(pos === "CB"){ speed += 5; agility += 5; }
+  if(pos === "LB"){ strength += 7; awareness += 2; }
+  if(pos === "DL"){ strength += 9; stamina += 2; speed -= 1; }
+
+  return {
+    speed: clamp(speed, 52, 78),
+    strength: clamp(strength, 52, 80),
+    agility: clamp(agility, 52, 80),
+    awareness: clamp(awareness, 52, 80),
+    stamina: clamp(stamina, 56, 82),
+  };
+}
+
+function fillArchetypesForPos(pos){
+  const list = ARCHETYPES[pos] || [];
+  const sel = $("bArch");
+  sel.innerHTML = list.map(a=>`<option value="${a.id}">${a.name}</option>`).join("");
+  sel.value = list[0]?.id || "";
+  builder.archId = sel.value;
+}
+function getArchetype(pos, archId){
+  return (ARCHETYPES[pos]||[]).find(a=>a.id===archId) || (ARCHETYPES[pos]||[])[0];
+}
+function applyArchetype(pos){
+  const arch = getArchetype(pos, builder.archId);
+  if(!arch) return;
+  builder.caps = arch.caps;
+  for(const [k,v] of Object.entries(arch.boosts||{})){
+    builder.ratings[k] = clamp(builder.ratings[k]+v, builder.min, builder.caps[k]);
+  }
+  $("capSpeed").textContent = `(cap ${builder.caps.speed})`;
+  $("capStrength").textContent = `(cap ${builder.caps.strength})`;
+  $("capAgility").textContent = `(cap ${builder.caps.agility})`;
+  $("capAwareness").textContent = `(cap ${builder.caps.awareness})`;
+  $("capStamina").textContent = `(cap ${builder.caps.stamina})`;
+}
+function pointsSpent(){
+  let spent=0;
+  for(const k of Object.keys(builder.ratings)){
+    spent += Math.max(0, builder.ratings[k]-builder.start[k]);
+  }
+  return spent;
+}
+function pointsLeft(){ return clamp(builder.points - pointsSpent(), 0, builder.points); }
+function renderBuilderRatings(pos){
+  const r = builder.ratings;
+  $("valSpeed").textContent = r.speed;
+  $("valStrength").textContent = r.strength;
+  $("valAgility").textContent = r.agility;
+  $("valAwareness").textContent = r.awareness;
+  $("valStamina").textContent = r.stamina;
+  $("pointsLeft").textContent = pointsLeft();
+  $("ovrPreview").textContent = calcOVR({pos, ratings:r, equipped:{}, inventory:[]});
+}
+function tryAdjustRating(attr, dir){
+  const r = builder.ratings;
+  const start = builder.start;
+  const cap = builder.caps?.[attr] ?? 99;
+
+  if(dir < 0){
+    r[attr] = clamp(r[attr]-1, start[attr], cap);
+    return;
+  }
+  if(pointsLeft() <= 0) return;
+  r[attr] = clamp(r[attr]+1, builder.min, cap);
+}
+
+function setBuilderStep(n){
+  builder.step = clamp(n,1,3);
+  $("builderStep").textContent = builder.step;
+  document.querySelectorAll(".builder-step").forEach(div=>{
+    const step = parseInt(div.dataset.step,10);
+    div.classList.toggle("hidden", step !== builder.step);
+  });
+  $("btnBack").textContent = builder.step === 1 ? "Cancel" : "Back";
+  $("btnNext").textContent = builder.step === 3 ? "Start Career" : "Next";
+}
+
+function startBuilder(){
+  showScreen("builder");
+  setBuilderStep(1);
+
+  buildHeightOptions();
+
+  $("bName").value = "";
+  $("bPos").value = "QB";
+  $("bHand").value = "Right";
+  $("bTown").value = "";
+  $("bHSTeam").value = "";
+  $("bHeight").value = `6'0"`;
+  $("bWeight").value = 200;
+  $("bAge").value = 15;
+
+  fillArchetypesForPos("QB");
+  const base = baseRatingsFromPhysical("QB", `6'0"`, 200, 15);
+  builder.ratings = {...base};
+  builder.start = {...base};
+  builder.points = 22;
+  builder.archId = $("bArch").value;
+  applyArchetype("QB");
+  renderBuilderRatings("QB");
+}
+
+function finalizeCareer(){
+  const name = ($("bName").value||"").trim() || "Rookie";
+  const pos = $("bPos").value;
+  const hand = $("bHand").value;
+  const hometown = ($("bTown").value||"").trim();
+  const hsTeam = ($("bHSTeam").value||"").trim() || "Your High School";
+  const height = $("bHeight").value;
+  const weight = parseInt($("bWeight").value||"200",10);
+  const age = parseInt($("bAge").value||"15",10);
+
+  const arch = getArchetype(pos, builder.archId);
+
+  state = makeNewCareer();
+  state.phase = "HS";
+  state.year = 1;
+  state.week = 1;
+  state.player = {
+    id: crypto?.randomUUID ? crypto.randomUUID() : String(Date.now()),
+    name,pos,hand,hometown,
+    height,weight,age,
+    archetypeId: arch.id,
+    archetypeName: arch.name,
+    ratings:{...builder.ratings}
+  };
+
+  state.hs.teamName = hsTeam;
+
+  // initial HS life
+  state.life.grades = 72;
+  state.life.social = 48;
+  state.life.fatigue = 15;
+
+  // initial recruiting board
+  initRecruiting();
+  updateRecruitProfile();
+
+  $("log").textContent = "";
+  logLine(`Started High School career for ${name} (${pos} - ${arch.name}).`);
+  logLine(`High School Team: ${hsTeam}`);
+  logLine(`Play 12 games/year. Manage training, grades, and social life.`);
+  save();
+  showScreen("career");
+  renderCareer();
+}
+
+/* ---------------- Mechanics: Ratings + Boosts ---------------- */
+function getOwnedItem(itemId){
+  return (state.college.inventory || []).find(x=>x.itemId===itemId);
+}
+function isEquipped(itemId){
+  return Object.values(state.college.equipped || {}).includes(itemId);
+}
+function getEffectiveRatings(player){
+  const base = {...player.ratings};
+  // apply equipped equipment stat boosts (college gear carries to pros)
+  const equipped = state.college?.equipped || {};
+  for(const slot of Object.keys(equipped)){
+    const itemId = equipped[slot];
+    const item = SHOP_ITEMS.find(i=>i.id===itemId);
+    if(item?.effects){
+      for(const [k,v] of Object.entries(item.effects)){
+        base[k] = clamp(base[k] + v, 1, 99);
+      }
+    }
+  }
+  return base;
+}
+
+/* ---------------- HS: Recruiting + Games ---------------- */
+function initRecruiting(){
+  state.hs.interest = COLLEGES.map(c=>({
+    collegeId:c.id,
+    interest: rnd(0, 8), // initial tiny interest
+    offered:false
+  }));
+  state.hs.offers = [];
+}
+
+function updateRecruitProfile(){
+  const p = state.player;
+  const ovr = calcOVR(p);
+
+  // Performance score combines: OVR + HS stats + grades + randomness
+  const s = state.hs.stats;
+  const production = s.games ? (s.tds*12 + s.yards/25 + s.tackles*3 + s.sacks*6 - s.ints*8) / s.games : 0;
+  const academics = (state.life.grades - 50) * 0.6;
+  const social = (state.life.social - 50) * 0.15;
+  const score = ovr + production + academics + social + rnd(-5, 6);
+
+  const rating = clamp(Math.round(score), 40, 99);
+  let stars = 1;
+  if(rating >= 92) stars = 5;
+  else if(rating >= 84) stars = 4;
+  else if(rating >= 76) stars = 3;
+  else if(rating >= 68) stars = 2;
+
+  // national rank approximation out of 5000
+  const rank = clamp(Math.round(6000 - rating * 55 + rnd(-250,250)), 1, 5000);
+
+  state.hs.recruit = { rating, stars, rank };
+}
+
+function weekHasGame(){
+  // 12 game season: weeks 1-12 are games, week 13+ playoffs/offseason
+  return state.week >= 1 && state.week <= 12;
+}
+
+function simulateGame(level){
+  // level: "HS" | "COLLEGE"
+  const p = state.player;
+  const r = getEffectiveRatings(p);
+  const fatiguePenalty = Math.round(state.life.fatigue * 0.25); // up to -25
+  const disciplineBonus = Math.round((state.life.grades - 60) * 0.08); // -? to +?
+  const socialSwing = Math.round((state.life.social - 50) * 0.04);
+
+  const ovr = calcOVR(p);
+  const effective = clamp(ovr - fatiguePenalty + disciplineBonus + socialSwing, 1, 99);
+
+  // opponent strength
+  const oppBase = level === "HS" ? rnd(48, 78) : rnd(55, 88);
+  const opp = clamp(oppBase + Math.round((state.year-1)*2), 40, 95);
+
+  const diff = effective - opp;
+  const win = diff + rnd(-12, 12) >= 0;
+
+  // stats per position
+  const s = level === "HS" ? state.hs.stats : state.college.stats;
+
+  if(p.pos === "QB"){
+    const yards = clamp(rnd(120, 420) + diff * 6, 50, 560);
+    const tds = clamp(rnd(0, 5) + Math.floor(diff/18), 0, 7);
+    const ints = clamp(rnd(0, 3) - Math.floor(diff/22), 0, 5);
+    s.yards += yards; s.tds += tds; s.ints += ints;
+    logLine(`Game: ${win ? "WIN" : "LOSS"} vs OVR ${opp} • QB: ${yards} pass yds, ${tds} TD, ${ints} INT`);
+  } else if(["RB","WR","TE"].includes(p.pos)){
+    const yards = clamp(rnd(30, 220) + diff * 3, 5, 320);
+    const tds = clamp(rnd(0, 3) + Math.floor(diff/22), 0, 5);
+    s.yards += yards; s.tds += tds;
+    logLine(`Game: ${win ? "WIN" : "LOSS"} vs OVR ${opp} • Offense: ${yards} yds, ${tds} TD`);
+  } else {
+    const tackles = clamp(rnd(2, 14) + Math.floor(diff/10), 0, 24);
+    const sacks = clamp(rnd(0, 3) + Math.floor(diff/28), 0, 6);
+    s.tackles += tackles; s.sacks += sacks;
+    logLine(`Game: ${win ? "WIN" : "LOSS"} vs OVR ${opp} • Defense: ${tackles} tackles, ${sacks} sacks`);
+  }
+
+  s.games += 1;
+  if(win) state.seasonWins += 1; else state.seasonLosses += 1;
+
+  // fatigue from game
+  state.life.fatigue = clamp(state.life.fatigue + 8, 0, 100);
+
+  // “postgame interview” chance if impact big
+  const impact = diff + rnd(-10,10) + (p.pos==="QB" ? (rnd(0,5)) : 0);
+  if(impact >= 18){
+    logLine("Postgame Interview: Your performance made headlines (+social, +recruiting).");
+    state.life.social = clamp(state.life.social + 4, 0, 100);
+    if(state.phase === "HS") bumpRecruitingFromPerformance(6);
+    if(state.phase === "COLLEGE") bumpDraftStock(3);
+  }
+}
+
+function bumpRecruitingFromPerformance(amount){
+  // better colleges respond only if you’re strong enough
+  const prof = state.hs.recruit;
+  for(const row of state.hs.interest){
+    const c = COLLEGES.find(x=>x.id===row.collegeId);
+    if(!c) continue;
+
+    const gate = 60 + c.stars * 6; // 1★ easy, 5★ hard
+    if(prof.rating >= gate){
+      row.interest = clamp(row.interest + rnd(0, amount), 0, 100);
+    }else{
+      row.interest = clamp(row.interest + rnd(0, Math.max(1, Math.floor(amount/3))), 0, 100);
+    }
+  }
+
+  // offer thresholds
+  for(const row of state.hs.interest){
+    if(row.offered) continue;
+    const c = COLLEGES.find(x=>x.id===row.collegeId);
+    const offerAt = 35 + c.stars * 8; // 1★ ~43, 5★ ~75
+    if(row.interest >= offerAt){
+      row.offered = true;
+      state.hs.offers.push(row.collegeId);
+      logLine(`Offer Received: ${c.name} (${c.stars}⭐)`);
+    }
+  }
+}
+
+function hsWeekProgression(){
+  // passive drift
+  state.life.grades = clamp(state.life.grades - 1, 0, 100);
+  state.life.social = clamp(state.life.social - 1, 0, 100);
+  state.life.fatigue = clamp(state.life.fatigue - 3, 0, 100);
+
+  // If grades too low, awareness suffers slightly
+  if(state.life.grades < 50){
+    state.player.ratings.awareness = clamp(state.player.ratings.awareness - 1, 1, 99);
+    logLine("Grades Warning: Struggling in class (-1 Awareness).");
+  }
+
+  // weekly recruiting updates based on performance + life management
+  updateRecruitProfile();
+  bumpRecruitingFromPerformance(4);
+}
+
+/* ---------------- College: Life + Shop + Draft Projection ---------------- */
+function enterCollege(collegeId){
+  state.phase = "COLLEGE";
+  state.college.collegeId = collegeId;
+  state.year = 1;
+  state.week = 1;
+  state.seasonWins = 0;
+  state.seasonLosses = 0;
+
+  // reset life a bit
+  state.life.fatigue = 18;
+  state.life.grades = clamp(state.life.grades + 6, 0, 100);
+  state.life.social = clamp(state.life.social + 3, 0, 100);
+
+  // money starts at 0
+  state.college.money = 0;
+  state.college.inventory = [];
+  state.college.equipped = {};
+
+  logLine(`Enrolled at ${COLLEGES.find(c=>c.id===collegeId)?.name || "College"}!`);
+  logLine("College: balance practice, grades, social, and work. Shop for gear/clothes boosts.");
+}
+
+function bumpDraftStock(amount){
+  // simple: influence draft projection score
+  if(!state.college.draftProjection) return;
+  state.college.draftProjection.score = clamp(state.college.draftProjection.score + amount, 0, 100);
+  state.college.draftProjection = computeProjection(state.college.draftProjection.score);
+}
+
+function computeProjection(score){
+  // score 0-100 -> round/pick
+  // 90+ top 10, 80+ 1st, 70+ 2nd-3rd, 60+ mid, 50+ late, <45 fringe/undrafted
+  let text = "Undrafted";
+  let round = null;
+  let pick = null;
+
+  if(score >= 92){ round=1; pick=rnd(1,10); text=`Round 1 (Top 10)`; }
+  else if(score >= 86){ round=1; pick=rnd(11,32); text=`Round 1`; }
+  else if(score >= 78){ round=2; pick=rnd(33,64); text=`Round 2`; }
+  else if(score >= 72){ round=3; pick=rnd(65,96); text=`Round 3`; }
+  else if(score >= 64){ round=4; pick=rnd(97,128); text=`Round 4`; }
+  else if(score >= 56){ round=5; pick=rnd(129,160); text=`Round 5`; }
+  else if(score >= 48){ round=6; pick=rnd(161,192); text=`Round 6`; }
+  else if(score >= 45){ round=7; pick=rnd(193,224); text=`Round 7`; }
+  else { text = "Undrafted (fringe)"; }
+
+  return { score, round, pick, text };
+}
+
+function ensureProjectionIfJunior(){
+  if(state.phase !== "COLLEGE") return;
+  if(state.year < 3) return;
+  if(state.college.draftProjection) return;
+
+  // initial projection based on effective OVR + production + grades + prestige
+  const p = state.player;
+  const ovr = calcOVR(p);
+  const s = state.college.stats;
+  const prod = s.games ? (s.tds*12 + s.yards/25 + s.tackles*3 + s.sacks*6 - s.ints*8) / s.games : 0;
+  const g = (state.life.grades - 60) * 0.5;
+  const college = COLLEGES.find(c=>c.id===state.college.collegeId);
+  const prestige = ((college?.prestige || 60) - 60) * 0.12;
+
+  let score = clamp(Math.round(ovr + prod + g + prestige + rnd(-6,6)), 0, 100);
+  state.college.draftProjection = computeProjection(score);
+
+  logLine(`Draft Projection starts: ${state.college.draftProjection.text} (score ${state.college.draftProjection.score})`);
+}
+
+function collegeWeekProgression(){
+  // passive drift
+  state.life.grades = clamp(state.life.grades - 2, 0, 100);
+  state.life.social = clamp(state.life.social - 1, 0, 100);
+  state.life.fatigue = clamp(state.life.fatigue - 2, 0, 100);
+
+  // projection updates weekly once junior year begins
+  ensureProjectionIfJunior();
+  if(state.college.draftProjection){
+    // update based on current form
+    const ovr = calcOVR(state.player);
+    const s = state.college.stats;
+    const prod = s.games ? (s.tds*12 + s.yards/25 + s.tackles*3 + s.sacks*6 - s.ints*8) / s.games : 0;
+    const g = (state.life.grades - 60) * 0.35;
+
+    let delta = Math.round((ovr-70)*0.03 + prod*0.06 + g*0.03 + rnd(-2,2));
+    state.college.draftProjection.score = clamp(state.college.draftProjection.score + delta, 0, 100);
+    state.college.draftProjection = computeProjection(state.college.draftProjection.score);
+  }
+
+  // if grades too low, awareness hit
+  if(state.life.grades < 50){
+    state.player.ratings.awareness = clamp(state.player.ratings.awareness - 1, 1, 99);
+    logLine("Academic Trouble: GPA is slipping (-1 Awareness).");
+  }
+}
+
+/* ---------------- Actions ---------------- */
+function doTrain(){
+  // Train: improves physical ratings slightly but increases fatigue and can hurt grades if spammed
+  const p = state.player;
+  const r = p.ratings;
+  const gainKey = pick(["speed","strength","agility","stamina"]);
+  r[gainKey] = clamp(r[gainKey] + 1, 1, 99);
+  state.life.fatigue = clamp(state.life.fatigue + 9, 0, 100);
+  state.life.grades = clamp(state.life.grades - 1, 0, 100);
+  logLine(`Training Session: +1 ${gainKey.toUpperCase()} (fatigue +9, grades -1)`);
+}
+
+function doStudy(){
+  state.life.grades = clamp(state.life.grades + 7, 0, 100);
+  state.life.social = clamp(state.life.social - 2, 0, 100);
+  state.life.fatigue = clamp(state.life.fatigue + 2, 0, 100);
+  // small awareness bump
+  state.player.ratings.awareness = clamp(state.player.ratings.awareness + (rnd(0,1)), 1, 99);
+  logLine("Study Session: grades +7 (social -2, fatigue +2)");
+}
+
+function doSocial(){
+  state.life.social = clamp(state.life.social + 7, 0, 100);
+  state.life.grades = clamp(state.life.grades - 2, 0, 100);
+  state.life.fatigue = clamp(state.life.fatigue + 2, 0, 100);
+  logLine("Social Time: social +7 (grades -2, fatigue +2)");
+}
+
+function doWork(){
+  // College only
+  if(state.phase !== "COLLEGE") return;
+  const wage = 55 + rnd(-10,10);
+  state.college.money += wage;
+  state.life.fatigue = clamp(state.life.fatigue + 4, 0, 100);
+  state.life.social = clamp(state.life.social - 1, 0, 100);
+  logLine(`Work Shift: earned ${fmtMoney(wage)} (fatigue +4, social -1)`);
+}
+
+/* ---------------- Shop ---------------- */
+function buyItem(itemId){
+  const item = SHOP_ITEMS.find(i=>i.id===itemId);
+  if(!item) return;
+
+  if(state.college.money < item.cost){
+    logLine("Not enough money.");
+    return;
+  }
+
+  state.college.money -= item.cost;
+
+  if(item.type === "service" && item.gradeBoost){
+    state.life.grades = clamp(state.life.grades + item.gradeBoost, 0, 100);
+    logLine(`Purchased: ${item.name} (${fmtMoney(item.cost)}) • grades +${item.gradeBoost}`);
+    return;
+  }
+
+  if(!getOwnedItem(itemId)){
+    state.college.inventory.push({itemId});
+  }
+  logLine(`Purchased: ${item.name} (${fmtMoney(item.cost)})`);
+}
+
+function toggleEquip(itemId){
+  const item = SHOP_ITEMS.find(i=>i.id===itemId);
+  if(!item || !item.equipSlot) return;
+  if(!getOwnedItem(itemId)) return;
+
+  const slot = item.equipSlot;
+  if(state.college.equipped[slot] === itemId){
+    delete state.college.equipped[slot];
+    logLine(`Unequipped: ${item.name}`);
+  }else{
+    state.college.equipped[slot] = itemId;
+    logLine(`Equipped: ${item.name}`);
+    // apply social immediate feel (equipped clothing)
+    if(item.social){
+      state.life.social = clamp(state.life.social + item.social, 0, 100);
+    }
+  }
+}
+
+/* ---------------- Draft ---------------- */
+function canDeclare(){
+  return state.phase === "COLLEGE" && state.year >= 3 && !state.college.declared;
+}
+function declareForDraft(){
+  if(!canDeclare()){
+    logLine("You can declare starting Junior year.");
+    return;
+  }
+  state.college.declared = true;
+  state.draft.declared = true;
+
+  // combine invite logic
+  const proj = state.college.draftProjection || computeProjection(40);
+  const invite = (proj.score >= 60) || (calcOVR(state.player) >= 78);
+  state.draft.invitedCombine = invite;
+
+  logLine("You declared for the Pro Draft.");
+  logLine(invite ? "Combine Invite: YES (you will attend pre-draft combine)" : "Combine Invite: NO (you may go undrafted)");
+}
+
+function autoDeclareAfterCollege(){
+  if(state.phase !== "COLLEGE") return;
+  if(state.year >= 4 && state.week > 12){
+    if(!state.college.declared){
+      logLine("College complete: You are required to declare for the draft.");
+      state.college.declared = true;
+      state.draft.declared = true;
+      // invite check
+      const proj = state.college.draftProjection || computeProjection(40);
+      state.draft.invitedCombine = (proj.score >= 60) || (calcOVR(state.player) >= 80);
+    }
+    state.phase = "DRAFT";
+    state.week = 1;
+    runDraftProcess();
+  }
+}
+
+function runInterviews(){
+  // Interviews with 3 most likely teams, influences projection
+  const likely = PRO_TEAMS.slice().sort(()=>Math.random()-0.5).slice(0,3);
+  logLine("Pre-Draft Interviews (Top 3 likely teams):");
+  for(const t of likely){
+    const perf = rnd(-2,4) + Math.round((state.life.grades-60)*0.05);
+    logLine(`• ${t.name}: interview ${perf>=2?"great":perf>=0?"ok":"rough"} (${perf>=0?"+":"+"
+    }${perf} projection score)`);
+    if(state.college.draftProjection){
+      state.college.draftProjection.score = clamp(state.college.draftProjection.score + perf, 0, 100);
+      state.college.draftProjection = computeProjection(state.college.draftProjection.score);
+    }
+  }
+  state.draft.interviewsDone = true;
+}
+
+function runCombine(){
+  if(!state.draft.invitedCombine) return;
+  // Simple combine: outcomes influence projection score
+  const r = getEffectiveRatings(state.player);
+  const forty = clamp(4.95 - (r.speed-60)*0.01 + (state.player.weight-200)*0.0006 + rnd(-5,5)*0.01, 4.25, 5.20);
+  const bench = clamp(Math.round((r.strength-55)*0.6 + rnd(0,6)), 8, 40);
+  const shuttle = clamp(4.65 - (r.agility-60)*0.012 + rnd(-6,6)*0.01, 3.85, 4.95);
+
+  logLine(`Combine Results: 40yd ${forty.toFixed(2)}s • Bench ${bench} reps • Shuttle ${shuttle.toFixed(2)}s`);
+
+  let scoreDelta = 0;
+  if(forty <= 4.50) scoreDelta += 4;
+  else if(forty <= 4.62) scoreDelta += 2;
+  else if(forty >= 4.85) scoreDelta -= 2;
+
+  if(bench >= 24) scoreDelta += 2;
+  else if(bench <= 12) scoreDelta -= 2;
+
+  if(shuttle <= 4.20) scoreDelta += 2;
+  else if(shuttle >= 4.55) scoreDelta -= 1;
+
+  if(state.college.draftProjection){
+    state.college.draftProjection.score = clamp(state.college.draftProjection.score + scoreDelta, 0, 100);
+    state.college.draftProjection = computeProjection(state.college.draftProjection.score);
+  }
+  logLine(`Combine Impact: ${scoreDelta>=0?"+":""}${scoreDelta} projection score`);
+}
+
+function runDraftProcess(){
+  // Ensure projection exists
+  if(!state.college.draftProjection){
+    state.college.draftProjection = computeProjection(clamp(calcOVR(state.player) - 15, 0, 100));
+  }
+
+  logLine("--- Draft Process Begins ---");
+
+  if(state.draft.declared){
+    if(state.draft.invitedCombine){
+      runCombine();
+    }
+    runInterviews();
+  }
+
+  const proj = state.college.draftProjection;
+  logLine(`Final Projection: ${proj.text} (score ${proj.score})`);
+
+  // Draft result: chance based on score
+  const score = proj.score;
+  const draftedChance = clamp((score - 40) / 60, 0, 1); // 40=>0, 100=>1
+  const drafted = Math.random() < draftedChance;
+
+  if(!drafted){
+    state.draft.result = null;
+    logLine("Draft Result: UNDRAFTED");
+    // you can add UDFA tryouts later
+    state.phase = "PRO"; // still move to pro but as undrafted free agent
+    state.pro.teamId = pick(PRO_TEAMS).id;
+    state.pro.salary = 750000; // minimum-ish
+    state.pro.yearsPro = 0;
+    logLine(`Signed as UDFA with ${getTeamName(state.pro.teamId)} (practice squad/min deal).`);
+    return;
+  }
+
+  // Use projection for round/pick if present, otherwise compute
+  const round = proj.round ?? rnd(5,7);
+  const pickNum = proj.pick ?? rnd(200,224);
+  const team = pick(PRO_TEAMS);
+  state.draft.result = { teamId:team.id, round, pick:pickNum };
+
+  state.phase = "PRO";
+  state.pro.teamId = team.id;
+  state.pro.salary = estimateRookieSalary(round, pickNum);
+  state.pro.yearsPro = 0;
+
+  logLine(`DRAFTED: ${team.name} selected you in Round ${round}, Pick ${pickNum}.`);
+  logLine(`Rookie Contract (approx): ${fmtMoney(state.pro.salary)}/year`);
+}
+
+function estimateRookieSalary(round, pick){
+  // rough scaling only (you can replace with a real table later)
+  if(round === 1 && pick <= 10) return 8500000 + rnd(-500000, 900000);
+  if(round === 1) return 4200000 + rnd(-400000, 700000);
+  if(round === 2) return 2100000 + rnd(-250000, 400000);
+  if(round === 3) return 1450000 + rnd(-150000, 250000);
+  if(round === 4) return 1100000 + rnd(-100000, 200000);
+  if(round === 5) return 980000 + rnd(-80000, 150000);
+  if(round === 6) return 920000 + rnd(-60000, 120000);
+  return 870000 + rnd(-50000, 100000);
+}
+
+function getTeamName(teamId){
+  return PRO_TEAMS.find(t=>t.id===teamId)?.name || "Pro Team";
+}
+
+/* ---------------- Weekly Advance ---------------- */
+function endOfSeasonCheck(){
+  // HS: 12 games + “playoffs” placeholder weeks
+  if(state.phase === "HS"){
+    if(state.week === 13){
+      // simple playoff gate: 8+ wins
+      if(state.seasonWins >= 8){
+        logLine("High School Playoffs: You qualified! (playoff sim placeholder)");
+        // one playoff game
+        simulateGame("HS");
+        logLine("Playoffs complete (placeholder).");
+      } else {
+        logLine("No playoffs this year.");
+      }
+    }
+
+    if(state.week > 13){
+      // year ends
+      logLine(`--- HS Year ${state.year} Complete: ${state.seasonWins}-${state.seasonLosses} ---`);
+      state.year += 1;
+      state.week = 1;
+      state.seasonWins = 0;
+      state.seasonLosses = 0;
+
+      // off-season growth
+      state.player.ratings.stamina = clamp(state.player.ratings.stamina + 1, 1, 99);
+      state.life.fatigue = clamp(state.life.fatigue - 15, 0, 100);
+
+      if(state.year > 4){
+        // choose college
+        logLine("High School complete: Choose a college offer.");
+      } else {
+        logLine(`Starting HS Year ${state.year}.`);
+      }
+    }
+  }
+
+  // College: 12 games + playoffs placeholder (9+ wins)
+  if(state.phase === "COLLEGE"){
+    if(state.week === 13){
+      if(state.seasonWins >= 9){
+        logLine("College Playoffs/Bowl: Qualified! (placeholder sim)");
+        simulateGame("COLLEGE");
+      } else {
+        logLine("No playoff/bowl run this year.");
+      }
+    }
+
+    if(state.week > 13){
+      logLine(`--- College Year ${state.year} Complete: ${state.seasonWins}-${state.seasonLosses} ---`);
+      state.year += 1;
+      state.week = 1;
+      state.seasonWins = 0;
+      state.seasonLosses = 0;
+
+      // offseason progression
+      state.player.ratings.awareness = clamp(state.player.ratings.awareness + 1, 1, 99);
+      state.life.fatigue = clamp(state.life.fatigue - 12, 0, 100);
+
+      if(state.year > 4){
+        // required declare after college ends
+        autoDeclareAfterCollege();
+      } else {
+        logLine(`Starting College Year ${state.year}.`);
+      }
+    }
+  }
+}
+
+function advanceWeek(){
+  if(state.phase === "HS"){
+    // weekly updates + games
+    hsWeekProgression();
+    if(weekHasGame()){
+      simulateGame("HS");
+    } else if(state.week === 13){
+      // playoffs trigger handled later
+    }
+  }
+
+  if(state.phase === "COLLEGE"){
+    collegeWeekProgression();
+    if(weekHasGame()){
+      simulateGame("COLLEGE");
+    }
+  }
+
+  if(state.phase === "PRO"){
+    logLine("PRO phase is scaffolded (full NFL season sim coming next).");
+  }
+
+  state.week += 1;
+  endOfSeasonCheck();
+
+  // After each week, update recruiting/draft
+  if(state.phase === "HS"){
+    updateRecruitProfile();
+  }
+  if(state.phase === "COLLEGE"){
+    ensureProjectionIfJunior();
+  }
+
+  save();
+  renderCareer();
+}
+
+/* ---------------- Rendering ---------------- */
+function renderBars(){
+  const g = clamp(state.life.grades, 0, 100);
+  const s = clamp(state.life.social, 0, 100);
+  const f = clamp(state.life.fatigue, 0, 100);
+
+  $("gradesText").textContent = `${g}/100`;
+  $("socialText").textContent = `${s}/100`;
+  $("fatigueText").textContent = `${f}/100`;
+
+  $("gradesBar").style.width = `${g}%`;
+  $("socialBar").style.width = `${s}%`;
+  $("fatigueBar").style.width = `${f}%`;
+
+  // money visible in college/pro
+  const showMoney = state.phase === "COLLEGE" || state.phase === "PRO";
+  $("moneyRow").classList.toggle("hidden", !showMoney);
+  $("moneyText").textContent =
+    state.phase === "COLLEGE" ? fmtMoney(state.college.money) :
+    state.phase === "PRO" ? fmtMoney(state.pro.money) :
+    "";
+}
+
+function renderPlayerCard(){
+  const p = state.player;
+  const eff = getEffectiveRatings(p);
+  const ovr = calcOVR(p);
+
+  const school =
+    state.phase === "HS" ? `High School: ${state.hs.teamName} (Year ${state.year})` :
+    state.phase === "COLLEGE" ? `College: ${(COLLEGES.find(c=>c.id===state.college.collegeId)?.name || "TBD")} (Year ${state.year})` :
+    state.phase === "DRAFT" ? `Draft` :
+    state.phase === "PRO" ? `Pro: ${getTeamName(state.pro.teamId)} (Year ${state.pro.yearsPro+1})` :
+    "";
+
+  const recruit = state.phase === "HS"
+    ? `Recruit: ${state.hs.recruit.stars}⭐ • Rating ${state.hs.recruit.rating} • Rank #${state.hs.recruit.rank}`
+    : "";
+
+  const proj = (state.phase === "COLLEGE" && state.college.draftProjection)
+    ? `Draft Projection: ${state.college.draftProjection.text} (score ${state.college.draftProjection.score})`
+    : "";
+
+  $("playerCard").innerHTML = `
+    <div><b>${p.name}</b> — ${p.pos} (${p.archetypeName}) • OVR <b>${ovr}</b></div>
+    <div class="muted">${p.hand} • ${p.height}, ${p.weight} lbs • Age ${p.age + (state.phase==="HS" ? (state.year-1) : 4 + (state.phase==="COLLEGE" ? (state.year-1) : 4))}</div>
+    <div class="muted">${p.hometown || ""}</div>
+    <div class="muted">${school}</div>
+    ${recruit ? `<div class="muted">${recruit}</div>` : ""}
+    ${proj ? `<div class="muted">${proj}</div>` : ""}
+    <div class="hr"></div>
+    <div>Speed: ${eff.speed}</div>
+    <div>Strength: ${eff.strength}</div>
+    <div>Agility: ${eff.agility}</div>
+    <div>Awareness: ${eff.awareness}</div>
+    <div>Stamina: ${eff.stamina}</div>
+  `;
+}
+
+function renderRightPanel(){
+  const title = $("rightTitle");
+  const sub = $("rightSubtitle");
+  const panel = $("rightPanel");
+
+  // buttons
+  $("btnWork").classList.toggle("hidden", state.phase !== "COLLEGE");
+  $("btnShop").classList.toggle("hidden", state.phase !== "COLLEGE");
+  $("btnDeclare").classList.toggle("hidden", !canDeclare());
+
+  if(state.phase === "HS"){
+    title.textContent = "Recruiting";
+    sub.textContent = `HS Year ${state.year} • Week ${state.week} • Record ${state.seasonWins}-${state.seasonLosses}`;
+
+    // show offers, interest list, and allow committing after year 4
+    const offers = state.hs.offers.map(id=>COLLEGES.find(c=>c.id===id)).filter(Boolean);
+    const topInterest = state.hs.interest
+      .slice()
+      .sort((a,b)=>b.interest-a.interest)
+      .slice(0,8)
+      .map(row=>{
+        const c = COLLEGES.find(x=>x.id===row.collegeId);
+        return { ...row, college:c };
+      });
+
+    const canCommit = state.year > 4 || (state.year === 4 && state.week > 13);
+
+    panel.innerHTML = `
+      <div class="small muted">Offers: ${offers.length ? "" : "none yet"}</div>
+      ${offers.length ? `<div style="margin-top:6px;">
+        ${offers.map(c=>`<span class="pill good">${c.stars}⭐ ${c.name}</span>`).join(" ")}
+      </div>` : ""}
+
+      <div class="hr"></div>
+
+      <div class="small muted">Top Interest</div>
+      <table class="table">
+        <thead><tr><th>College</th><th>Stars</th><th>Interest</th></tr></thead>
+        <tbody>
+          ${topInterest.map(x=>`
+            <tr>
+              <td>${x.college.name}</td>
+              <td>${x.college.stars}⭐</td>
+              <td>${x.interest}${x.offered ? ` <span class="pill good">OFFER</span>` : ""}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+
+      ${canCommit ? `
+        <div class="hr"></div>
+        <div class="small muted">High School complete — choose your college offer:</div>
+        ${offers.length ? `
+          <div class="row" style="margin-top:8px;">
+            ${offers.map(c=>`<button type="button" data-commit="${c.id}">Commit: ${c.name}</button>`).join("")}
+          </div>
+        ` : `<div class="small"><span class="pill bad">No offers</span> You may walk on to a 1⭐ school.</div>
+             <div class="row" style="margin-top:8px;">
+               ${COLLEGES.filter(c=>c.stars===1).map(c=>`<button type="button" data-commit="${c.id}">Walk-on: ${c.name}</button>`).join("")}
+             </div>`}
+      ` : ""}
+    `;
+    return;
+  }
+
+  if(state.phase === "COLLEGE"){
+    const c = COLLEGES.find(x=>x.id===state.college.collegeId);
+    title.textContent = "College Life";
+    sub.textContent = `${c ? `${c.stars}⭐ ${c.name}` : "College"} • Year ${state.year} • Week ${state.week} • Record ${state.seasonWins}-${state.seasonLosses}`;
+
+    const proj = state.college.draftProjection;
+    const projText = proj ? `<span class="pill good">Projection: ${proj.text}</span>` : `<span class="pill warn">Projection: begins Junior year</span>`;
+
+    const inv = state.college.inventory.map(x=>SHOP_ITEMS.find(i=>i.id===x.itemId)).filter(Boolean);
+    const equip = state.college.equipped || {};
+
+    panel.innerHTML = `
       <div class="row">
-        <div class="panel">
-          <h3>What’s in this build</h3>
-          <ul class="list">
-            <li>Player Builder (archetypes + point-buy)</li>
-            <li>Ratings system + positional caps</li>
-            <li>Persistent saves (LocalStorage)</li>
-            <li>Career structure ready for Combine → Draft → Season</li>
-          </ul>
-        </div>
-
-        <div class="panel">
-          <h3>Next systems to add</h3>
-          <ul class="list">
-            <li>Combine drills + draft stock</li>
-            <li>Team selection/draft + depth chart</li>
-            <li>Weekly training + game-by-game simulation</li>
-            <li>Contracts, injuries, awards, progression trees</li>
-          </ul>
-        </div>
-      </div>
-    </section>
-
-    <!-- SCREEN: Builder -->
-    <section class="card screen hidden" id="screen-builder">
-      <div class="screen-head">
-        <h2>Build Your Player</h2>
-        <div class="muted">Step <span id="builderStep">1</span> / 3</div>
+        ${projText}
+        ${state.college.declared ? `<span class="pill good">Declared</span>` : `<span class="pill warn">Not Declared</span>`}
       </div>
 
-      <!-- Step 1 -->
-      <div class="builder-step" data-step="1">
-        <h3>Identity</h3>
-        <div class="row">
-          <label>
-            Name
-            <input id="bName" placeholder="e.g., Kenny McEachin" />
-          </label>
+      <div class="hr"></div>
 
-          <label>
-            Position
-            <select id="bPos">
-              <option value="QB">QB</option>
-              <option value="RB">RB</option>
-              <option value="WR">WR</option>
-              <option value="TE">TE</option>
-              <option value="CB">CB</option>
-              <option value="LB">LB</option>
-              <option value="DL">DL</option>
-            </select>
-          </label>
-
-          <label>
-            Handedness
-            <select id="bHand">
-              <option value="Right">Right</option>
-              <option value="Left">Left</option>
-            </select>
-          </label>
+      <div class="small muted">Inventory (click to equip/unequip)</div>
+      ${inv.length ? `
+        <div style="margin-top:8px;">
+          ${inv.map(item=>{
+            const equipped = item.equipSlot && equip[item.equipSlot] === item.id;
+            return `<button type="button" class="${equipped ? "primary" : "ghost"}" data-equip="${item.id}">
+              ${equipped ? "Equipped: " : ""}${item.name}
+            </button>`;
+          }).join(" ")}
         </div>
+      ` : `<div class="small">No items yet. Use Shop.</div>`}
 
-        <div class="row">
-          <label>
-            Hometown
-            <input id="bTown" placeholder="City, State" />
-          </label>
-          <label>
-            College (optional)
-            <input id="bCollege" placeholder="e.g., UCF" />
-          </label>
-        </div>
+      <div class="hr"></div>
+
+      <div class="small muted">College Stats</div>
+      <div class="small">
+        Games: ${state.college.stats.games} • Yards: ${state.college.stats.yards} • TD: ${state.college.stats.tds}
+        ${state.player.pos==="QB" ? ` • INT: ${state.college.stats.ints}` : ""}
+        ${["LB","CB","DL"].includes(state.player.pos) ? ` • Tackles: ${state.college.stats.tackles} • Sacks: ${state.college.stats.sacks}` : ""}
       </div>
+    `;
+    return;
+  }
 
-      <!-- Step 2 -->
-      <div class="builder-step hidden" data-step="2">
-        <h3>Physicals</h3>
-        <div class="row">
-          <label>
-            Height
-            <select id="bHeight"></select>
-          </label>
+  if(state.phase === "PRO"){
+    title.textContent = "Pro Career";
+    sub.textContent = `${getTeamName(state.pro.teamId)} • Salary ${fmtMoney(state.pro.salary)}/yr`;
+    panel.innerHTML = `
+      <div class="small muted">Pro systems are scaffolded in v0.3.</div>
+      <div class="small">Next step: build full NFL schedule, practice, contracts, and free agency.</div>
+    `;
+    return;
+  }
 
-          <label>
-            Weight (lbs)
-            <input id="bWeight" type="number" min="150" max="380" value="210" />
-          </label>
+  title.textContent = "Career";
+  sub.textContent = "";
+  panel.innerHTML = `<div class="small muted">No panel for this phase yet.</div>`;
+}
 
-          <label>
-            Age
-            <input id="bAge" type="number" min="18" max="28" value="21" />
-          </label>
-        </div>
+function renderCareer(){
+  const p = state.player;
+  if(!p) return;
 
-        <p class="muted">Physicals influence baselines, like a real career mode.</p>
-      </div>
+  $("careerSub").textContent =
+    state.phase === "HS" ? `High School • Year ${state.year} • Week ${state.week} • Record ${state.seasonWins}-${state.seasonLosses}` :
+    state.phase === "COLLEGE" ? `College • Year ${state.year} • Week ${state.week} • Record ${state.seasonWins}-${state.seasonLosses}` :
+    state.phase === "DRAFT" ? `Draft` :
+    state.phase === "PRO" ? `Pros • ${getTeamName(state.pro.teamId)}` :
+    "";
 
-      <!-- Step 3 -->
-      <div class="builder-step hidden" data-step="3">
-        <h3>Archetype + Ratings</h3>
+  renderPlayerCard();
+  renderBars();
+  renderRightPanel();
+}
 
-        <div class="row">
-          <label>
-            Archetype
-            <select id="bArch"></select>
-          </label>
+/* ---------------- UI Events ---------------- */
+$("btnNew").addEventListener("click", () => startBuilder());
 
-          <div class="panel mini">
-            <div class="muted">Points remaining</div>
-            <div class="big" id="pointsLeft">0</div>
-          </div>
+$("btnContinue").addEventListener("click", () => {
+  if(load()){
+    showScreen("career");
+    renderCareer();
+    logLine("Loaded career.");
+  } else {
+    alert("No save found. Click New Career.");
+  }
+});
 
-          <div class="panel mini">
-            <div class="muted">Overall (OVR)</div>
-            <div class="big" id="ovrPreview">0</div>
-          </div>
-        </div>
+$("btnWipe").addEventListener("click", () => {
+  wipe();
+  alert("Save wiped.");
+});
 
-        <div class="ratings">
-          <div class="rating">
-            <div class="rating-head">
-              <b>Speed</b> <span class="muted" id="capSpeed"></span>
-            </div>
-            <div class="rating-controls">
-              <button class="ghost" type="button" data-attr="speed" data-dir="-1">-</button>
-              <div class="num" id="valSpeed">0</div>
-              <button type="button" data-attr="speed" data-dir="1">+</button>
-            </div>
-          </div>
+$("btnSave").addEventListener("click", save);
+$("btnAdvanceWeek").addEventListener("click", advanceWeek);
 
-          <div class="rating">
-            <div class="rating-head">
-              <b>Strength</b> <span class="muted" id="capStrength"></span>
-            </div>
-            <div class="rating-controls">
-              <button class="ghost" type="button" data-attr="strength" data-dir="-1">-</button>
-              <div class="num" id="valStrength">0</div>
-              <button type="button" data-attr="strength" data-dir="1">+</button>
-            </div>
-          </div>
+$("btnTrain").addEventListener("click", () => { doTrain(); save(); renderCareer(); });
+$("btnStudy").addEventListener("click", () => { doStudy(); save(); renderCareer(); });
+$("btnSocial").addEventListener("click", () => { doSocial(); save(); renderCareer(); });
+$("btnWork").addEventListener("click", () => { doWork(); save(); renderCareer(); });
 
-          <div class="rating">
-            <div class="rating-head">
-              <b>Agility</b> <span class="muted" id="capAgility"></span>
-            </div>
-            <div class="rating-controls">
-              <button class="ghost" type="button" data-attr="agility" data-dir="-1">-</button>
-              <div class="num" id="valAgility">0</div>
-              <button type="button" data-attr="agility" data-dir="1">+</button>
-            </div>
-          </div>
+$("btnDeclare").addEventListener("click", () => { declareForDraft(); save(); renderCareer(); });
 
-          <div class="rating">
-            <div class="rating-head">
-              <b>Awareness</b> <span class="muted" id="capAwareness"></span>
-            </div>
-            <div class="rating-controls">
-              <button class="ghost" type="button" data-attr="awareness" data-dir="-1">-</button>
-              <div class="num" id="valAwareness">0</div>
-              <button type="button" data-attr="awareness" data-dir="1">+</button>
-            </div>
-          </div>
+$("btnShop").addEventListener("click", () => {
+  // quick inline shop render in the right panel
+  const html = `
+    <div class="small muted">Shop • Money: ${fmtMoney(state.college.money)}</div>
+    <table class="table">
+      <thead><tr><th>Item</th><th>Cost</th><th>Effect</th><th></th></tr></thead>
+      <tbody>
+        ${SHOP_ITEMS.map(i=>`
+          <tr>
+            <td><b>${i.name}</b><div class="small muted">${i.desc}</div></td>
+            <td>${fmtMoney(i.cost)}</td>
+            <td class="small">${i.effects && Object.keys(i.effects).length ? Object.entries(i.effects).map(([k,v])=>`${k}+${v}`).join(", ") : ""}
+              ${i.social ? ` social+${i.social}` : ""}${i.gradeBoost ? ` grades+${i.gradeBoost}` : ""}</td>
+            <td><button type="button" data-buy="${i.id}">Buy</button></td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+    <div class="row" style="margin-top:8px;">
+      <button type="button" class="ghost" data-close-shop="1">Close Shop</button>
+    </div>
+  `;
+  $("rightPanel").innerHTML = html;
+});
 
-          <div class="rating">
-            <div class="rating-head">
-              <b>Stamina</b> <span class="muted" id="capStamina"></span>
-            </div>
-            <div class="rating-controls">
-              <button class="ghost" type="button" data-attr="stamina" data-dir="-1">-</button>
-              <div class="num" id="valStamina">0</div>
-              <button type="button" data-attr="stamina" data-dir="1">+</button>
-            </div>
-          </div>
-        </div>
+document.addEventListener("click", (e) => {
+  const commitBtn = e.target.closest("[data-commit]");
+  if(commitBtn){
+    const id = commitBtn.getAttribute("data-commit");
+    enterCollege(id);
+    save();
+    renderCareer();
+    return;
+  }
 
-        <p class="muted">Position + archetype caps keep rookie builds balanced.</p>
-      </div>
+  const buyBtn = e.target.closest("[data-buy]");
+  if(buyBtn){
+    buyItem(buyBtn.getAttribute("data-buy"));
+    save();
+    renderCareer();
+    return;
+  }
 
-      <div class="screen-foot">
-        <button id="btnBack" class="ghost" type="button">Back</button>
-        <div class="spacer"></div>
-        <button id="btnNext" class="primary" type="button">Next</button>
-      </div>
-    </section>
+  const equipBtn = e.target.closest("[data-equip]");
+  if(equipBtn){
+    toggleEquip(equipBtn.getAttribute("data-equip"));
+    save();
+    renderCareer();
+    return;
+  }
 
-    <!-- SCREEN: Career Hub -->
-    <section class="card screen hidden" id="screen-career">
-      <div class="screen-head">
-        <h2>Career Hub</h2>
-        <div class="muted" id="careerSub"></div>
-      </div>
+  const closeShop = e.target.closest("[data-close-shop]");
+  if(closeShop){
+    renderRightPanel();
+    return;
+  }
 
-      <div class="grid">
-        <div class="panel">
-          <h3>Player</h3>
-          <div id="playerCard" class="kv"></div>
-          <div class="row" style="margin-top:10px;">
-            <button id="btnGoBuilder" class="ghost" type="button">Edit Build</button>
-            <button id="btnSave" class="primary" type="button">Save</button>
-          </div>
-        </div>
+  const ratingBtn = e.target.closest("button[data-attr]");
+  if(ratingBtn){
+    const attr = ratingBtn.dataset.attr;
+    const dir = parseInt(ratingBtn.dataset.dir,10);
+    const pos = $("bPos").value;
+    tryAdjustRating(attr, dir);
+    renderBuilderRatings(pos);
+  }
+});
 
-        <div class="panel">
-          <h3>Career Roadmap</h3>
-          <ol class="list">
-            <li><b>Combine</b> (drills + interviews → draft stock)</li>
-            <li><b>Draft</b> (teams + depth chart)</li>
-            <li><b>Season</b> (weekly training + games)</li>
-            <li><b>Offseason</b> (progression, contracts, goals)</li>
-          </ol>
+$("btnBack").addEventListener("click", () => {
+  if(builder.step === 1){
+    showScreen("home");
+    return;
+  }
+  setBuilderStep(builder.step - 1);
+});
 
-          <div class="row" style="margin-top:10px;">
-            <button id="btnCombine" type="button">Start Combine (next)</button>
-            <button id="btnSeason" class="ghost" type="button">Jump to Season (later)</button>
-          </div>
+$("btnNext").addEventListener("click", () => {
+  if(builder.step < 3){
+    setBuilderStep(builder.step + 1);
 
-          <pre class="log" id="log"></pre>
-        </div>
-      </div>
-    </section>
+    if(builder.step === 3){
+      const pos = $("bPos").value;
+      fillArchetypesForPos(pos);
+      builder.archId = $("bArch").value;
 
-    <footer class="muted">GitHub Pages ready • Deep Career Foundation v0.2</footer>
-  </div>
+      const base = baseRatingsFromPhysical(
+        pos,
+        $("bHeight").value,
+        parseInt($("bWeight").value||"200",10),
+        parseInt($("bAge").value||"15",10),
+      );
+      builder.ratings = {...base};
+      builder.start = {...base};
+      builder.points = 22;
+      applyArchetype(pos);
+      renderBuilderRatings(pos);
+    }
+    return;
+  }
+  finalizeCareer();
+});
 
-  <!-- IMPORTANT: this is what makes the buttons work -->
-  <script src="./game.js" defer></script>
-</body>
-</html>
+$("bPos").addEventListener("change", () => {
+  const pos = $("bPos").value;
+  fillArchetypesForPos(pos);
+  builder.archId = $("bArch").value;
+});
+$("bArch").addEventListener("change", () => {
+  builder.archId = $("bArch").value;
+  const pos = $("bPos").value;
+  const base = baseRatingsFromPhysical(
+    pos,
+    $("bHeight").value,
+    parseInt($("bWeight").value||"200",10),
+    parseInt($("bAge").value||"15",10),
+  );
+  builder.ratings = {...base};
+  builder.start = {...base};
+  builder.points = 22;
+  applyArchetype(pos);
+  renderBuilderRatings(pos);
+});
+
+/* ---------------- Init ---------------- */
+$("jsStatus").textContent = "JS loaded ✓";
+buildHeightOptions();
+showScreen("home");
+
+// if save exists, allow continue
+if(load()){
+  // don’t auto-open career; just enable continue
+  state = JSON.parse(localStorage.getItem(SAVE_KEY));
+}
