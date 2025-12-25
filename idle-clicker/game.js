@@ -80,8 +80,97 @@
   }
 
   // ========= SVG Renderer =========
-  function svgAvatar(a) {
-    const av = { ...DEFAULT_AVATAR, ...(a || {}) };
+ function svgAvatar(a) {
+  const av = { ...DEFAULT_AVATAR, ...(a || {}) };
+
+  const skin = av.base === "robot" ? "#cbd5e1" : av.skinColor;
+  const outline = "rgba(0,0,0,.25)";
+  const hair = av.hairColor;
+  const shirt = av.shirtColor;
+  const pants = av.pantsColor;
+  const glasses = av.glassesColor;
+
+  /* proportions: medium head, medium legs */
+  return `
+  <svg viewBox="0 0 120 180" xmlns="http://www.w3.org/2000/svg" role="img">
+    <!-- background -->
+    <rect width="120" height="180" rx="28" fill="rgba(0,0,0,.10)" />
+
+    <!-- head -->
+    <ellipse cx="60" cy="46" rx="30" ry="34" fill="${skin}" stroke="${outline}" stroke-width="1.5"/>
+
+    <!-- ears (human only) -->
+    ${av.base === "human" ? `
+      <circle cx="28" cy="48" r="6" fill="${skin}" stroke="${outline}" stroke-width="1"/>
+      <circle cx="92" cy="48" r="6" fill="${skin}" stroke="${outline}" stroke-width="1"/>
+    ` : ``}
+
+    <!-- hair -->
+    ${av.base === "human" && av.hairStyle !== "none" ? `
+      <path d="
+        M30 42
+        C34 18, 86 18, 90 42
+        L90 40
+        C86 26, 34 26, 30 40
+        Z
+      " fill="${hair}" />
+      ${av.hairStyle === "bun" ? `<circle cx="60" cy="12" r="10" fill="${hair}" />` : ``}
+    ` : ``}
+
+    <!-- eyes -->
+    ${av.eyesStyle === "happy" ? `
+      <path d="M42 46c4 4 8 4 12 0" stroke="${outline}" stroke-width="2" fill="none"/>
+      <path d="M66 46c4 4 8 4 12 0" stroke="${outline}" stroke-width="2" fill="none"/>
+    ` : av.eyesStyle === "sad" ? `
+      <path d="M42 50c4-4 8-4 12 0" stroke="${outline}" stroke-width="2" fill="none"/>
+      <path d="M66 50c4-4 8-4 12 0" stroke="${outline}" stroke-width="2" fill="none"/>
+    ` : `
+      <circle cx="48" cy="48" r="4" fill="rgba(0,0,0,.6)"/>
+      <circle cx="72" cy="48" r="4" fill="rgba(0,0,0,.6)"/>
+    `}
+
+    <!-- mouth -->
+    ${av.mouthStyle === "smile" ? `
+      <path d="M48 64c6 6 18 6 24 0" stroke="${outline}" stroke-width="2" fill="none"/>
+    ` : av.mouthStyle === "frown" ? `
+      <path d="M48 70c6-6 18-6 24 0" stroke="${outline}" stroke-width="2" fill="none"/>
+    ` : `
+      <line x1="48" y1="66" x2="72" y2="66" stroke="${outline}" stroke-width="2"/>
+    `}
+
+    <!-- glasses -->
+    ${av.glassesStyle !== "none" ? `
+      <rect x="38" y="42" width="18" height="14" rx="5" fill="rgba(0,0,0,.15)" stroke="${glasses}" stroke-width="2"/>
+      <rect x="64" y="42" width="18" height="14" rx="5" fill="rgba(0,0,0,.15)" stroke="${glasses}" stroke-width="2"/>
+      <line x1="56" y1="49" x2="64" y2="49" stroke="${glasses}" stroke-width="2"/>
+    ` : ``}
+
+    <!-- torso -->
+    <path d="
+      M32 82
+      Q60 92 88 82
+      L94 118
+      Q60 132 26 118
+      Z
+    " fill="${shirt}" stroke="${outline}" stroke-width="1.5"/>
+
+    <!-- arms -->
+    <rect x="18" y="86" width="14" height="40" rx="7" fill="${skin}" opacity="0.9"/>
+    <rect x="88" y="86" width="14" height="40" rx="7" fill="${skin}" opacity="0.9"/>
+
+    <!-- legs -->
+    <rect x="42" y="124" width="14" height="40" rx="7" fill="${pants}"/>
+    <rect x="64" y="124" width="14" height="40" rx="7" fill="${pants}"/>
+
+    <!-- robot antenna -->
+    ${av.base === "robot" ? `
+      <line x1="60" y1="6" x2="60" y2="0" stroke="rgba(0,0,0,.4)" stroke-width="2"/>
+      <circle cx="60" cy="0" r="4" fill="#22d3ee"/>
+    ` : ``}
+  </svg>
+  `;
+}
+
 
     // sanitize options
     av.base = safePick(av.base, OPTIONS.base, DEFAULT_AVATAR.base);
