@@ -1,109 +1,251 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Apex Play</title>
-  <meta name="description" content="Apex Play is a browser-based arcade featuring simple, fast, and addictive games you can play instantly." />
-  <link rel="stylesheet" href="/assets/site.css" />
+<meta charset="UTF-8">
+<title>Apex Play – Dice RPG</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+:root{
+  --bg0:#070b1a;
+  --bg1:#0b1026;
+  --accent:#7c5cff;
+  --card:rgba(255,255,255,.08);
+  --border:rgba(255,255,255,.14);
+  --text:#e5e7eb;
+  --muted:#9ca3af;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto;
+  background:
+    radial-gradient(1200px 600px at 60% -10%, #7c5cff55, transparent 60%),
+    linear-gradient(180deg,var(--bg0),var(--bg1));
+  color:var(--text);
+  min-height:100vh;
+}
+
+.wrap{
+  max-width:1200px;
+  margin:auto;
+  padding:32px;
+}
+
+h1{margin-bottom:6px}
+h2,h3{margin:16px 0 8px}
+
+.card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:20px;
+  padding:20px;
+  backdrop-filter:blur(14px);
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:1fr 420px;
+  gap:24px;
+}
+
+button{
+  background:linear-gradient(135deg,#7c5cff,#5f4cff);
+  border:none;
+  color:white;
+  padding:12px 16px;
+  border-radius:12px;
+  cursor:pointer;
+  font-size:16px;
+}
+
+button.secondary{
+  background:rgba(0,0,0,.35);
+  border:1px solid var(--border);
+}
+
+.stats{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+}
+
+.stat{
+  background:rgba(0,0,0,.3);
+  border-radius:12px;
+  padding:10px;
+  text-align:center;
+}
+
+.inventory{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:12px;
+}
+
+.slot{
+  background:rgba(0,0,0,.35);
+  border:1px dashed var(--border);
+  border-radius:12px;
+  padding:10px;
+  min-height:70px;
+  text-align:center;
+  font-size:14px;
+}
+
+.slot strong{display:block;font-size:12px;color:var(--muted)}
+
+.log{
+  background:rgba(0,0,0,.4);
+  border-radius:12px;
+  padding:12px;
+  height:180px;
+  overflow:auto;
+  font-size:14px;
+}
+</style>
 </head>
 
 <body>
-  <div class="bg-animated" aria-hidden="true">
-    <div class="bg-grid"></div>
-    <canvas id="particles"></canvas>
-  </div>
+<div class="wrap">
+<h1>🎲 Apex Dice RPG</h1>
+<p class="muted">Turn-based D&D-style dice combat. Progress saves locally.</p>
 
-  <div class="wrap">
-    <header class="site-header">
-      <a class="brand-link" href="/">
-        <div class="brand-mark">A</div>
-        <div class="brand-title">
-          <strong>Apex Play</strong>
-          <span>Instant browser games. No downloads.</span>
-        </div>
-      </a>
+<div class="grid">
 
-      <nav class="nav">
-        <a href="/privacy.html">Privacy</a>
-        <a href="/terms.html">Terms</a>
-      </nav>
-    </header>
+<!-- LEFT: GAME -->
+<div class="card">
 
-    <section class="hero">
-      <div class="hero-inner">
-        <div>
-          <h1>Play fast. Build score. Come back tomorrow.</h1>
-          <p>
-            A growing arcade of lightweight browser games. No accounts required.
-            Progress saves locally in your browser.
-          </p>
+<h2>Player</h2>
+<div class="stats">
+  <div class="stat">❤️ HP<br><strong id="hp">20</strong></div>
+  <div class="stat">⚔️ Attack<br><strong id="atk">2</strong></div>
+  <div class="stat">🛡️ Defense<br><strong id="def">1</strong></div>
+</div>
 
-          <div class="actions">
-            <a class="btn primary" href="/idle-clicker/">Play Idle Clicker</a>
-            <a class="btn" href="#games">Browse games</a>
-          </div>
+<h2 style="margin-top:20px">Actions</h2>
+<button onclick="attack()">Attack (d20)</button>
+<button class="secondary" onclick="loot()">Search for Loot</button>
 
-          <div class="chips">
-            <span class="chip">⚡ Fast</span>
-            <span class="chip">🧠 Simple</span>
-            <span class="chip">💾 Saves locally</span>
-          </div>
-        </div>
+<h3>Combat Log</h3>
+<div class="log" id="log"></div>
 
-        <aside class="feature">
-          <div class="pills">
-            <span class="pill">FEATURED</span>
-            <span class="pill alt">NEW</span>
-          </div>
+</div>
 
-          <h3>Idle Clicker</h3>
-          <p>Click, upgrade, and earn while idle.</p>
+<!-- RIGHT: INVENTORY -->
+<div class="card">
+<h2>Equipment</h2>
+<div class="inventory">
+  <div class="slot" id="weaponSlot"><strong>Weapon</strong>None</div>
+  <div class="slot" id="armorSlot"><strong>Armor</strong>None</div>
+  <div class="slot" id="accessorySlot"><strong>Accessory</strong>None</div>
+  <div class="slot"><strong>Gold</strong><span id="gold">0</span></div>
+</div>
 
-          <div class="mini-grid">
-            <div class="mini"><div class="k">Mode</div><div class="v">Idle</div></div>
-            <div class="mini"><div class="k">Style</div><div class="v">Casual</div></div>
-            <div class="mini"><div class="k">Save</div><div class="v">Local</div></div>
-          </div>
-        </aside>
-      </div>
-    </section>
+<h3 style="margin-top:20px">Backpack</h3>
+<div class="inventory" id="bag"></div>
+</div>
 
-    <section class="section" id="games">
-      <h2>Games</h2>
-      <p>More games coming soon. Each game gets its own page and can be monetized with ads.</p>
+</div>
+</div>
 
-      <div class="grid">
-        <a class="card" href="/idle-clicker/">
-          <div class="thumb"></div>
-          <div class="card-body">
-            <div class="card-top">
-              <span class="pill">NEW</span>
-              <span class="pill alt">IDLE</span>
-            </div>
-            <h3>Idle Clicker</h3>
-            <p>Click, upgrade, and earn while idle. Simple progression with satisfying growth.</p>
-            <div class="tags">
-              <span>Idle</span><span>Single Player</span><span>Fast</span>
-            </div>
-            <div class="cta">Play Now →</div>
-          </div>
-        </a>
-      </div>
-    </section>
+<script>
+/* ---------- GAME STATE ---------- */
+let state = JSON.parse(localStorage.getItem("diceRPG")) || {
+  hp:20,
+  atk:2,
+  def:1,
+  gold:0,
+  weapon:null,
+  armor:null,
+  accessory:null,
+  bag:[]
+};
 
-    <footer class="footer">
-      <span>© <span id="year"></span> Apex Play</span>
-      <span class="dot">•</span>
-      <a href="/privacy.html">Privacy Policy</a>
-      <span class="dot">•</span>
-      <a href="/terms.html">Terms</a>
-    </footer>
-  </div>
+/* ---------- HELPERS ---------- */
+const log = msg=>{
+  const l=document.getElementById("log");
+  l.innerHTML+=msg+"<br>";
+  l.scrollTop=l.scrollHeight;
+};
 
-  <script>
-    document.getElementById("year").textContent = new Date().getFullYear();
-  </script>
-  <script src="/assets/site.js"></script>
+const roll = sides => Math.floor(Math.random()*sides)+1;
+
+/* ---------- UI ---------- */
+function render(){
+  hp.textContent=state.hp;
+  atk.textContent=state.atk;
+  def.textContent=state.def;
+  gold.textContent=state.gold;
+
+  weaponSlot.innerHTML=`<strong>Weapon</strong>${state.weapon?.name||"None"}`;
+  armorSlot.innerHTML=`<strong>Armor</strong>${state.armor?.name||"None"}`;
+  accessorySlot.innerHTML=`<strong>Accessory</strong>${state.accessory?.name||"None"}`;
+
+  bag.innerHTML="";
+  state.bag.forEach((item,i)=>{
+    const d=document.createElement("div");
+    d.className="slot";
+    d.innerHTML=`${item.name}<br><button onclick="equip(${i})">Equip</button>`;
+    bag.appendChild(d);
+  });
+
+  localStorage.setItem("diceRPG",JSON.stringify(state));
+}
+
+/* ---------- GAME ACTIONS ---------- */
+function attack(){
+  const d20 = roll(20);
+  const dmg = roll(6)+state.atk;
+  log(`🎲 You roll d20: <b>${d20}</b>`);
+  if(d20>=10){
+    log(`⚔️ Hit! You deal ${dmg} damage.`);
+  }else{
+    log(`❌ Miss!`);
+  }
+}
+
+function loot(){
+  const items=[
+    {type:"weapon",name:"Sword (+2 ATK)",atk:2},
+    {type:"armor",name:"Leather Armor (+2 DEF)",def:2},
+    {type:"accessory",name:"Ring of Luck (+1 ATK)",atk:1},
+    {type:"gold",name:"Gold Pouch",gold:10}
+  ];
+  const item = items[Math.floor(Math.random()*items.length)];
+  if(item.type==="gold"){
+    state.gold+=item.gold;
+    log(`💰 Found ${item.gold} gold!`);
+  }else{
+    state.bag.push(item);
+    log(`📦 Found ${item.name}`);
+  }
+  render();
+}
+
+function equip(i){
+  const item = state.bag.splice(i,1)[0];
+  if(item.type==="weapon"){
+    if(state.weapon) state.atk-=state.weapon.atk||0;
+    state.weapon=item;
+    state.atk+=item.atk||0;
+  }
+  if(item.type==="armor"){
+    if(state.armor) state.def-=state.armor.def||0;
+    state.armor=item;
+    state.def+=item.def||0;
+  }
+  if(item.type==="accessory"){
+    if(state.accessory) state.atk-=state.accessory.atk||0;
+    state.accessory=item;
+    state.atk+=item.atk||0;
+  }
+  log(`🧩 Equipped ${item.name}`);
+  render();
+}
+
+render();
+</script>
 </body>
 </html>
