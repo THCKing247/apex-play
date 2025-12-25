@@ -3777,9 +3777,849 @@ function buildInteractOptions(){
     if(btn("guideBtn")) btn("guideBtn").disabled = false;
   }
 }
+    pushLog(`<span style="color:var(--warn)">🕳️ It was a trap — bandits spring out!</span>`);
+    state.pendingArrival = toId;
+    startCombat(makeEnemy("bandits"), {origin:"road_shortcut"});
+    render();
+  } else {
+    pushLog(`<span style="color:var(--good)">🧭 The shortcut works! You arrive early at <b>${nodeById[toId].name}</b>.</span>`);
+    enterNode(toId);
+    render();
+  }
+};
 
 /* =========================
-   Safe init (in case file ends here)
+   Frostspire (time sink)
 ========================= */
-try { render(); } catch(e){ console.error(e); }
+function frostspireTimeSink(fromSearch=false){
+  const extra = fromSearch ? 25 : 60;
+  passTime(extra, "Wandering Frostspire");
+  pushLog(`<span style="color:var(--warn)">🧊 Frostspire is a dead end. You find no entrance, only biting wind and wasted time.</span>`);
+  // small chance of damage
+  if(roll(100)<=18){
+    const dmg = roll(4)+1;
+    state.hp = clamp(state.hp - dmg, 0, state.hpMax);
+    pushLog(`<span style="color:var(--bad)">❄️ The cold bites: -${dmg} HP.</span>`);
+    if(state.hp<=0){ state.hp=1; pushLog(`<b style="color:var(--bad)">☠️ You black out and wake at your last safe city.</b>`); enterNode(state.lastSafeNode); }
+  }
+  render();
+}
+
+/* =========================
+   Guide
+========================= */
+function openGuide(){
+  const n = nodeById[state.currentNode] || {};
+  const cls = state.char.class;
+  const caster = isCasterClass(cls) ? "Yes" : "No";
+  const guideHtml = `
+    <div class="panel">
+      <b>Basics</b>
+      <div class="muted" style="margin-top:6px">
+        • World travel is <b>time-based</b> (distance + mount speed).<br>
+        • Use <b>Area Loot</b> once per visit, and <b>Search/Explore</b> for extra finds.<br>
+        • Hunger reaches 0 ⇒ HP drains while time passes.<br>
+        • Carry weight matters: keep under your max (STR + mount).<br>
+        • Big cities & capitals have <b>Banks</b> (daily interest) and <b>Property Offices</b> (income).<br>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:10px">
+      <b>Controls</b>
+      <div class="muted" style="margin-top:6px">
+        • World: Click connected nodes to travel • Mouse wheel zoom • Drag to pan<br>
+        • Dungeon: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrows to move • Use Interact buttons for doors/chests/keys<br>
+        • Combat: Use Attack / Spells / Items • Flee requires d20 ≥ 11
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:10px">
+      <b>Combat</b>
+      <div class="muted" style="margin-top:6px">
+        • Attacks roll <b>d20</b> vs enemy AC. If hit, damage is <b>d6 + ATK</b> (plus buffs).<br>
+        • Your AC = <b>10 + DEF</b>. Armor and DEX can increase DEF depending on armor type.<br>
+        • War zone roads (Valoria ↔ Kragmire border) have more encounters.
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:10px">
+      <b>Your Current Info</b>
+      <div class="muted" style="margin-top:6px">
+        • Location: <b>${n.name||"—"}</b> • Kingdom: <b>${n.kingdom||"—"}</b> • Biome: <b>${n.biome||"—"}</b><br>
+        • Class: <b>${cls}</b> • Caster: <b>${caster}</b> • Keys: <b>${state.keys}</b><br>
+        • Carry: <b>${carryNow()}/${carryMax()}</b> • Mount: <b>${state.mount ? state.mount.name : "None"}</b>
+      </div>
+    </div>
+  `;
+  openModal("Guide", guideHtml);
+}
+
+/* =========================
+   Generic Modal helpers
+========================= */
+function openModal(title, body){
+  $("modalTitle").textContent = title || "Notice";
+  // allow HTML
+  $("modalBody").innerHTML = body || "";
+  $("overlay").style.display = "flex";
+}
+function closeModal(){
+  $("overlay").style.display = "none";
+}
+$("closeModal").addEventListener("click", closeModal);
+$("overlay").addEventListener("click", (e)=>{ if(e.target.id==="overlay") closeModal(); });
+
+/* =========================
+   Character Creator
+========================= */
+function openCreator(){
+  $("creatorOverlay").style.display="flex";
+}
+function closeCreator(){
+  $("creatorOverlay").style.display="none";
+}
+function setCreatorLocked(locked){
+  state.creatorLocked = locked;
+  $("creatorLockTag").textContent = locked ? "Confirmed (Locked)" : "Unconfirmed";
+  $("creatorLockTag").style.opacity = locked ? "1" : ".9";
+
+  // lock fields
+  ["ccName","ccSex","ccRace","ccClass","ccBirth","ccRollBtn","ccConfirmBtn"].forEach(id=>{
+    const el = $(id);
+    if(!el) return;
+    if(id==="ccConfirmBtn") return;
+    el.disabled = locked;
+  });
+
+  $("ccCloseHint").disabled = !locked;
+}
+$("ccCloseHint").addEventListener("click", ()=>{ if(state.creatorLocked) closeCreator(); });
+
+function populateCreatorOptions(){
+  // races
+  $("ccRace").innerHTML = RACES.map(r=>`<option value="${r.name}">${r.name}</option>`).join("");
+  // classes
+  const classNames = Object.keys(CLASS_RULES);
+  $("ccClass").innerHTML = classNames.map(c=>`<option value="${c}">${c}</option>`).join("");
+  // birth
+  $("ccBirth").innerHTML = KINGDOMS.map(k=>`<option value="${k.id}">${k.id}</option>`).join("");
+}
+populateCreatorOptions();
+
+let ccRolled = null;
+
+function roll4d6DropLowest(){
+  const dice = [roll(6),roll(6),roll(6),roll(6)].sort((a,b)=>a-b);
+  return dice[1]+dice[2]+dice[3];
+}
+function renderCcStats(){
+  const box = $("ccStats");
+  box.innerHTML = "";
+  const stats = ["str","dex","con","int","wis","cha"];
+  for(const key of stats){
+    const val = ccRolled?.[key] ?? "—";
+    const el = document.createElement("div");
+    el.className = "statBox";
+    el.innerHTML = `${key.toUpperCase()}<div style="margin-top:6px"><b>${val}</b></div>`;
+    box.appendChild(el);
+  }
+}
+function updateCcRulesText(){
+  const cls = $("ccClass").value;
+  $("ccClassRules").textContent = classRulesText(cls);
+}
+$("ccClass").addEventListener("change", updateCcRulesText);
+
+$("ccRollBtn").addEventListener("click", ()=>{
+  if(state.creatorLocked) return;
+  ccRolled = {
+    str: roll4d6DropLowest(),
+    dex: roll4d6DropLowest(),
+    con: roll4d6DropLowest(),
+    int: roll4d6DropLowest(),
+    wis: roll4d6DropLowest(),
+    cha: roll4d6DropLowest()
+  };
+  renderCcStats();
+});
+
+function applyRaceBonus(raceName, rawStats){
+  const r = RACES.find(x=>x.name===raceName);
+  const b = r?.bonus || {};
+  return {
+    str: rawStats.str + (b.str||0),
+    dex: rawStats.dex + (b.dex||0),
+    con: rawStats.con + (b.con||0),
+    int: rawStats.int + (b.int||0),
+    wis: rawStats.wis + (b.wis||0),
+    cha: rawStats.cha + (b.cha||0),
+  };
+}
+
+function startingNodeForKingdom(kid){
+  // IDs depend on slug() outputs from genNodes()
+  if(kid==="Valoria") return slug("Aurelia (Capital)");
+  if(kid==="Kragmire") return slug("Kragholm (Capital)");
+  if(kid==="Eldwyn") return slug("Eldspire");
+  if(kid==="SableCoast") return slug("Sablegate");
+  return slug("Aurelia (Capital)");
+}
+
+$("ccConfirmBtn").addEventListener("click", ()=>{
+  if(state.creatorLocked) return;
+
+  const name = ($("ccName").value||"").trim();
+  if(!name){
+    openModal("Character Creator", "Please enter a name before confirming.");
+    return;
+  }
+  if(!ccRolled){
+    openModal("Character Creator", "You must roll stats before confirming.");
+    return;
+  }
+
+  // commit
+  state.char.name = name;
+  state.char.sex = $("ccSex").value;
+  state.char.race = $("ccRace").value;
+  state.char.class = $("ccClass").value;
+  state.char.birthKingdom = $("ccBirth").value;
+
+  const finalStats = applyRaceBonus(state.char.race, ccRolled);
+  Object.assign(state.char, finalStats);
+
+  // base stats from class
+  const base = CLASS_RULES[state.char.class]?.base || {atk:2,def:1,hpMax:20};
+  state.atkBase = base.atk;
+  state.defBase = base.def;
+  state.hpMax = base.hpMax;
+  state.hp = base.hpMax;
+
+  // energy/hunger baseline
+  state.energyMax = 10;
+  state.energy = 10;
+  state.hungerMax = 10;
+  state.hunger = 10;
+
+  // learn spells + slots
+  learnStartingSpells();
+
+  state.characterCreated = true;
+  setCreatorLocked(true);
+
+  // start location
+  const startId = startingNodeForKingdom(state.char.birthKingdom);
+  state.currentNode = startId;
+  state.lastSafeNode = startId;
+
+  pushLog(`<span style="color:var(--good)">✅ Character confirmed: <b>${state.char.name}</b> (${state.char.race} ${state.char.class})</span>`);
+  pushLog(`🧭 Starting in <b>${nodeById[startId]?.name || "your homeland"}</b>.`);
+
+  save();
+  render();
+});
+
+/* =========================
+   UI Wiring
+========================= */
+$("areaLootBtn").addEventListener("click", useAreaLoot);
+$("searchBtn").addEventListener("click", searchExplore);
+$("sleepBtn").addEventListener("click", sleep);
+$("eatBtn").addEventListener("click", eat);
+$("visitBtn").addEventListener("click", openVisit);
+$("questBoardBtn").addEventListener("click", openQuestBoard);
+$("guideBtn").addEventListener("click", openGuide);
+$("buyFoodBtn").addEventListener("click", buyRation);
+$("resetBtn").addEventListener("click", ()=>{
+  openModal("Reset Save", `
+    <div class="panel">
+      This will erase your current save and restart the game.
+      <div class="row" style="margin-top:10px">
+        <button onclick="confirmReset()">Yes, reset</button>
+        <button class="secondary" onclick="closeModal()">Cancel</button>
+      </div>
+    </div>
+  `);
+});
+window.confirmReset = function(){
+  localStorage.removeItem(SAVE_KEY);
+  state = defaultState();
+  ccRolled = null;
+  closeModal();
+  initAfterLoad(true);
+  render();
+};
+
+/* =========================
+   Rendering: character, inventory, spells, log
+========================= */
+function renderEquipmentSlots(){
+  $("weaponSlot").innerHTML = `
+    <strong>Weapon</strong>
+    <div class="itemName">${state.weapon ? fmtItem(state.weapon) : "None"}</div>
+    <div class="row" style="justify-content:center">
+      ${state.weapon ? `<button class="small secondary" onclick="unequip('weapon')">Unequip</button>` : `<span class="smallMuted">—</span>`}
+    </div>
+  `;
+  $("armorSlot").innerHTML = `
+    <strong>Armor</strong>
+    <div class="itemName">${state.armor ? fmtItem(state.armor) : "None"}</div>
+    <div class="row" style="justify-content:center">
+      ${state.armor ? `<button class="small secondary" onclick="unequip('armor')">Unequip</button>` : `<span class="smallMuted">—</span>`}
+    </div>
+  `;
+  $("accessorySlot").innerHTML = `
+    <strong>Accessory</strong>
+    <div class="itemName">${state.accessory ? fmtItem(state.accessory) : "None"}</div>
+    <div class="row" style="justify-content:center">
+      ${state.accessory ? `<button class="small secondary" onclick="unequip('accessory')">Unequip</button>` : `<span class="smallMuted">—</span>`}
+    </div>
+  `;
+  $("rationCount").textContent = String(countItem("food"));
+}
+
+function renderBag(){
+  const bag = $("bag");
+  bag.innerHTML = "";
+  if(!state.bag.length){
+    bag.innerHTML = `<div class="panel"><div class="muted">Backpack is empty.</div></div>`;
+    return;
+  }
+  state.bag.forEach((item, idx)=>{
+    const card = document.createElement("div");
+    card.className = "itemCard";
+    const meta = [];
+    if(item.type==="weapon" && item.atk) meta.push(`+${item.atk} ATK`);
+    if(item.type==="armor" && item.def) meta.push(`+${item.def} DEF`);
+    if(item.type==="consumable") meta.push(`Qty ${item.qty||1}`);
+    if(item.type==="quest") meta.push(`Quest item`);
+    meta.push(`Wt ${item.type==="consumable" ? ((item.weight||0)*(item.qty||1)).toFixed(1) : (item.weight||0)}`);
+
+    let actions = "";
+    if(item.type==="weapon"||item.type==="armor"||item.type==="accessory"){
+      actions = `<button class="small" onclick="equipFromBag(${idx})">Equip</button>`;
+    } else {
+      actions = `<button class="small secondary" disabled>—</button>`;
+    }
+
+    card.innerHTML = `
+      <div>
+        <div style="font-weight:800">${item.name}</div>
+        <div class="meta">${meta.join(" • ")}</div>
+      </div>
+      <div class="row">${actions}</div>
+    `;
+    bag.appendChild(card);
+  });
+}
+
+function renderSpellsPanel(){
+  const known = state.char.spellsKnown || [];
+  const caster = isCasterClass(state.char.class);
+  if(!caster){
+    $("spellInfo").textContent = "No spells (non-caster class).";
+    $("spellSlotsRow").innerHTML = "";
+    return;
+  }
+  const slots = state.char.spellSlots || {1:0,2:0,3:0,4:0,5:0};
+  const slotLine = Object.keys(slots).map(l=>`Lv${l}:${slots[l]}`).join(" • ");
+  $("spellInfo").textContent = `Known: ${known.length ? known.join(", ") : "None"} • Slots: ${slotLine || "—"}`;
+
+  const row = $("spellSlotsRow");
+  row.innerHTML = "";
+  for(const lvl of [1,2,3,4,5]){
+    const b = document.createElement("span");
+    b.className = "badge";
+    b.textContent = `Lv ${lvl} Slots: ${slots[lvl]||0}`;
+    row.appendChild(b);
+  }
+}
+
+function renderLog(){
+  $("log").innerHTML = state.log.map(x=>`<div>${x}</div>`).join("");
+  $("log").scrollTop = $("log").scrollHeight;
+}
+
+/* =========================
+   Canvas: World + Dungeon rendering, pan/zoom, minimap, tooltip
+========================= */
+let view = { x: 0, y: 0, zoom: 0.055, dragging:false, lastX:0, lastY:0 };
+
+function resizeCanvases(){
+  const wrap = $("mapWrap");
+  const rect = wrap.getBoundingClientRect();
+  mapCanvas.width  = Math.floor(rect.width * devicePixelRatio);
+  mapCanvas.height = Math.floor(rect.height * devicePixelRatio);
+  miniCanvas.width  = Math.floor(180 * devicePixelRatio);
+  miniCanvas.height = Math.floor(110 * devicePixelRatio);
+}
+window.addEventListener("resize", ()=>{ resizeCanvases(); draw(); });
+
+function worldToScreen(wx, wy){
+  const cx = (wx - view.x) * view.zoom;
+  const cy = (wy - view.y) * view.zoom;
+  const sx = (cx + 0.5) * mapCanvas.width;
+  const sy = (cy + 0.5) * mapCanvas.height;
+  return {sx, sy};
+}
+function screenToWorld(sx, sy){
+  const cx = (sx / mapCanvas.width) - 0.5;
+  const cy = (sy / mapCanvas.height) - 0.5;
+  const wx = (cx / view.zoom) + view.x;
+  const wy = (cy / view.zoom) + view.y;
+  return {wx, wy};
+}
+
+function centerOnNode(nodeId){
+  const n = nodeById[nodeId];
+  if(!n) return;
+  view.x = n.x;
+  view.y = n.y;
+}
+
+function drawWorld(){
+  ctx.clearRect(0,0,mapCanvas.width,mapCanvas.height);
+
+  // background sea/land
+  // sample grid for big map shading
+  const step = Math.max(260, Math.floor(540 / view.zoom)); // adaptive
+  for(let wy=view.y - (0.55/view.zoom); wy<view.y + (0.55/view.zoom); wy+=step){
+    for(let wx=view.x - (0.55/view.zoom); wx<view.x + (0.55/view.zoom); wx+=step){
+      const land = isLand(wx,wy);
+      const b = biomeAt(wx,wy);
+      const tint = (BIOMES.find(x=>x.id===b)?.tint) || "rgba(255,255,255,.06)";
+      const {sx,sy} = worldToScreen(wx,wy);
+      const {sx:sx2,sy:sy2} = worldToScreen(wx+step, wy+step);
+      const w = (sx2-sx), h=(sy2-sy);
+      ctx.fillStyle = land ? tint : "rgba(20,48,119,.20)";
+      ctx.fillRect(sx,sy,w,h);
+    }
+  }
+
+  // kingdom overlays (very lightweight)
+  for(const k of KINGDOMS){
+    // draw label only
+    const {sx,sy} = worldToScreen(k.labelX, k.labelY);
+    ctx.font = `${Math.max(12, 16*devicePixelRatio)}px system-ui`;
+    ctx.fillStyle = "rgba(229,231,235,.75)";
+    ctx.fillText(k.id, sx, sy);
+  }
+
+  // edges
+  ctx.lineWidth = Math.max(1, 2*devicePixelRatio);
+  for(const e of world.edges){
+    const a=nodeById[e.a], b=nodeById[e.b];
+    if(!a||!b) continue;
+    const A=worldToScreen(a.x,a.y), B=worldToScreen(b.x,b.y);
+
+    // skip if far offscreen
+    if((A.sx< -200 && B.sx< -200) || (A.sx>mapCanvas.width+200 && B.sx>mapCanvas.width+200)) continue;
+
+    ctx.beginPath();
+    // subtle curve
+    const mx = (A.sx+B.sx)/2;
+    const my = (A.sy+B.sy)/2;
+    const bend = e.kind==="sea" ? 0.14 : 0.09;
+    const cx = mx + (B.sy-A.sy)*bend;
+    const cy = my + (A.sx-B.sx)*bend;
+    ctx.moveTo(A.sx,A.sy);
+    ctx.quadraticCurveTo(cx,cy,B.sx,B.sy);
+
+    if(e.kind==="sea"){
+      ctx.strokeStyle = "rgba(59,130,246,.35)";
+      ctx.setLineDash([10*devicePixelRatio, 10*devicePixelRatio]);
+    } else {
+      ctx.setLineDash([]);
+      ctx.strokeStyle = e.war ? "rgba(251,113,133,.40)" : "rgba(255,255,255,.16)";
+    }
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  // nodes
+  for(const n of world.nodes){
+    const {sx,sy} = worldToScreen(n.x,n.y);
+    if(sx< -50 || sy< -50 || sx>mapCanvas.width+50 || sy>mapCanvas.height+50) continue;
+
+    const isHere = (n.id===state.currentNode) && state.mode!=="dungeon";
+    const r = n.type==="capital" ? 10 : n.type==="city" ? 8 : n.type==="port" ? 7 : n.type==="town" ? 6 : n.type==="camp" ? 5 : n.type==="landmark" ? 9 : 5;
+
+    ctx.beginPath();
+    ctx.arc(sx,sy, r*devicePixelRatio, 0, Math.PI*2);
+
+    const k = n.kingdom;
+    const fill = (k==="Valoria") ? "rgba(124,92,255,.85)" :
+                 (k==="Kragmire")? "rgba(251,113,133,.85)" :
+                 (k==="Eldwyn") ? "rgba(52,211,153,.85)" :
+                 "rgba(59,130,246,.85)";
+    ctx.fillStyle = isHere ? "rgba(251,191,36,.95)" : fill;
+    ctx.fill();
+
+    ctx.lineWidth = 2*devicePixelRatio;
+    ctx.strokeStyle = isHere ? "rgba(251,191,36,.95)" : "rgba(255,255,255,.20)";
+    ctx.stroke();
+
+    // tiny label for capitals/cities
+    if(n.type==="capital" || n.type==="city"){
+      ctx.font = `${Math.max(10, 12*devicePixelRatio)}px system-ui`;
+      ctx.fillStyle = "rgba(229,231,235,.75)";
+      ctx.fillText(n.name.split(" ")[0], sx+10*devicePixelRatio, sy-8*devicePixelRatio);
+    }
+  }
+
+  drawMinimapWorld();
+}
+
+function drawDungeon(){
+  const d = currentDungeon();
+  ctx.clearRect(0,0,mapCanvas.width,mapCanvas.height);
+  if(!d){
+    ctx.fillStyle="rgba(0,0,0,.35)";
+    ctx.fillRect(0,0,mapCanvas.width,mapCanvas.height);
+    return;
+  }
+
+  const cell = Math.floor(Math.min(mapCanvas.width/(d.w+2), mapCanvas.height/(d.h+2)));
+  const ox = Math.floor((mapCanvas.width - cell*d.w)/2);
+  const oy = Math.floor((mapCanvas.height - cell*d.h)/2);
+
+  // tiles
+  for(let y=0;y<d.h;y++){
+    for(let x=0;x<d.w;x++){
+      const seen = d.seen[y][x];
+      const t = d.tiles[y][x];
+      let fill = "rgba(0,0,0,.40)";
+      if(seen){
+        if(t==="wall") fill="rgba(255,255,255,.06)";
+        else fill="rgba(0,0,0,.20)";
+        if(t==="entrance") fill="rgba(52,211,153,.18)";
+        if(t==="exit") fill="rgba(59,130,246,.18)";
+        if(t==="chest"||t==="chestLocked") fill="rgba(251,191,36,.16)";
+        if(t==="doorLocked") fill="rgba(251,113,133,.16)";
+        if(t==="key") fill="rgba(124,92,255,.16)";
+      }
+      ctx.fillStyle = fill;
+      ctx.fillRect(ox+x*cell, oy+y*cell, cell-1, cell-1);
+    }
+  }
+
+  // enemies (if seen)
+  for(const e of d.enemies){
+    if(!d.seen[e.y][e.x]) continue;
+    ctx.fillStyle="rgba(251,113,133,.85)";
+    ctx.fillRect(ox+e.x*cell+cell*0.25, oy+e.y*cell+cell*0.25, cell*0.5, cell*0.5);
+  }
+
+  // player
+  ctx.fillStyle="rgba(251,191,36,.95)";
+  ctx.beginPath();
+  ctx.arc(ox+d.px*cell+cell/2, oy+d.py*cell+cell/2, Math.max(3, cell*0.28), 0, Math.PI*2);
+  ctx.fill();
+
+  // minimap off in dungeon
+  drawMinimapDungeon(d);
+}
+
+function drawMinimapWorld(){
+  mctx.clearRect(0,0,miniCanvas.width,miniCanvas.height);
+
+  // background
+  mctx.fillStyle="rgba(0,0,0,.25)";
+  mctx.fillRect(0,0,miniCanvas.width,miniCanvas.height);
+
+  // nodes simplified
+  for(const n of world.nodes){
+    // compress world coords
+    const x = (n.x / WORLD_W) * miniCanvas.width;
+    const y = (n.y / WORLD_H) * miniCanvas.height;
+    const r = (n.type==="capital"?3:2) * devicePixelRatio;
+    mctx.beginPath();
+    mctx.arc(x,y,r,0,Math.PI*2);
+    mctx.fillStyle="rgba(255,255,255,.18)";
+    mctx.fill();
+  }
+
+  // current pos
+  const cur = nodeById[state.currentNode];
+  if(cur){
+    const x = (cur.x / WORLD_W) * miniCanvas.width;
+    const y = (cur.y / WORLD_H) * miniCanvas.height;
+    mctx.beginPath();
+    mctx.arc(x,y,3.6*devicePixelRatio,0,Math.PI*2);
+    mctx.fillStyle="rgba(251,191,36,.95)";
+    mctx.fill();
+  }
+
+  // viewport rectangle
+  const left = ((view.x - (0.5/view.zoom)) / WORLD_W) * miniCanvas.width;
+  const right= ((view.x + (0.5/view.zoom)) / WORLD_W) * miniCanvas.width;
+  const top  = ((view.y - (0.5/view.zoom)) / WORLD_H) * miniCanvas.height;
+  const bot  = ((view.y + (0.5/view.zoom)) / WORLD_H) * miniCanvas.height;
+
+  mctx.strokeStyle="rgba(251,191,36,.60)";
+  mctx.lineWidth=1.2*devicePixelRatio;
+  mctx.strokeRect(left,top,(right-left),(bot-top));
+}
+
+function drawMinimapDungeon(d){
+  mctx.clearRect(0,0,miniCanvas.width,miniCanvas.height);
+  mctx.fillStyle="rgba(0,0,0,.25)";
+  mctx.fillRect(0,0,miniCanvas.width,miniCanvas.height);
+
+  const sx = miniCanvas.width/d.w;
+  const sy = miniCanvas.height/d.h;
+
+  for(let y=0;y<d.h;y++){
+    for(let x=0;x<d.w;x++){
+      if(!d.seen[y][x]) continue;
+      const t = d.tiles[y][x];
+      let c="rgba(255,255,255,.10)";
+      if(t==="wall") c="rgba(255,255,255,.05)";
+      if(t==="exit") c="rgba(59,130,246,.20)";
+      if(t==="entrance") c="rgba(52,211,153,.20)";
+      mctx.fillStyle=c;
+      mctx.fillRect(x*sx,y*sy,sx,sy);
+    }
+  }
+  mctx.fillStyle="rgba(251,191,36,.95)";
+  mctx.fillRect(d.px*sx, d.py*sy, sx, sy);
+}
+
+function draw(){
+  if(state.mode==="dungeon") drawDungeon();
+  else drawWorld();
+}
+
+function getHoveredNode(wx, wy){
+  // find nearest within threshold
+  let best=null, bd=Infinity;
+  for(const n of world.nodes){
+    const dx=n.x-wx, dy=n.y-wy;
+    const d = Math.sqrt(dx*dx+dy*dy);
+    if(d < bd){ bd=d; best=n; }
+  }
+  if(best && bd < (650 / view.zoom)) return best;
+  return null;
+}
+
+/* Map interactions */
+$("mapWrap").addEventListener("wheel", (e)=>{
+  e.preventDefault();
+  const delta = Math.sign(e.deltaY);
+  const factor = delta>0 ? 0.90 : 1.12;
+
+  const rect = $("mapWrap").getBoundingClientRect();
+  const sx = (e.clientX - rect.left) * devicePixelRatio;
+  const sy = (e.clientY - rect.top)  * devicePixelRatio;
+
+  const before = screenToWorld(sx,sy);
+  view.zoom = clamp(view.zoom * factor, 0.018, 0.13);
+  const after = screenToWorld(sx,sy);
+
+  // keep point under cursor stable
+  view.x += (before.wx - after.wx);
+  view.y += (before.wy - after.wy);
+
+  draw();
+},{passive:false});
+
+$("mapWrap").addEventListener("mousedown", (e)=>{
+  view.dragging=true;
+  view.lastX = e.clientX;
+  view.lastY = e.clientY;
+});
+window.addEventListener("mouseup", ()=>{ view.dragging=false; });
+window.addEventListener("mousemove", (e)=>{
+  const rect = $("mapWrap").getBoundingClientRect();
+  const inside = e.clientX>=rect.left && e.clientX<=rect.right && e.clientY>=rect.top && e.clientY<=rect.bottom;
+
+  if(view.dragging){
+    const dx = (e.clientX - view.lastX);
+    const dy = (e.clientY - view.lastY);
+    view.lastX = e.clientX;
+    view.lastY = e.clientY;
+    // convert pixels to world delta
+    view.x -= (dx*devicePixelRatio) / (mapCanvas.width*view.zoom);
+    view.y -= (dy*devicePixelRatio) / (mapCanvas.height*view.zoom);
+    draw();
+    return;
+  }
+
+  // tooltip
+  const tip = $("tooltip");
+  if(!inside || state.mode==="dungeon"){
+    tip.style.display="none";
+    return;
+  }
+  const sx = (e.clientX - rect.left) * devicePixelRatio;
+  const sy = (e.clientY - rect.top)  * devicePixelRatio;
+  const w = screenToWorld(sx,sy);
+  const n = getHoveredNode(w.wx, w.wy);
+  if(!n){
+    tip.style.display="none";
+    return;
+  }
+
+  const nb = neighbors(n.id).length;
+  const here = (n.id===state.currentNode);
+  const connected = edgeBetween(state.currentNode, n.id);
+  const tt = connected ? travelTimeMinutes(state.currentNode, n.id, connected.kind) : null;
+
+  tip.innerHTML = `
+    <div style="font-weight:800">${n.name}${here ? " • (You)" : ""}</div>
+    <div class="smallMuted">${n.type.toUpperCase()} • ${n.kingdom} • ${n.biome}${n.population?` • Pop ${n.population.toLocaleString()}`:""}</div>
+    <div class="smallMuted">Connections: ${nb}${tt!==null?` • Travel: ~${tt} min (${connected.kind})${connected.war?` • <span style="color:var(--bad)">WAR ZONE</span>`:""}`:""}</div>
+  `;
+  tip.style.display="block";
+  tip.style.left = `${(e.clientX - rect.left) + 14}px`;
+  tip.style.top  = `${(e.clientY - rect.top)  + 14}px`;
+});
+
+$("mapWrap").addEventListener("click", (e)=>{
+  if(state.mode!=="world") return;
+
+  const rect = $("mapWrap").getBoundingClientRect();
+  const sx = (e.clientX - rect.left) * devicePixelRatio;
+  const sy = (e.clientY - rect.top)  * devicePixelRatio;
+  const w = screenToWorld(sx,sy);
+  const n = getHoveredNode(w.wx, w.wy);
+  if(!n) return;
+
+  // only allow travel to connected nodes
+  if(n.id===state.currentNode) return;
+  if(!edgeBetween(state.currentNode, n.id)){
+    pushLog("🚫 Not connected by a route.");
+    render();
+    return;
+  }
+  travelTo(n.id);
+});
+
+/* =========================
+   Keyboard controls (Dungeon)
+========================= */
+window.addEventListener("keydown", (e)=>{
+  if(state.mode!=="dungeon") return;
+  if(state.mode==="combat") return;
+
+  const key = e.key.toLowerCase();
+  if(key==="w" || e.key==="ArrowUp") dungeonMove(0,-1);
+  if(key==="s" || e.key==="ArrowDown") dungeonMove(0, 1);
+  if(key==="a" || e.key==="ArrowLeft") dungeonMove(-1,0);
+  if(key==="d" || e.key==="ArrowRight") dungeonMove( 1,0);
+});
+
+/* =========================
+   Main render() — updates UI, then draw canvas
+========================= */
+function renderBadges(){
+  const n = nodeById[state.currentNode];
+  const modeText = state.mode==="world" ? "Exploring" : state.mode==="dungeon" ? "Dungeon" : "Combat";
+  $("modeBadge").textContent = `Mode: ${modeText}`;
+  $("locBadge").textContent = `Location: ${n ? n.name : "—"}`;
+  $("clockBadge").textContent = `Day ${state.day} • ${fmtTime(state.minutes)}`;
+  $("regionBadge").textContent = `Birth Region: ${state.char.birthKingdom || "—"}`;
+  $("youAreHereText").textContent = `${n ? n.name : "—"} (${n?.kingdom||"—"})`;
+}
+function renderCharacterPanel(){
+  $("level").textContent = String(state.char.level);
+  $("hp").textContent = String(state.hp);
+  $("hpMax").textContent = String(state.hpMax);
+  $("atk").textContent = String(getAtk());
+  $("def").textContent = String(getDef());
+  $("energy").textContent = String(state.energy);
+  $("energyMax").textContent = String(state.energyMax);
+  $("hunger").textContent = String(state.hunger);
+  $("gold").textContent = String(state.gold);
+  $("bank").textContent = String(state.bank);
+  $("carry").textContent = `${carryNow()}/${carryMax()}`;
+  $("mount").textContent = state.mount ? state.mount.name : "None";
+
+  const next = xpToNext(state.char.level);
+  $("xpText").textContent = `${state.char.xp} / ${next} XP`;
+  $("xpBar").style.width = `${clamp((state.char.xp/next)*100, 0, 100)}%`;
+
+  $("charLine").textContent = `${state.char.name || "—"} • ${state.char.race} ${state.char.class}`;
+  $("charLine2").textContent = `STR ${state.char.str} • DEX ${state.char.dex} • CON ${state.char.con} • INT ${state.char.int} • WIS ${state.char.wis} • CHA ${state.char.cha}`;
+  $("age").textContent = String(state.char.age);
+  $("dateText").textContent = `Year ${state.year} • ${SEASONS[state.seasonIndex]} • Day ${state.dayOfSeason}`;
+}
+
+function render(){
+  // character creation flow
+  if(!state.characterCreated){
+    openCreator();
+    setCreatorLocked(false);
+    // sync default selections
+    $("ccName").value = $("ccName").value || "";
+    $("ccSex").value = state.char.sex || "Male";
+    $("ccRace").value = state.char.race || "Human";
+    $("ccClass").value = state.char.class || "Fighter";
+    $("ccBirth").value = state.char.birthKingdom || "Valoria";
+    updateCcRulesText();
+    renderCcStats();
+  } else {
+    // ensure creator is locked and closable
+    setCreatorLocked(true);
+    // keep open only if user left it open; otherwise let them close
+  }
+
+  // ensure we have a starting node even for legacy saves
+  if(!state.currentNode){
+    state.currentNode = slug("Aurelia (Capital)");
+    state.lastSafeNode = state.currentNode;
+  }
+
+  renderBadges();
+  renderCharacterPanel();
+  renderEquipmentSlots();
+  renderBag();
+  renderSpellsPanel();
+  buildInteractOptions();
+  renderLog();
+
+  // draw
+  if(state.mode!=="dungeon" && (!view.x && !view.y)){
+    centerOnNode(state.currentNode);
+  }
+  draw();
+
+  // save state
+  save();
+}
+
+/* =========================
+   Initialization
+========================= */
+function initAfterLoad(forceCenter=false){
+  indexWorld();
+
+  // validate current node
+  if(!state.currentNode || !nodeById[state.currentNode]){
+    state.currentNode = slug("Aurelia (Capital)");
+    state.lastSafeNode = state.currentNode;
+  }
+
+  // refresh spell slots and spells list sanity
+  if(state.characterCreated){
+    refreshSpellSlotsToMax();
+    if(!Array.isArray(state.char.spellsKnown)) state.char.spellsKnown = [];
+  }
+
+  // if new game, start day
+  if(state.day===1 && state.log.length===0){
+    startNewDay();
+    pushLog("🧭 Welcome to Apex Dice RPG — Kingdoms.");
+  }
+
+  resizeCanvases();
+  if(forceCenter) centerOnNode(state.currentNode);
+}
+initAfterLoad(true);
+render();
+</script>
+
+</body>
+</html>
+
 
