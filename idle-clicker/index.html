@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Idle Clicker | Apex Play</title>
   <meta name="description" content="Idle Clicker — click, upgrade, and earn while idle." />
-
   <link rel="stylesheet" href="/assets/site.css" />
 
   <style>
@@ -14,12 +13,7 @@
     .hud .mini { text-align:left; }
     .hud .v { font-size: 22px; }
 
-    .play-area{
-      display:grid;
-      grid-template-columns: 1.2fr .8fr;
-      gap:14px;
-      align-items:start;
-    }
+    .play-area{ display:grid; grid-template-columns: 1.2fr .8fr; gap:14px; align-items:start; }
 
     .big-click{
       width:100%;
@@ -40,7 +34,6 @@
     .big-click:active{ transform: scale(.985); }
 
     .toast { font-size:12px; color: var(--muted); margin-top: 8px; opacity: .9; }
-
     .upgrade-list{ display:grid; gap:12px; }
     .upgrade-btn{
       width:100%;
@@ -68,18 +61,11 @@
       background: rgba(0,0,0,.16);
       color: rgba(255,255,255,.86);
     }
+    .danger{ background: rgba(255, 86, 86, .10); border: 1px solid rgba(255, 86, 86, .25); }
 
-    .danger{
-      background: rgba(255, 86, 86, .10);
-      border: 1px solid rgba(255, 86, 86, .25);
-    }
-
-    /* ===== Avatar UI ===== */
+    /* Avatar card */
     .avatar-card{
-      display:flex;
-      gap:14px;
-      align-items:center;
-      justify-content:space-between;
+      display:flex; gap:14px; align-items:center; justify-content:space-between;
       background: rgba(0,0,0,.18);
       border:1px solid rgba(255,255,255,.12);
       border-radius: 20px;
@@ -92,38 +78,31 @@
       border-radius: 18px;
       border:1px solid rgba(255,255,255,.12);
       background: rgba(0,0,0,.16);
-      display:grid;
-      place-items:center;
+      display:grid; place-items:center;
       overflow:hidden;
     }
-    .avatar-badge svg{width:64px; height:64px; display:block;}
+    .avatar-badge svg{width:64px;height:64px;display:block;}
     .avatar-meta .name{font-weight:900;}
-    .avatar-meta .sub{font-size:12px; color:var(--muted); margin-top:3px;}
-    .avatar-actions{display:flex; gap:10px; flex-wrap:wrap;}
+    .avatar-meta .sub{font-size:12px;color:var(--muted);margin-top:3px;}
     .small-btn{
-      padding:10px 12px;
-      border-radius: 999px;
+      padding:10px 12px; border-radius: 999px;
       border:1px solid rgba(255,255,255,.14);
       background: rgba(0,0,0,.22);
       color: rgba(255,255,255,.92);
-      font-weight:900;
-      cursor:pointer;
+      font-weight:900; cursor:pointer;
     }
-    .small-btn:hover{filter:brightness(1.05)}
 
     /* Modal */
     .modal-backdrop{
-      position: fixed;
-      inset: 0;
+      position: fixed; inset: 0;
       background: rgba(0,0,0,.55);
       display:none;
-      align-items:center;
-      justify-content:center;
+      align-items:center; justify-content:center;
       padding: 14px;
       z-index: 9999;
     }
     .modal{
-      width: min(860px, 100%);
+      width: min(1100px, 100%);
       background: rgba(0,0,0,.35);
       border:1px solid rgba(255,255,255,.14);
       border-radius: 22px;
@@ -132,13 +111,10 @@
       padding: 14px;
     }
     .modal-head{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:10px;
-      padding: 6px 6px 12px;
+      display:flex; justify-content:space-between; align-items:center;
+      gap:10px; padding: 6px 6px 12px;
     }
-    .modal-title{font-weight:900; font-size:16px;}
+    .modal-title{font-weight:900;font-size:16px;}
     .modal-close{
       border:1px solid rgba(255,255,255,.14);
       background: rgba(0,0,0,.22);
@@ -149,79 +125,110 @@
       font-weight:900;
     }
 
-    .picker{
+    .builder{
       display:grid;
-      grid-template-columns: 1.1fr .9fr;
+      grid-template-columns: 260px 1fr 360px;
       gap:14px;
+      align-items:start;
     }
-    .avatar-grid{
+
+    .panel{
+      border-radius: 22px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+      padding: 12px;
+    }
+
+    .cat{
+      display:grid; gap:8px;
+    }
+    .cat button{
+      width:100%;
+      text-align:left;
+      padding: 10px 12px;
+      border-radius: 16px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.16);
+      color: rgba(255,255,255,.92);
+      cursor:pointer;
+      font-weight:900;
+    }
+    .cat button.active{
+      outline: 2px solid rgba(34,211,238,.55);
+      border-color: rgba(34,211,238,.25);
+    }
+
+    .grid{
       display:grid;
       grid-template-columns: repeat(3, 1fr);
       gap:12px;
     }
-    .avatar-option{
+    .item{
       border-radius: 20px;
       border:1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.18);
+      background: rgba(0,0,0,.16);
       padding: 12px;
-      cursor:pointer;
-      transition: transform .10s ease, filter .12s ease;
+      display:grid;
+      gap:8px;
     }
-    .avatar-option:hover{ transform: translateY(-1px); filter: brightness(1.04); }
-    .avatar-option.selected{
-      outline: 2px solid rgba(34,211,238,.65);
-      border-color: rgba(34,211,238,.35);
-    }
-    .avatar-option .top{
-      display:flex; align-items:center; gap:10px;
-      margin-bottom: 10px;
-    }
-    .avatar-mini{
-      width:44px;height:44px;border-radius:14px;
+    .item .t{font-weight:900;}
+    .item .d{font-size:12px;color:var(--muted);line-height:1.35;}
+    .item .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+    .pill2{
+      font-size:12px;
+      padding:6px 10px;
+      border-radius:999px;
       border:1px solid rgba(255,255,255,.12);
       background: rgba(0,0,0,.16);
-      display:grid; place-items:center; overflow:hidden;
+      color: rgba(255,255,255,.86);
     }
-    .avatar-mini svg{width:44px;height:44px; display:block;}
-    .avatar-option .label{font-weight:900;}
-    .avatar-option .desc{font-size:12px;color:var(--muted); line-height:1.35;}
-
-    .color-row{display:flex; gap:10px; flex-wrap:wrap; margin-top: 10px;}
-    .color-btn{
-      width:34px;height:34px;border-radius: 999px;
-      border:1px solid rgba(255,255,255,.18);
+    .item button{
+      width:100%;
+      padding: 10px 12px;
+      border-radius: 16px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.22);
+      color: rgba(255,255,255,.92);
+      font-weight:900;
       cursor:pointer;
-      box-shadow: 0 10px 22px rgba(0,0,0,.35);
     }
-    .color-btn.selected{ outline: 2px solid rgba(255,255,255,.65); }
+    .item button.primary{
+      border:none;
+      background: linear-gradient(135deg, rgba(124,92,255,.98), rgba(34,211,238,.88));
+    }
+    .item button:disabled{ opacity:.55; cursor:not-allowed; }
 
     .preview{
       border-radius: 22px;
       border:1px solid rgba(255,255,255,.12);
       background: rgba(0,0,0,.18);
-      padding: 14px;
+      padding: 12px;
     }
     .preview-top{display:flex; align-items:center; justify-content:space-between; gap:10px;}
     .preview-name{font-weight:900;}
-    .preview-sub{font-size:12px; color:var(--muted);}
+    .preview-sub{font-size:12px;color:var(--muted);}
     .preview-big{
-      margin-top: 12px;
+      margin-top: 10px;
       border-radius: 22px;
       border:1px solid rgba(255,255,255,.12);
       background: rgba(0,0,0,.16);
       display:grid;
       place-items:center;
-      padding: 18px;
+      padding: 16px;
     }
-    .preview-big svg{ width: 160px; height: 160px; display:block; }
+    .preview-big svg{ width: 260px; height: 260px; display:block; }
 
     .modal-actions{
       display:flex;
-      justify-content:flex-end;
+      justify-content:space-between;
       gap:10px;
       margin-top: 12px;
       padding: 0 6px 6px;
       flex-wrap:wrap;
+      align-items:center;
+    }
+    .coins-chip{
+      display:flex; gap:10px; align-items:center; flex-wrap:wrap;
     }
     .btn-apply{
       padding: 11px 14px;
@@ -242,11 +249,11 @@
       cursor:pointer;
     }
 
-    @media (max-width: 980px){
+    @media (max-width: 1100px){
+      .builder{ grid-template-columns: 1fr; }
+      .grid{ grid-template-columns: 1fr; }
       .play-area{ grid-template-columns:1fr; }
       .hud{ grid-template-columns:1fr; }
-      .picker{ grid-template-columns:1fr; }
-      .avatar-grid{ grid-template-columns:1fr; }
     }
   </style>
 </head>
@@ -266,7 +273,6 @@
           <span>Click, upgrade, earn while idle.</span>
         </div>
       </a>
-
       <nav class="nav">
         <a href="/">Home</a>
         <a href="/privacy.html">Privacy</a>
@@ -278,33 +284,25 @@
       <div class="hero-inner">
         <div>
           <h1>Build coins fast.</h1>
-          <p>
-            Click to earn. Buy upgrades to increase your click power and idle income.
-            Your progress saves locally in your browser.
-          </p>
-
-          <div class="actions">
-            <a class="btn" href="#play">Start playing ↓</a>
-            <a class="btn" href="#upgrades">Upgrades</a>
-          </div>
+          <p>Click to earn. Buy upgrades. Customize your avatar with clothing and accessories.</p>
 
           <div class="chips">
             <span class="chip">💾 Auto-save</span>
-            <span class="chip">🕒 Offline earnings</span>
-            <span class="chip">🧍 Avatar</span>
+            <span class="chip">🧍 Avatar Builder</span>
+            <span class="chip">🧢 Clothing</span>
+            <span class="chip">🕶️ Accessories</span>
           </div>
 
-          <!-- Avatar card (live) -->
           <div class="avatar-card">
             <div class="avatar-left">
               <div class="avatar-badge" id="avatarBadge"></div>
               <div class="avatar-meta">
                 <div class="name" id="avatarName">Avatar</div>
-                <div class="sub" id="avatarSub">Choose your look</div>
+                <div class="sub" id="avatarSub">Customize your look</div>
               </div>
             </div>
             <div class="avatar-actions">
-              <button class="small-btn" id="openAvatar">Change Avatar</button>
+              <button class="small-btn" id="openAvatar">Avatar Builder</button>
             </div>
           </div>
         </div>
@@ -314,13 +312,8 @@
             <span class="pill">GAME</span>
             <span class="pill alt">SINGLE PLAYER</span>
           </div>
-          <h3>Tips</h3>
-          <p>Idle income keeps earning every second. Come back later for a big boost.</p>
-          <div class="mini-grid">
-            <div class="mini"><div class="k">Best early</div><div class="v">Click Power</div></div>
-            <div class="mini"><div class="k">Best later</div><div class="v">Idle Income</div></div>
-            <div class="mini"><div class="k">Save</div><div class="v">Local</div></div>
-          </div>
+          <h3>Tip</h3>
+          <p>Cosmetics don’t affect balance (great for monetization later). Boosts can come next.</p>
         </aside>
       </div>
     </section>
@@ -328,18 +321,9 @@
     <section id="play" class="game-wrap">
       <div class="doc">
         <div class="hud">
-          <div class="mini">
-            <div class="k">Coins</div>
-            <div class="v" id="coins">0</div>
-          </div>
-          <div class="mini">
-            <div class="k">Per Click</div>
-            <div class="v" id="perClick">1</div>
-          </div>
-          <div class="mini">
-            <div class="k">Per Second</div>
-            <div class="v" id="perSecond">0</div>
-          </div>
+          <div class="mini"><div class="k">Coins</div><div class="v" id="coins">0</div></div>
+          <div class="mini"><div class="k">Per Click</div><div class="v" id="perClick">1</div></div>
+          <div class="mini"><div class="k">Per Second</div><div class="v" id="perSecond">0</div></div>
         </div>
       </div>
 
@@ -386,81 +370,66 @@
     </section>
   </div>
 
-  <!-- Avatar Picker Modal -->
+  <!-- Avatar Builder Modal -->
   <div class="modal-backdrop" id="avatarModal" aria-hidden="true">
-    <div class="modal" role="dialog" aria-modal="true" aria-label="Avatar Picker">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Avatar Builder">
       <div class="modal-head">
         <div>
-          <div class="modal-title">Choose your Avatar</div>
-          <div class="preview-sub">Pick a character and color. This saves locally.</div>
+          <div class="modal-title">Avatar Builder + Wardrobe</div>
+          <div class="preview-sub">Buy items with coins. Equip owned items instantly.</div>
         </div>
         <button class="modal-close" id="closeAvatar">Close</button>
       </div>
 
-      <div class="picker">
-        <div>
-          <div class="avatar-grid">
-            <div class="avatar-option" data-avatar="robot" id="opt-robot">
-              <div class="top">
-                <div class="avatar-mini" id="mini-robot"></div>
-                <div>
-                  <div class="label">Robot</div>
-                  <div class="desc">Clean, techy vibe.</div>
-                </div>
-              </div>
-            </div>
+      <div class="builder">
+        <div class="panel">
+          <div class="preview-name" style="margin:2px 0 10px;">Categories</div>
+          <div class="cat" id="catList"></div>
+        </div>
 
-            <div class="avatar-option" data-avatar="human" id="opt-human">
-              <div class="top">
-                <div class="avatar-mini" id="mini-human"></div>
-                <div>
-                  <div class="label">Human</div>
-                  <div class="desc">Classic, friendly style.</div>
-                </div>
-              </div>
+        <div class="panel">
+          <div class="preview-top">
+            <div>
+              <div class="preview-name" id="catTitle">Category</div>
+              <div class="preview-sub" id="catHint">Pick an item to equip or buy.</div>
             </div>
-
-            <div class="avatar-option" data-avatar="alien" id="opt-alien">
-              <div class="top">
-                <div class="avatar-mini" id="mini-alien"></div>
-                <div>
-                  <div class="label">Alien</div>
-                  <div class="desc">Weird in the best way.</div>
-                </div>
-              </div>
-            </div>
+            <span class="pill alt">WARDROBE</span>
           </div>
-
-          <div style="margin-top:12px;">
-            <div class="preview-name">Color</div>
-            <div class="preview-sub">Choose a theme color for your avatar.</div>
-            <div class="color-row" id="colorRow"></div>
-          </div>
+          <div style="margin-top:10px" class="grid" id="itemGrid"></div>
         </div>
 
         <div class="preview">
           <div class="preview-top">
             <div>
-              <div class="preview-name" id="previewName">Robot</div>
-              <div class="preview-sub" id="previewSub">Preview</div>
+              <div class="preview-name" id="previewName">Preview</div>
+              <div class="preview-sub" id="previewSub">Changes update live.</div>
             </div>
-            <span class="pill alt">AVATAR</span>
+            <span class="pill alt">PREVIEW</span>
           </div>
           <div class="preview-big" id="previewAvatar"></div>
+
+          <div class="panel" style="margin-top:12px;">
+            <div class="preview-name">Equipped</div>
+            <div class="preview-sub" id="equippedText">—</div>
+          </div>
         </div>
       </div>
 
       <div class="modal-actions">
-        <button class="btn-cancel" id="cancelAvatar">Cancel</button>
-        <button class="btn-apply" id="applyAvatar">Save Avatar</button>
+        <div class="coins-chip">
+          <span class="pill2">Coins: <strong><span id="modalCoins">0</span></strong></span>
+          <span class="pill2">Owned items: <strong><span id="ownedCount">0</span></strong></span>
+        </div>
+
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn-cancel" id="cancelAvatar">Cancel</button>
+          <button class="btn-apply" id="applyAvatar">Save Avatar</button>
+        </div>
       </div>
     </div>
   </div>
 
-  <script>
-    document.getElementById("year").textContent = new Date().getFullYear();
-  </script>
-
+  <script>document.getElementById("year").textContent = new Date().getFullYear();</script>
   <script src="/assets/site.js"></script>
   <script src="./game.js"></script>
 </body>
