@@ -16,8 +16,6 @@
   --good:#34d399;
   --bad:#fb7185;
   --warn:#fbbf24;
-  --sea:#143077;
-  --land:#1f6b3f;
 }
 *{box-sizing:border-box}
 body{
@@ -300,7 +298,7 @@ kbd{
 /* =========================
    SAVE + STATE
 ========================= */
-const SAVE_KEY = "apexDiceRpg_v4";
+const SAVE_KEY = "apexDiceRpg_v5_mapArt";
 
 const defaultState = () => ({
   hp: 20, hpMax: 20,
@@ -377,34 +375,38 @@ function pushLog(msg){
 
 /* =========================
    WORLD MAP (land + sea + routes)
+   - Curved sea lanes (no crossing)
+   - Curved roads (hug land)
 ========================= */
 const world = {
   nodes: [
-    { id:"stonehaven", name:"Stonehaven", type:"town", x:140, y:210 },
-    { id:"pinewatch",  name:"Pinewatch",  type:"camp", x:290, y:135 },
-    { id:"emberrest",  name:"Emberrest",  type:"town", x:330, y:310 },
-    { id:"redfen",     name:"Redfen",     type:"camp", x:470, y:265 },
-    { id:"grandport",  name:"Grandport",  type:"port", x:640, y:170 },
+    { id:"stonehaven", name:"Stonehaven", type:"town",  x:170, y:240 },
+    { id:"pinewatch",  name:"Pinewatch",  type:"camp",  x:320, y:140 },
+    { id:"emberrest",  name:"Emberrest",  type:"town",  x:410, y:320 },
+    { id:"redfen",     name:"Redfen",     type:"camp",  x:560, y:285 },
+    { id:"grandport",  name:"Grandport",  type:"port",  x:730, y:175 },
 
-    { id:"cave_mourn", name:"Mournroot Cave", type:"cave", x:520, y:380, dungeonKind:"cave" },
-    { id:"cave_salt",  name:"Saltwind Grotto", type:"cave", x:720, y:330, dungeonKind:"cave" },
+    { id:"cave_mourn", name:"Mournroot Cave",  type:"cave",   x:610, y:410, dungeonKind:"cave" },
+    { id:"cave_salt",  name:"Saltwind Grotto", type:"cave",   x:835, y:320, dungeonKind:"cave" },
 
-    { id:"forest_gloom", name:"Gloamwood", type:"forest", x:250, y:395, dungeonKind:"forest" },
-    { id:"forest_briar", name:"Briarwild", type:"forest", x:410, y:120, dungeonKind:"forest" },
+    { id:"forest_gloom", name:"Gloamwood", type:"forest", x:270, y:420, dungeonKind:"forest" },
+    { id:"forest_briar", name:"Briarwild", type:"forest", x:440, y:120, dungeonKind:"forest" },
   ],
   edges: [
-    {a:"stonehaven", b:"pinewatch", kind:"road"},
-    {a:"stonehaven", b:"emberrest", kind:"road"},
-    {a:"pinewatch", b:"emberrest",  kind:"road"},
-    {a:"emberrest", b:"redfen",     kind:"road"},
-    {a:"redfen", b:"grandport",     kind:"road"},
-    {a:"redfen", b:"cave_mourn",    kind:"road"},
-    {a:"emberrest", b:"forest_gloom", kind:"road"},
-    {a:"pinewatch", b:"forest_briar", kind:"road"},
+    // ROADS (curved to feel like routes that follow terrain)
+    {a:"stonehaven", b:"pinewatch", kind:"road", ctrl:{x:230, y:165}},
+    {a:"stonehaven", b:"emberrest", kind:"road", ctrl:{x:270, y:305}},
+    {a:"pinewatch",  b:"emberrest", kind:"road", ctrl:{x:355, y:230}},
+    {a:"emberrest",  b:"redfen",    kind:"road", ctrl:{x:490, y:305}},
+    {a:"redfen",     b:"grandport", kind:"road", ctrl:{x:640, y:215}},
+    {a:"redfen",     b:"cave_mourn", kind:"road", ctrl:{x:585, y:355}},
+    {a:"emberrest",  b:"forest_gloom", kind:"road", ctrl:{x:315, y:390}},
+    {a:"pinewatch",  b:"forest_briar", kind:"road", ctrl:{x:395, y:105}},
 
-    {a:"stonehaven", b:"grandport", kind:"sea", fare:8},
-    {a:"grandport",  b:"cave_salt", kind:"sea", fare:6},
-    {a:"cave_mourn", b:"cave_salt", kind:"sea", fare:5},
+    // SEA LANES (curved shipping lanes)
+    {a:"stonehaven", b:"grandport", kind:"sea", fare:8,  ctrl:{x:430, y:540}},
+    {a:"grandport",  b:"cave_salt", kind:"sea", fare:6,  ctrl:{x:980, y:140}},
+    {a:"cave_mourn", b:"cave_salt", kind:"sea", fare:5,  ctrl:{x:870, y:540}},
   ]
 };
 const nodeById = Object.fromEntries(world.nodes.map(n=>[n.id,n]));
@@ -413,6 +415,159 @@ function edgeBetween(a,b){
 }
 function neighbors(id){
   return world.edges.filter(e=>e.a===id||e.b===id).map(e=>e.a===id?e.b:e.a);
+}
+
+/* =========================
+   Procedural Map Art (coastline noise, terrain shading/icons, docks)
+   - Deterministic for a consistent look
+========================= */
+function makeSeededRng(seedStr){
+  let h = 2166136261;
+  for(let i=0;i<seedStr.length;i++){ h ^= seedStr.charCodeAt(i); h = Math.imul(h, 16777619); }
+  let s = h >>> 0;
+  return function(){
+    s ^= s << 13; s >>>= 0;
+    s ^= s >> 17; s >>>= 0;
+    s ^= s << 5;  s >>>= 0;
+    return (s >>> 0) / 4294967296;
+  };
+}
+
+const mapArt = {
+  ready:false,
+  coastPts: [],
+  landPath: null,     // Path2D
+  terrain: [],        // {type, x,y, s, rot}
+  blobs: [],          // shading blobs
+  docks: []           // {x,y, rot, len, w}
+};
+
+function buildCoastline(){
+  const rng = makeSeededRng("apex-coast-v1");
+
+  // base polygon (roughly the same silhouette as earlier blob, but more "coast-y")
+  const base = [
+    {x:95,  y:95},
+    {x:210, y:55},
+    {x:360, y:65},
+    {x:520, y:120},
+    {x:675, y:175},
+    {x:765, y:265},
+    {x:800, y:360},
+    {x:720, y:430},
+    {x:585, y:448},
+    {x:440, y:425},
+    {x:300, y:395},
+    {x:185, y:345},
+    {x:115, y:265},
+    {x:85,  y:170},
+  ];
+
+  // Subdivide edges and add coastline noise (perpendicular jitter)
+  const pts = [];
+  const stepsPerEdge = 8; // more = smoother but heavier
+  const noiseAmp = 10;    // coastline roughness
+
+  for(let i=0;i<base.length;i++){
+    const a = base[i];
+    const b = base[(i+1)%base.length];
+    for(let j=0;j<stepsPerEdge;j++){
+      const t = j/stepsPerEdge;
+      const x = a.x + (b.x-a.x)*t;
+      const y = a.y + (b.y-a.y)*t;
+
+      // perpendicular normal
+      const dx = (b.x-a.x), dy = (b.y-a.y);
+      const len = Math.max(1, Math.hypot(dx,dy));
+      const nx = -dy/len, ny = dx/len;
+
+      // layered pseudo-noise (deterministic)
+      const n1 = Math.sin((i*stepsPerEdge+j)*0.9) * 0.6;
+      const n2 = Math.sin((i*stepsPerEdge+j)*2.3 + 1.7) * 0.4;
+      const n  = (n1+n2) * noiseAmp * (0.4 + rng()*0.8);
+
+      pts.push({x: x + nx*n, y: y + ny*n});
+    }
+  }
+
+  // Light smoothing pass
+  const smooth = pts.map((p, idx)=>{
+    const p0 = pts[(idx-1+pts.length)%pts.length];
+    const p1 = pts[(idx+1)%pts.length];
+    return {x:(p0.x+p.x+p1.x)/3, y:(p0.y+p.y+p1.y)/3};
+  });
+
+  mapArt.coastPts = smooth;
+
+  const path = new Path2D();
+  path.moveTo(smooth[0].x, smooth[0].y);
+  for(let i=1;i<smooth.length;i++) path.lineTo(smooth[i].x, smooth[i].y);
+  path.closePath();
+  mapArt.landPath = path;
+}
+
+function pointInLand(x,y){
+  // requires ctx state neutral, so we use a temporary path hit test by translating/scaling to world
+  // We will only call this during art generation (no transforms applied).
+  if(!mapArt.landPath) return false;
+  // Use a temporary canvas context hit test without transforms (Path2D in world coords)
+  return ctx.isPointInPath(mapArt.landPath, x, y);
+}
+
+function buildTerrain(){
+  const rng = makeSeededRng("apex-terrain-v1");
+
+  // Shading blobs (subtle terrain shading)
+  mapArt.blobs = [];
+  for(let i=0;i<16;i++){
+    let x=0,y=0;
+    for(let tries=0;tries<800;tries++){
+      x = 120 + rng()*700;
+      y = 90  + rng()*380;
+      if(pointInLand(x,y)) break;
+    }
+    const r = 30 + rng()*85;
+    const a = 0.05 + rng()*0.08;
+    mapArt.blobs.push({x,y,r,a});
+  }
+
+  // Terrain icons (mountains/forest)
+  mapArt.terrain = [];
+  const icons = [
+    {type:"mountain", count:10},
+    {type:"forest", count:18},
+  ];
+
+  for(const group of icons){
+    for(let i=0;i<group.count;i++){
+      let x=0,y=0;
+      for(let tries=0;tries<1200;tries++){
+        x = 120 + rng()*700;
+        y = 90  + rng()*380;
+        if(pointInLand(x,y)) break;
+      }
+      const s = group.type==="mountain" ? (0.8 + rng()*0.7) : (0.75 + rng()*0.9);
+      const rot = (rng()*0.35 - 0.175);
+      mapArt.terrain.push({type:group.type, x,y, s, rot});
+    }
+  }
+}
+
+function buildDocks(){
+  // Docks at Grandport that extend into the sea (east / slightly NE)
+  const p = nodeById["grandport"];
+  mapArt.docks = [
+    {x:p.x+18, y:p.y+8,  rot:-0.10, len:72, w:10},
+    {x:p.x+12, y:p.y+20, rot: 0.05, len:52, w:9},
+  ];
+}
+
+function ensureMapArt(){
+  if(mapArt.ready) return;
+  buildCoastline();
+  buildTerrain();
+  buildDocks();
+  mapArt.ready = true;
 }
 
 /* =========================
@@ -458,10 +613,8 @@ const QUESTS = [
 ];
 
 function questBoardForNode(nodeId){
-  // show quests whose "from" is this node
   return QUESTS.filter(q=>q.from===nodeId);
 }
-
 function questStatus(qid){
   return state.quests[qid] || {accepted:false, completed:false};
 }
@@ -469,12 +622,10 @@ function setQuestStatus(qid, patch){
   const cur = questStatus(qid);
   state.quests[qid] = {...cur, ...patch};
 }
-
 function activeQuest(){
   if(!state.activeQuestId) return null;
   return QUESTS.find(q=>q.id===state.activeQuestId) || null;
 }
-
 function hasQuestItem(name){
   return state.bag.some(x=>x.type==="quest" && x.name===name);
 }
@@ -483,10 +634,8 @@ function removeQuestItem(name){
   if(idx>=0) state.bag.splice(idx,1);
 }
 function addQuestItem(item){
-  // only one copy of quest items (no stacking)
   if(!hasQuestItem(item.name)) state.bag.push({...item});
 }
-
 function tryDeliverQuest(){
   const q = activeQuest();
   if(!q) return false;
@@ -499,7 +648,6 @@ function tryDeliverQuest(){
     state.keys += q.reward.key||0;
     setQuestStatus(q.id, {completed:true});
     pushLog(`<span style="color:var(--good)">📦 Quest complete: ${q.title}! +${q.reward.gold||0}g${(q.reward.key?` and +${q.reward.key} key`:"")}.</span>`);
-    // clear active quest if completed
     state.activeQuestId = null;
     return true;
   }
@@ -570,43 +718,33 @@ function unequip(slot){
 }
 
 /* =========================
-   TIME + DAY TICK (Energy drains by day)
-   - Travel costs time (distance-based)
-   - Searching caves/forest does NOT cost energy
+   TIME + DAY TICK
 ========================= */
 function startNewDay(){
   const drain = (state.energyDrainPerDayMin + Math.floor(Math.random()*(state.energyDrainPerDayMax - state.energyDrainPerDayMin + 1)));
   state.energyDrainToday = drain;
   state.energy = clamp(state.energy - drain, 0, state.energyMax);
-  // hunger drains slightly each day
   state.hunger = clamp(state.hunger - 2, 0, state.hungerMax);
   if(state.hunger===0){
     state.hp = clamp(state.hp - 2, 0, state.hpMax);
     pushLog(`<span style="color:var(--warn)">🍗 You wake starving and lose 2 HP.</span>`);
   }
-  pushLog(`🌅 Day ${state.day} begins. Energy drains by time: -${drain} energy today.`);
+  pushLog(`🌅 Day ${state.day} begins. Energy drains by day: -${drain} energy today.`);
 }
-
 function passTime(minutes, reason){
   if(minutes<=0) return;
-
-  const beforeDay = state.day;
   state.minutes += minutes;
 
-  // day rollover
   while(state.minutes >= 1440){
     state.minutes -= 1440;
     state.day += 1;
     startNewDay();
   }
 
-  // hunger effect per "time chunk"
-  // 1 hunger per 4 hours of time passed
   const hungerLoss = Math.floor(minutes / 240);
   if(hungerLoss>0){
     state.hunger = clamp(state.hunger - hungerLoss, 0, state.hungerMax);
     if(state.hunger===0){
-      // starving: lose 1 HP per 4 hours passed
       const hpLoss = Math.max(1, hungerLoss);
       state.hp = clamp(state.hp - hpLoss, 0, state.hpMax);
       pushLog(`<span style="color:var(--warn)">🍗 Starving while time passes: -${hpLoss} HP.</span>`);
@@ -621,16 +759,13 @@ function distance(a,b){
   const dx=A.x-B.x, dy=A.y-B.y;
   return Math.sqrt(dx*dx+dy*dy);
 }
-
 function travelTimeMinutes(from,to){
-  // distance scaled to minutes
   const d = distance(from,to);
-  // base 20–120 min typical
   return clamp(Math.round(d * 0.55), 20, 160);
 }
 
 /* =========================
-   Limited "Area Loot" per visit (per node visit)
+   Limited "Area Loot" per visit
 ========================= */
 function enterNode(nodeId){
   state.currentNode = nodeId;
@@ -640,19 +775,14 @@ function enterNode(nodeId){
   const n = nodeById[nodeId];
   if(n.type==="town"||n.type==="camp"||n.type==="port") state.lastSafeNode=nodeId;
 
-  // attempt quest delivery
   tryDeliverQuest();
-
-  // prompt to enter dungeon via interact panel (not modal)
   render();
 }
-
 function areaLootAvailable(){
   const stamp = state.nodeVisitStamp[state.currentNode] || 0;
   const used  = state.nodeLootStamp[state.currentNode] || 0;
   return used !== stamp;
 }
-
 function useAreaLoot(){
   if(state.mode==="combat"){ pushLog("⚠️ Can't loot during combat."); render(); return; }
   if(!areaLootAvailable()){
@@ -660,9 +790,7 @@ function useAreaLoot(){
     render(); return;
   }
 
-  // costs TIME only
   passTime(25, "Area loot");
-
   state.nodeLootStamp[state.currentNode] = state.nodeVisitStamp[state.currentNode];
 
   const n=nodeById[state.currentNode];
@@ -679,7 +807,6 @@ function useAreaLoot(){
     else { const item=randomGear(); state.bag.push(item); pushLog(`🧺 Found <b>${fmtItem(item)}</b>.`); }
   }
 
-  // small world encounter chance
   if(state.mode!=="combat" && roll(100)<=10){
     startCombat(makeEnemy("ambush"), {origin:"world"});
   }
@@ -688,20 +815,16 @@ function useAreaLoot(){
 
 /* =========================
    Travel rules (no energy cost)
-   - Travel costs time based on distance
-   - Sea fare required + sea risks
 ========================= */
 function canTravelTo(toId){
   if(state.mode!=="world") return false;
   return !!edgeBetween(state.currentNode,toId);
 }
-
 function travelTo(toId){
   if(state.mode!=="world") return;
   const e=edgeBetween(state.currentNode,toId);
   if(!e){ pushLog("🚫 No route."); render(); return; }
 
-  // sea fare
   if(e.kind==="sea"){
     const fare=e.fare||0;
     if(state.gold<fare){
@@ -715,7 +838,6 @@ function travelTo(toId){
   const minutes = travelTimeMinutes(state.currentNode,toId);
   passTime(minutes, "Travel");
 
-  // sea risks
   if(e.kind==="sea"){
     if(roll(100)<=15){
       pushLog(`<span style="color:var(--warn)">🌊 Rough waters! You fall into the sea.</span>`);
@@ -766,7 +888,6 @@ function makeRNG(seedStr){
     return (s >>> 0) / 4294967296;
   };
 }
-
 function randomGearFromRng(rng){
   const table = [
     {type:"weapon", name:"Sword", atk:2},
@@ -779,7 +900,6 @@ function randomGearFromRng(rng){
   ];
   return table[Math.floor(rng()*table.length)];
 }
-
 function dungeonChestContents(rng){
   const contents = [];
   contents.push({type:"gold", amount: 8 + Math.floor(rng()*18)});
@@ -788,7 +908,6 @@ function dungeonChestContents(rng){
   if(rng()<0.25) contents.push({type:"key", amount:1});
   return contents;
 }
-
 function makeDungeonEnemy(type,x,y){
   const base = {
     "Goblin": {hp:12, ac:10, atk:3},
@@ -801,7 +920,6 @@ function makeDungeonEnemy(type,x,y){
   }[type] || {hp:12, ac:10, atk:2};
   return {x,y,type, hp:base.hp, ac:base.ac, atk:base.atk};
 }
-
 function generateDungeon(kind, id){
   const rng = makeRNG(kind+"::"+id);
   const w = 24, h = 15;
@@ -921,7 +1039,6 @@ function generateDungeon(kind, id){
 
   return {kind,id,w,h,tiles:grid,seen,px:entrance.x,py:entrance.y,enemies,chests,keysOnGround,doors};
 }
-
 function revealAround(d, px,py,r){
   for(let y=py-r;y<=py+r;y++){
     for(let x=px-r;x<=px+r;x++){
@@ -929,12 +1046,10 @@ function revealAround(d, px,py,r){
     }
   }
 }
-
 function currentDungeon(){
   if(!state.dungeonId) return null;
   return state.dungeons[state.dungeonId] || null;
 }
-
 function enterDungeon(nodeId){
   const n=nodeById[nodeId];
   if(!n || !(n.type==="cave"||n.type==="forest")) return;
@@ -942,7 +1057,6 @@ function enterDungeon(nodeId){
   state.mode="dungeon";
   state.dungeonId = nodeId;
 
-  // load existing dungeon or generate and persist
   if(!state.dungeons[nodeId]){
     state.dungeons[nodeId] = generateDungeon(n.dungeonKind || (n.type==="forest"?"forest":"cave"), nodeId);
   }
@@ -952,7 +1066,6 @@ function enterDungeon(nodeId){
   pushLog(`🕯️ Entered ${n.name}. Fog-of-war active.`);
   render();
 }
-
 function leaveDungeon(){
   const n=nodeById[state.currentNode];
   pushLog(`🌤️ You return to the surface near <b>${n.name}</b>.`);
@@ -960,19 +1073,7 @@ function leaveDungeon(){
   state.dungeonId=null;
   render();
 }
-
 function tileAt(d,x,y){ return d.tiles?.[y]?.[x] || "wall"; }
-
-function isWalkable(d,x,y){
-  const t=tileAt(d,x,y);
-  if(t==="wall") return false;
-  if(t==="doorLocked"){
-    const door=d.doors[`${x},${y}`];
-    return door && door.opened;
-  }
-  return true;
-}
-
 function dungeonMove(dx,dy){
   if(state.mode!=="dungeon" || state.mode==="combat") return;
   const d=currentDungeon(); if(!d) return;
@@ -981,13 +1082,8 @@ function dungeonMove(dx,dy){
   if(nx<0||ny<0||nx>=d.w||ny>=d.h) return;
 
   const t=tileAt(d,nx,ny);
-
-  if(t==="wall"){
-    pushLog("🪨 Blocked.");
-    render(); return;
-  }
+  if(t==="wall"){ pushLog("🪨 Blocked."); render(); return; }
   if(t==="doorLocked"){
-    // can't pass unless unlocked via interact
     const door=d.doors[`${nx},${ny}`];
     if(door && !door.opened){
       pushLog("🚪 Locked door. Use Interact to unlock (requires key).");
@@ -995,12 +1091,10 @@ function dungeonMove(dx,dy){
     }
   }
 
-  // movement costs TIME only
   passTime(8, "Dungeon movement");
   d.px=nx; d.py=ny;
   revealAround(d,nx,ny,2);
 
-  // enemy collision triggers combat (enemy placed)
   const ei = d.enemies.findIndex(e=>e.x===nx && e.y===ny);
   if(ei>=0){
     const e=d.enemies[ei];
@@ -1011,7 +1105,7 @@ function dungeonMove(dx,dy){
 }
 
 /* =========================
-   Tile-based Interactions (ONLY when standing on tile)
+   Tile-based Interactions
 ========================= */
 function buildInteractOptions(){
   const btns = $("interactButtons");
@@ -1035,7 +1129,6 @@ function buildInteractOptions(){
     return;
   }
 
-  // dungeon mode
   const d=currentDungeon(); if(!d) return;
   const x=d.px, y=d.py;
   const t=tileAt(d,x,y);
@@ -1043,7 +1136,6 @@ function buildInteractOptions(){
   const lines = [];
   lines.push(`Dungeon: (${x},${y}) • Tile: ${t}`);
 
-  // If standing on chest
   if(t==="chest" || t==="chestLocked"){
     const c=d.chests[`${x},${y}`];
     if(c?.opened){
@@ -1054,7 +1146,6 @@ function buildInteractOptions(){
     }
   }
 
-  // key
   if(t==="key"){
     const k=d.keysOnGround[`${x},${y}`];
     if(k && !k.taken){
@@ -1063,7 +1154,6 @@ function buildInteractOptions(){
     }
   }
 
-  // locked door
   if(t==="doorLocked"){
     const door=d.doors[`${x},${y}`];
     if(door?.opened){
@@ -1074,19 +1164,16 @@ function buildInteractOptions(){
     }
   }
 
-  // exit
   if(t==="exit"){
     lines.push("Exit to surface.");
     addInteractButton("Leave Dungeon", ()=>leaveDungeon());
   }
 
-  // search/explore here (no energy cost)
   lines.push("You can search this area to reveal more.");
   addInteractButton("Search (Reveal)", ()=>dungeonSearch());
 
   $("interactHint").textContent = lines.join(" • ");
 }
-
 function addInteractButton(label, fn){
   const b=document.createElement("button");
   b.className="secondary";
@@ -1094,7 +1181,6 @@ function addInteractButton(label, fn){
   b.onclick=fn;
   $("interactButtons").appendChild(b);
 }
-
 function pickupKeyAt(x,y){
   const d=currentDungeon(); if(!d) return;
   const k=d.keysOnGround[`${x},${y}`];
@@ -1106,7 +1192,6 @@ function pickupKeyAt(x,y){
   pushLog(`🔑 You pick up a key. Keys: <b>${state.keys}</b>`);
   render();
 }
-
 function unlockDoorAt(x,y){
   const d=currentDungeon(); if(!d) return;
   const door=d.doors[`${x},${y}`];
@@ -1122,7 +1207,6 @@ function unlockDoorAt(x,y){
   pushLog(`🚪 Unlocked the door. Keys left: <b>${state.keys}</b>`);
   render();
 }
-
 function openChestAt(x,y){
   const d=currentDungeon(); if(!d) return;
   const c=d.chests[`${x},${y}`];
@@ -1153,14 +1237,11 @@ function openChestAt(x,y){
   pushLog(`📦 Chest opened! Gained: <b>${gained.join(", ")}</b>`);
   render();
 }
-
 function dungeonSearch(){
   const d=currentDungeon(); if(!d) return;
-  // searching does NOT cost energy; costs time only
   passTime(12, "Search dungeon area");
   revealAround(d,d.px,d.py,3);
   pushLog("🕯️ You search carefully and reveal more of the area.");
-  // small chance hidden gold
   if(roll(100)<=18){
     const g=roll(10)+3; state.gold+=g;
     pushLog(`✨ Hidden find: <b>${g}g</b>`);
@@ -1169,7 +1250,7 @@ function dungeonSearch(){
 }
 
 /* =========================
-   Combat (attack only in combat)
+   Combat
 ========================= */
 function makeEnemy(tag){
   if(tag==="pirates") return {name:"Pirate Skiff", hp:18, hpMax:18, ac:12, atk:4, tag:"pirates"};
@@ -1197,7 +1278,6 @@ function makeEnemyByName(name, tag){
 function makeEnemyFromDungeon(e){
   return {name:e.type, hp:e.hp, hpMax:e.hp, ac:e.ac, atk:e.atk, tag:"dungeon"};
 }
-
 function startCombat(enemy, meta){
   state.mode="combat";
   state.enemy=enemy;
@@ -1215,7 +1295,6 @@ function endCombat(victory){
     if(roll(100)<=28){ const gear=randomGear(); state.bag.push(gear); pushLog(`📦 Loot: <b>${fmtItem(gear)}</b>`); }
     if(roll(100)<=22){ addToBag({type:"consumable", name:"Ration", kind:"food", qty:1}); pushLog(`🍗 Loot: <b>Ration</b>`); }
 
-    // if travel encounter, arrive
     if(state.pendingArrival){
       const toId=state.pendingArrival;
       state.pendingArrival=null;
@@ -1223,7 +1302,6 @@ function endCombat(victory){
       enterNode(toId);
     }
 
-    // if dungeon enemy, remove from persisted dungeon
     if(meta.origin==="dungeon" && meta.dungeonId && meta.enemyPos){
       const d=state.dungeons[meta.dungeonId];
       if(d){
@@ -1236,7 +1314,6 @@ function endCombat(victory){
     state.pendingArrival=null;
   }
 
-  // return to previous mode
   state.enemy=null;
   state.enemyMeta=null;
 
@@ -1245,7 +1322,6 @@ function endCombat(victory){
 
   render();
 }
-
 function playerAttack(){
   if(state.mode!=="combat" || !state.enemy) return;
 
@@ -1278,7 +1354,6 @@ function enemyTurn(){
   if(state.hp<=0){
     state.hp=1;
     pushLog(`<b style="color:var(--bad)">☠️ You collapse… and wake at your last safe location.</b>`);
-    // drop out of dungeon/combat
     state.mode="world";
     state.dungeonId=null;
     state.enemy=null;
@@ -1298,8 +1373,6 @@ function flee(){
 
 /* =========================
    Search / Explore
-   - World: costs time only
-   - Dungeon: uses dungeonSearch()
 ========================= */
 function searchExplore(){
   if(state.mode==="combat"){ pushLog("⚠️ Can't search during combat."); render(); return; }
@@ -1326,11 +1399,10 @@ function sleep(){
   if(state.mode==="combat"){ pushLog("⚠️ Can't sleep in combat."); render(); return; }
   if(!canSleepHere()){ pushLog("🛌 You can only sleep in a Town, Camp, or Port."); render(); return; }
 
-  // sleeping advances time to next morning 08:00
   const now = state.minutes;
   const target = 8*60;
   let delta = (target - now);
-  if(delta<=0) delta += 1440; // next day
+  if(delta<=0) delta += 1440;
   passTime(delta, "Sleep");
 
   const heal = 8 + roll(6);
@@ -1401,7 +1473,6 @@ function openQuestBoard(){
   html += `</div>`;
   openModal("Quest Board", html);
 }
-
 function acceptQuest(qid){
   closeModal();
   const q = QUESTS.find(x=>x.id===qid);
@@ -1445,7 +1516,6 @@ let view = {
 };
 
 const tooltip = $("tooltip");
-const mapWrap = $("mapWrap");
 
 function resizeCanvas(){
   const r = mapCanvas.getBoundingClientRect();
@@ -1455,50 +1525,21 @@ function resizeCanvas(){
 }
 
 function worldToScreen(x,y){
-  return {
-    x: x*view.scale + view.ox,
-    y: y*view.scale + view.oy
-  };
+  return { x: x*view.scale + view.ox, y: y*view.scale + view.oy };
 }
 function screenToWorld(x,y){
-  return {
-    x: (x - view.ox)/view.scale,
-    y: (y - view.oy)/view.scale
-  };
+  return { x: (x - view.ox)/view.scale, y: (y - view.oy)/view.scale };
 }
 
-function drawSeaAndLand(r){
+/* ===== Drawing: Sea, coastline noise, terrain shading/icons, docks ===== */
+function drawSeaBackground(r){
   const g = ctx.createLinearGradient(0,0,0,r.height);
-  g.addColorStop(0, "rgba(20,40,120,.65)");
-  g.addColorStop(1, "rgba(10,20,60,.75)");
+  g.addColorStop(0, "rgba(22,48,140,.62)");
+  g.addColorStop(1, "rgba(8,16,52,.82)");
   ctx.fillStyle=g;
   ctx.fillRect(0,0,r.width,r.height);
 
-  ctx.save();
-  ctx.translate(view.ox, view.oy);
-  ctx.scale(view.scale, view.scale);
-
-  // land blob
-  ctx.beginPath();
-  ctx.moveTo(60, 80);
-  ctx.bezierCurveTo(200, 20, 360, 40, 520, 110);
-  ctx.bezierCurveTo(650, 170, 720, 250, 770, 360);
-  ctx.bezierCurveTo(680, 430, 560, 440, 420, 410);
-  ctx.bezierCurveTo(300, 385, 210, 360, 120, 270);
-  ctx.bezierCurveTo(70, 210, 40, 150, 60, 80);
-  ctx.closePath();
-
-  const land = ctx.createLinearGradient(0,0,800,500);
-  land.addColorStop(0, "rgba(34,95,55,.85)");
-  land.addColorStop(1, "rgba(22,60,40,.90)");
-  ctx.fillStyle=land;
-  ctx.fill();
-  ctx.strokeStyle="rgba(255,255,255,.10)";
-  ctx.lineWidth=3/view.scale;
-  ctx.stroke();
-  ctx.restore();
-
-  // waves overlay
+  // waves overlay (screen-space)
   ctx.globalAlpha=0.10;
   ctx.strokeStyle="rgba(255,255,255,.35)";
   for(let i=0;i<10;i++){
@@ -1511,11 +1552,168 @@ function drawSeaAndLand(r){
   ctx.globalAlpha=1;
 }
 
+function drawLandAndArt(){
+  ensureMapArt();
+
+  // World-space draw
+  ctx.save();
+  ctx.translate(view.ox, view.oy);
+  ctx.scale(view.scale, view.scale);
+
+  // Land fill
+  const landGrad = ctx.createLinearGradient(80,60,860,520);
+  landGrad.addColorStop(0, "rgba(44,120,70,.90)");
+  landGrad.addColorStop(1, "rgba(18,56,36,.92)");
+  ctx.fillStyle = landGrad;
+  ctx.fill(mapArt.landPath);
+
+  // Coastline stroke + glow
+  ctx.save();
+  ctx.strokeStyle="rgba(255,255,255,.14)";
+  ctx.lineWidth=3/view.scale;
+  ctx.stroke(mapArt.landPath);
+  ctx.shadowColor="rgba(0,0,0,.35)";
+  ctx.shadowBlur=18/view.scale;
+  ctx.strokeStyle="rgba(0,0,0,.25)";
+  ctx.lineWidth=5/view.scale;
+  ctx.stroke(mapArt.landPath);
+  ctx.restore();
+
+  // Terrain shading blobs (subtle)
+  for(const b of mapArt.blobs){
+    const grad = ctx.createRadialGradient(b.x,b.y, 0, b.x,b.y, b.r);
+    grad.addColorStop(0, `rgba(0,0,0,${b.a})`);
+    grad.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(b.x,b.y,b.r,0,Math.PI*2);
+    ctx.fill();
+  }
+
+  // Terrain icons
+  for(const t of mapArt.terrain){
+    ctx.save();
+    ctx.translate(t.x, t.y);
+    ctx.rotate(t.rot);
+    ctx.scale(t.s, t.s);
+
+    if(t.type==="mountain"){
+      drawMountainIcon(0,0, 1.0/view.scale);
+    } else {
+      drawForestIcon(0,0, 1.0/view.scale);
+    }
+    ctx.restore();
+  }
+
+  // Port docks
+  for(const d of mapArt.docks){
+    ctx.save();
+    ctx.translate(d.x, d.y);
+    ctx.rotate(d.rot);
+    // dock base
+    ctx.fillStyle="rgba(229,231,235,.18)";
+    ctx.strokeStyle="rgba(255,255,255,.20)";
+    ctx.lineWidth=2/view.scale;
+    roundRect(-2, -d.w/2, d.len, d.w, 4/view.scale);
+    ctx.fill();
+    ctx.stroke();
+
+    // pilings
+    ctx.fillStyle="rgba(0,0,0,.25)";
+    for(let i=0;i<5;i++){
+      const px = (d.len*(i/4)) - 1;
+      roundRect(px, -d.w/2 - 4, 4, 8, 2/view.scale);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+function roundRect(x,y,w,h,r){
+  const rr = Math.min(r, w/2, h/2);
+  ctx.beginPath();
+  ctx.moveTo(x+rr, y);
+  ctx.arcTo(x+w, y, x+w, y+h, rr);
+  ctx.arcTo(x+w, y+h, x, y+h, rr);
+  ctx.arcTo(x, y+h, x, y, rr);
+  ctx.arcTo(x, y, x+w, y, rr);
+  ctx.closePath();
+}
+
+function drawMountainIcon(x,y, s){
+  // simple mountain glyphs
+  ctx.save();
+  ctx.translate(x,y);
+  ctx.scale(s*14, s*14);
+
+  ctx.globalAlpha=0.55;
+  ctx.fillStyle="rgba(0,0,0,.35)";
+  ctx.beginPath();
+  ctx.moveTo(-1.2, 0.8); ctx.lineTo(0.0, -0.9); ctx.lineTo(1.2, 0.8); ctx.closePath();
+  ctx.fill();
+
+  ctx.globalAlpha=0.65;
+  ctx.fillStyle="rgba(229,231,235,.22)";
+  ctx.beginPath();
+  ctx.moveTo(-0.95, 0.8); ctx.lineTo(-0.05, -0.55); ctx.lineTo(0.85, 0.8); ctx.closePath();
+  ctx.fill();
+
+  ctx.globalAlpha=0.55;
+  ctx.fillStyle="rgba(229,231,235,.16)";
+  ctx.beginPath();
+  ctx.moveTo(-0.05, -0.55); ctx.lineTo(0.0, -0.9); ctx.lineTo(0.35, -0.35); ctx.closePath();
+  ctx.fill();
+
+  ctx.globalAlpha=1;
+  ctx.restore();
+}
+
+function drawForestIcon(x,y, s){
+  // small tree cluster glyph
+  ctx.save();
+  ctx.translate(x,y);
+  ctx.scale(s*13, s*13);
+
+  ctx.globalAlpha=0.55;
+  ctx.fillStyle="rgba(0,0,0,.28)";
+  ctx.beginPath();
+  ctx.moveTo(-0.8, 0.9); ctx.lineTo(-0.2, -0.3); ctx.lineTo(0.4, 0.9); ctx.closePath();
+  ctx.fill();
+
+  ctx.globalAlpha=0.55;
+  ctx.beginPath();
+  ctx.moveTo(-0.1, 0.9); ctx.lineTo(0.5, -0.35); ctx.lineTo(1.1, 0.9); ctx.closePath();
+  ctx.fill();
+
+  ctx.globalAlpha=0.60;
+  ctx.fillStyle="rgba(229,231,235,.18)";
+  ctx.beginPath();
+  ctx.moveTo(-0.65, 0.9); ctx.lineTo(-0.2, -0.1); ctx.lineTo(0.25, 0.9); ctx.closePath();
+  ctx.fill();
+
+  ctx.globalAlpha=0.60;
+  ctx.beginPath();
+  ctx.moveTo(0.05, 0.9); ctx.lineTo(0.5, -0.15); ctx.lineTo(0.95, 0.9); ctx.closePath();
+  ctx.fill();
+
+  ctx.globalAlpha=1;
+  ctx.restore();
+}
+
+/* ===== World draw ===== */
 function drawWorld(){
   const r=mapCanvas.getBoundingClientRect();
   ctx.clearRect(0,0,r.width,r.height);
-  drawSeaAndLand(r);
 
+  // Sea background (screen-space)
+  drawSeaBackground(r);
+
+  // Coastline + terrain (world-space)
+  drawLandAndArt();
+
+  // Routes + nodes (world-space)
   ctx.save();
   ctx.translate(view.ox, view.oy);
   ctx.scale(view.scale, view.scale);
@@ -1523,7 +1721,7 @@ function drawWorld(){
   const here = state.currentNode;
   const neigh = new Set(neighbors(here));
 
-  // routes
+  // routes (curved roads + curved sea lanes)
   for(const e of world.edges){
     const A=nodeById[e.a], B=nodeById[e.b];
 
@@ -1532,23 +1730,40 @@ function drawWorld(){
     const thick = (isHover?6:(isFromHere?5:3))/view.scale;
 
     ctx.beginPath();
-    ctx.moveTo(A.x,A.y);
-    ctx.lineTo(B.x,B.y);
+
+    if(e.ctrl){
+      ctx.moveTo(A.x, A.y);
+      ctx.quadraticCurveTo(e.ctrl.x, e.ctrl.y, B.x, B.y);
+    } else {
+      ctx.moveTo(A.x, A.y);
+      ctx.lineTo(B.x, B.y);
+    }
 
     if(e.kind==="sea"){
       ctx.setLineDash([10/view.scale,10/view.scale]);
-      ctx.strokeStyle = isHover ? "rgba(147,197,253,.9)" : "rgba(147,197,253,.45)";
+      ctx.strokeStyle = isHover ? "rgba(147,197,253,.92)" : "rgba(147,197,253,.50)";
       ctx.lineWidth=thick;
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // fare label
-      const mx=(A.x+B.x)/2, my=(A.y+B.y)/2;
-      ctx.fillStyle="rgba(229,231,235,.85)";
+      // Fare label near curve midpoint
+      const mx = (A.x + B.x) / 2;
+      const my = (A.y + B.y) / 2;
+      const lx = e.ctrl ? (mx + e.ctrl.x) / 2 : mx;
+      const ly = e.ctrl ? (my + e.ctrl.y) / 2 : my;
+
+      ctx.fillStyle="rgba(229,231,235,.88)";
       ctx.font = `${12/view.scale}px system-ui`;
-      ctx.fillText(`⛴ ${e.fare}g`, mx+6, my-6);
+      ctx.fillText(`⛴ ${e.fare}g`, lx+8, ly-8);
     } else {
-      ctx.strokeStyle = isHover ? "rgba(251,191,36,.75)" : (isFromHere ? "rgba(251,191,36,.45)" : "rgba(251,191,36,.25)");
+      // road casing underlay
+      ctx.save();
+      ctx.strokeStyle = "rgba(0,0,0,.35)";
+      ctx.lineWidth = (thick + 2/view.scale);
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.strokeStyle = isHover ? "rgba(251,191,36,.80)" : (isFromHere ? "rgba(251,191,36,.52)" : "rgba(251,191,36,.26)");
       ctx.lineWidth=thick;
       ctx.stroke();
     }
@@ -1582,12 +1797,10 @@ function drawWorld(){
     ctx.fill();
     ctx.stroke();
 
-    // icon
     ctx.fillStyle="rgba(229,231,235,.95)";
     ctx.font = `${14/view.scale}px system-ui`;
     ctx.fillText(icon, n.x-10, n.y+6);
 
-    // label
     ctx.fillStyle = isHover ? "rgba(255,255,255,.98)" : "rgba(229,231,235,.92)";
     ctx.font = `${12/view.scale}px system-ui`;
     ctx.fillText(n.name, n.x+20, n.y+4);
@@ -1596,6 +1809,7 @@ function drawWorld(){
   ctx.restore();
 }
 
+/* ===== Dungeon draw ===== */
 function drawDungeon(){
   const r=mapCanvas.getBoundingClientRect();
   ctx.clearRect(0,0,r.width,r.height);
@@ -1635,7 +1849,6 @@ function drawDungeon(){
         ctx.fillRect(sx+cell*0.15,sy+cell*0.15,cell*0.7,cell*0.7);
       }
 
-      // enemy dot if alive
       const enemyHere=d.enemies.some(en=>en.x===x && en.y===y);
       if(enemyHere){
         ctx.beginPath();
@@ -1646,7 +1859,6 @@ function drawDungeon(){
     }
   }
 
-  // player marker
   const px=pad+d.px*cell+cell/2;
   const py=pad+d.py*cell+cell/2;
   ctx.beginPath();
@@ -1671,24 +1883,12 @@ function canvasPoint(evt){
   const rect = mapCanvas.getBoundingClientRect();
   return {x: evt.clientX-rect.left, y: evt.clientY-rect.top, rect};
 }
-
 function hitNodeWorld(wx,wy){
-  // hit in world-space
   for(const n of world.nodes){
     const dx=n.x-wx, dy=n.y-wy;
     if(Math.sqrt(dx*dx+dy*dy)<=18) return n;
   }
   return null;
-}
-function hitEdgeWorld(wx,wy){
-  // find nearest edge segment for highlighting (cheap)
-  let best=null, bestDist=99999;
-  for(const e of world.edges){
-    const A=nodeById[e.a], B=nodeById[e.b];
-    const dist = pointToSegmentDistance({x:wx,y:wy},{x:A.x,y:A.y},{x:B.x,y:B.y});
-    if(dist<10 && dist<bestDist){ best=e; bestDist=dist; }
-  }
-  return best;
 }
 function pointToSegmentDistance(p,a,b){
   const vx=b.x-a.x, vy=b.y-a.y;
@@ -1700,6 +1900,42 @@ function pointToSegmentDistance(p,a,b){
   const t = c1/c2;
   const px=a.x+t*vx, py=a.y+t*vy;
   return Math.hypot(p.x-px,p.y-py);
+}
+function quadPoint(A, C, B, t){
+  const u=1-t;
+  return {
+    x: u*u*A.x + 2*u*t*C.x + t*t*B.x,
+    y: u*u*A.y + 2*u*t*C.y + t*t*B.y
+  };
+}
+function distanceToQuadratic(p, A, C, B, samples=22){
+  let best=1e9;
+  let prev = {x:A.x, y:A.y};
+  for(let i=1;i<=samples;i++){
+    const t=i/samples;
+    const q = quadPoint(A, C, B, t);
+    const d = pointToSegmentDistance(p, prev, q);
+    if(d<best) best=d;
+    prev=q;
+  }
+  return best;
+}
+function hitEdgeWorld(wx,wy){
+  let best=null, bestDist=99999;
+
+  for(const e of world.edges){
+    const A=nodeById[e.a], B=nodeById[e.b];
+    let dist = 99999;
+
+    if(e.ctrl){
+      dist = distanceToQuadratic({x:wx,y:wy}, A, e.ctrl, B, 22);
+    } else {
+      dist = pointToSegmentDistance({x:wx,y:wy},{x:A.x,y:A.y},{x:B.x,y:B.y});
+    }
+
+    if(dist<10 && dist<bestDist){ best=e; bestDist=dist; }
+  }
+  return best;
 }
 
 mapCanvas.addEventListener("mousemove",(evt)=>{
@@ -1739,7 +1975,6 @@ mapCanvas.addEventListener("mousemove",(evt)=>{
 
   drawMap();
 });
-
 mapCanvas.addEventListener("mouseleave",()=>{
   view.hoverNode=null;
   view.hoverEdge=null;
@@ -1764,19 +1999,23 @@ window.addEventListener("mousemove",(evt)=>{
   drawMap();
 });
 
+// FIXED zoom anchoring (no drift)
 mapCanvas.addEventListener("wheel",(evt)=>{
   if(state.mode!=="world") return;
   evt.preventDefault();
-  const {x,y}=canvasPoint(evt);
-  const before = screenToWorld(x,y);
+
+  const rect = mapCanvas.getBoundingClientRect();
+  const sx = evt.clientX - rect.left;
+  const sy = evt.clientY - rect.top;
+
+  const before = screenToWorld(sx, sy);
   const delta = Math.sign(evt.deltaY);
   const factor = (delta>0) ? 0.92 : 1.08;
-  const next = clamp(view.scale*factor, view.minScale, view.maxScale);
-  view.scale = next;
-  const after = screenToWorld(x,y);
-  // keep cursor anchored
-  view.ox += (after.x-before.x)*view.scale;
-  view.oy += (after.y-before.y)*view.scale;
+  view.scale = clamp(view.scale*factor, view.minScale, view.maxScale);
+
+  view.ox = sx - before.x * view.scale;
+  view.oy = sy - before.y * view.scale;
+
   drawMap();
 },{passive:false});
 
@@ -1815,7 +2054,14 @@ $("resetBtn").addEventListener("click", ()=>{
   init(true);
 });
 
-window.addEventListener("resize", ()=>{ resizeCanvas(); drawMap(); render(); });
+window.addEventListener("resize", ()=>{
+  resizeCanvas();
+  // rebuild map art once (ctx used for hit testing)
+  mapArt.ready = false;
+  ensureMapArt();
+  drawMap();
+  render();
+});
 
 /* =========================
    Keyboard movement for dungeon
@@ -1833,7 +2079,6 @@ window.addEventListener("keydown",(e)=>{
    Render UI
 ========================= */
 function render(){
-  // stats
   $("hp").textContent=state.hp;
   $("hpMax").textContent=state.hpMax;
   $("atk").textContent=getAtk();
@@ -1847,7 +2092,6 @@ function render(){
 
   $("clockBadge").textContent = `Day ${state.day} • ${fmtTime(state.minutes)}`;
 
-  // quest display
   const aq=activeQuest();
   if(aq){
     const st=questStatus(aq.id);
@@ -1863,7 +2107,6 @@ function render(){
     $("questSub").textContent="Check quest boards.";
   }
 
-  // badges/buttons
   $("modeBadge").textContent =
     state.mode==="combat" ? "Mode: Combat" :
     state.mode==="dungeon" ? `Mode: ${(currentDungeon()?.kind==="forest")?"Forest":"Cave"}` :
@@ -1875,7 +2118,7 @@ function render(){
   $("sleepBtn").disabled = !canSleepHere() || (state.mode==="combat");
   $("eatBtn").disabled = (countItem("food")<=0) || (state.mode==="combat");
   $("buyFoodBtn").disabled = !canBuyHere();
-  $("questBoardBtn").disabled = !(state.mode==="world" && canBuyHere()); // same rule as safe spots
+  $("questBoardBtn").disabled = !(state.mode==="world" && canBuyHere());
 
   $("combatRow").style.display = (state.mode==="combat") ? "flex" : "none";
   $("enemyPanel").style.display = (state.mode==="combat" && state.enemy) ? "block" : "none";
@@ -1886,7 +2129,6 @@ function render(){
     $("enemyAC").textContent=state.enemy.ac;
   }
 
-  // equipment
   $("weaponSlot").innerHTML = `
     <strong>Weapon</strong>
     <div class="itemName">${state.weapon ? fmtItem(state.weapon) : "None"}</div>
@@ -1903,7 +2145,6 @@ function render(){
     <div>${state.accessory ? `<button class="small secondary" onclick="unequip('accessory')">Unequip</button>` : ""}</div>
   `;
 
-  // bag
   $("bag").innerHTML="";
   if(state.bag.length===0){
     const empty=document.createElement("div");
@@ -1938,16 +2179,11 @@ function render(){
     });
   }
 
-  // log
   $("log").innerHTML = state.log.map(x=>`<div>${x}</div>`).join("");
   $("log").scrollTop = $("log").scrollHeight;
 
-  // interact panel
   buildInteractOptions();
-
-  // map
   drawMap();
-
   save();
 }
 
@@ -1959,19 +2195,20 @@ function init(resetLog=false){
   if(!nodeById[state.lastSafeNode]) state.lastSafeNode="stonehaven";
 
   resizeCanvas();
+  // map art depends on ctx isPointInPath; ensure canvas is ready
+  mapArt.ready = false;
+  ensureMapArt();
 
   if(state.log.length===0 || resetLog){
     state.log=[];
     pushLog("🧭 Welcome! Travel uses TIME (not energy). Energy drains by day (1–2/day).");
     pushLog("🗺️ World map: zoom wheel, drag to pan, hover tooltips, route highlighting.");
+    pushLog("🧭 Roads hug land. Sea lanes curve offshore. Ports have docks.");
     pushLog("🕳️ Enter caves/forests from Interact. Dungeons persist (opened chests/enemies stay).");
     pushLog("📜 Use Quest Boards in towns/camps/ports for multiple quests.");
   }
 
-  // initialize daily drain if missing
   if(!state.energyDrainToday) startNewDay();
-
-  // stamp current node visit if missing
   state.nodeVisitStamp[state.currentNode] = state.nodeVisitStamp[state.currentNode] || state.visitCounter;
 
   render();
