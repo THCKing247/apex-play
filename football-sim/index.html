@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Gridiron Career Sim v0.6.6</title>
+<link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+<div class="app">
+
+<div id="cheatBar" class="cheat-bar">
+<b>DEV CHEATS</b>
+<button onclick="cheat.energy()">+Energy</button>
+<button onclick="cheat.hours()">+Hours</button>
+<button onclick="cheat.money()">+$</button>
+<button onclick="cheat.week()">+Week</button>
+<button onclick="cheat.year()">+Year</button>
+</div>
+
+<header class="topbar">
+<h1>Gridiron Career Sim</h1>
+</header>
+
+<section class="card">
+<h2 id="careerHeader"></h2>
+
+<div class="stats">
+<div>Money: $<span id="money"></span></div>
+<div>OVR: <span id="ovr"></span></div>
+<div>Level: <span id="level"></span></div>
+<div>XP: <span id="xp"></span></div>
+<div>Skill Pts: <span id="skillPts"></span></div>
+</div>
+
+<div class="bar-wrap">
+Energy <div class="bar"><div id="energyBar"></div></div>
+Hours <div class="bar"><div id="hoursBar"></div></div>
+</div>
+
+<button id="toggleSkills">Toggle Skills</button>
+<div id="skillsPanel" class="skills hidden"></div>
+
+<div class="actions">
+<button onclick="doAction('train',1)">Train 1h</button>
+<button onclick="doAction('train',2)">Train 2h</button>
+<button onclick="doAction('train',3)">Train 3h</button>
+<button onclick="doAction('study',1)">Study 1h</button>
+<button onclick="doAction('work',1)">Work 1h</button>
+<button onclick="doAction('rest',1)">Rest 1h</button>
+</div>
+
+<button class="advance" onclick="advanceWeek()">Advance Week</button>
+
+<div id="log" class="log"></div>
+</section>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>
