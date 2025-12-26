@@ -7,6 +7,7 @@
   --muted:rgba(231,233,238,.7);
   --accent:#7c5cff;
   --danger:#ff4d6d;
+  --warn:#ffc43d;
 }
 
 *{box-sizing:border-box}
@@ -20,7 +21,7 @@ body{
   min-height:100vh;
 }
 
-.app{max-width:1050px;margin:0 auto;padding:22px}
+.app{max-width:1120px;margin:0 auto;padding:22px}
 
 .topbar{
   display:flex;
@@ -41,6 +42,7 @@ h1{margin:0;font-size:20px}
 h2{margin:0 0 10px}
 h3{margin:0 0 8px}
 .muted{color:var(--muted)}
+.small{font-size:12px}
 .big{font-size:26px;font-weight:800}
 
 .card{
@@ -57,14 +59,15 @@ h3{margin:0 0 8px}
 }
 .screen-foot{margin-top:14px}
 .spacer{flex:1}
-
 .hidden{display:none}
 
 .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-@media (max-width:900px){
+.grid{display:grid;grid-template-columns:420px 1fr;gap:14px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:980px){
   .topbar{flex-direction:column;align-items:flex-start}
   .grid{grid-template-columns:1fr}
+  .grid2{grid-template-columns:1fr}
 }
 
 label{display:flex;flex-direction:column;gap:6px;min-width:230px}
@@ -85,7 +88,7 @@ button{
   background:rgba(124,92,255,.20);
   color:var(--text);
   cursor:pointer;
-  transition:transform .05s ease, border-color .2s ease;
+  transition:transform .05s ease, border-color .2s ease, background .2s ease;
 }
 button:active{transform:translateY(1px)}
 button:hover{border-color:rgba(124,92,255,.55)}
@@ -93,6 +96,8 @@ button.primary{background:rgba(124,92,255,.35)}
 button.ghost{background:rgba(255,255,255,.06)}
 button.danger{border-color:rgba(255,77,109,.55); color:#ffd5dd}
 button.danger:hover{border-color:rgba(255,77,109,.9)}
+button.warn{border-color:rgba(255,196,61,.6)}
+button.warn:hover{border-color:rgba(255,196,61,.9)}
 
 .panel{
   background:rgba(0,0,0,.22);
@@ -100,9 +105,11 @@ button.danger:hover{border-color:rgba(255,77,109,.9)}
   border-radius:14px;
   padding:12px;
 }
+
 .panel.mini{min-width:180px}
 
 .list{margin:8px 0 0 18px}
+
 .kv div{margin:6px 0}
 
 .ratings{
@@ -137,8 +144,53 @@ button.danger:hover{border-color:rgba(255,77,109,.9)}
   background:rgba(255,255,255,.05);
 }
 
+.hr{
+  border-top:1px solid rgba(255,255,255,.12);
+  margin:12px 0;
+}
+.bar{
+  height:12px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(0,0,0,.22);
+  overflow:hidden;
+}
+.fill{
+  height:100%;
+  width:50%;
+  background:rgba(124,92,255,.55);
+}
+
+.tabs{
+  display:flex;gap:8px;flex-wrap:wrap;
+  margin:10px 0 14px;
+}
+.tabbtn{padding:8px 10px;border-radius:999px;font-size:13px}
+
+.table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:8px;
+}
+.table th,.table td{
+  padding:8px;
+  border-bottom:1px solid rgba(255,255,255,.10);
+  vertical-align:top;
+}
+.pill{
+  display:inline-block;
+  padding:2px 8px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.06);
+  font-size:12px;
+}
+.pill.good{border-color:rgba(124,92,255,.6)}
+.pill.warn{border-color:rgba(255,196,61,.6)}
+.pill.bad{border-color:rgba(255,77,109,.6)}
+
 .log{
-  height:220px;
+  height:360px;
   overflow:auto;
   background:rgba(0,0,0,.25);
   border:1px solid var(--border);
