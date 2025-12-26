@@ -1,10 +1,8 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Gridiron Career Sim v0.6.7</title>
-<link rel="stylesheet" href="style.css"/>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gridiron Career Sim v0.6.8</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div class="app">
@@ -34,6 +32,12 @@
   </div>
 </section>
 
+<section id="gameCard" class="card game hidden">
+  <h2>Game Week</h2>
+  <div id="gameInfo"></div>
+  <button class="primary" onclick="startGame()">Play Game</button>
+</section>
+
 <section class="grid">
   <div class="card">
     <h2>Weekly Actions</h2>
@@ -60,7 +64,17 @@
   </div>
 </section>
 
+<!-- MINI GAME MODAL -->
+<div id="miniGame" class="modal hidden">
+  <div class="modal-card">
+    <h2>Drive <span id="driveNum"></span></h2>
+    <p id="drivePrompt"></p>
+    <div id="driveChoices"></div>
+  </div>
+</div>
+
 </div>
 <script src="game.js"></script>
-</body>
-</html>
+
+
+</body></html>
