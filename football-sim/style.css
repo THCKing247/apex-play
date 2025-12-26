@@ -133,3 +133,15 @@ h1{margin:2px 0 0;font-size:22px;letter-spacing:.2px}
   .cards{grid-template-columns:1fr;}
   .meters{grid-template-columns:1fr;}
 }
+
+/* Skills */
+.skillsList{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+.skillRow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px;border:1px solid var(--border);background:var(--card);border-radius:14px;}
+.skillLeft{display:flex;flex-direction:column;gap:2px;}
+.skillName{font-weight:800;}
+.skillMeta{font-size:12px;color:var(--muted);}
+.skillRight{display:flex;align-items:center;gap:8px;}
+.skillVal{min-width:34px;text-align:right;font-weight:900;}
+.btnTiny{padding:6px 10px;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,.06);color:var(--text);cursor:pointer;font-weight:800;}
+.btnTiny:disabled{opacity:.45;cursor:not-allowed;}
+@media (max-width: 920px){.skillsList{grid-template-columns:1fr;}}
