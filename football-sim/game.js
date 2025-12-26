@@ -285,6 +285,135 @@ function ensureSeason(){
     state.gameResolvedThisWeek = false;
   }
 
+  // ---------- Transitions (HS -> College) ----------
+  const COLLEGES = [
+    { id: "metroU",  name: "Metro U",      rating: 78, stipend: 40 },
+    { id: "coastal", name: "Coastal Tech", rating: 74, stipend: 55 },
+    { id: "redval",  name: "Red Valley",   rating: 82, stipend: 25 },
+    { id: "summit",  name: "Summit State", rating: 86, stipend: 15 },
+  ];
+
+  function commitCollege(collegeId){
+    const c = COLLEGES.find(x => x.id === collegeId);
+    if (!c) return;
+
+    state.college = c;
+    state.phase = "COLLEGE";
+    state.year = 1;
+    state.week = 1;
+    state.money += c.stipend;
+    state.pendingCollegeChoice = false;
+
+    ensureSeason();
+    weeklyRefresh();
+    save();
+
+    // hide modal
+    const modal = $("#collegeModal");
+    if (modal) modal.classList.remove("show");
+
+    log(`Committed to ${c.name}! Welcome to College Ball.`);
+    render();
+  }
+
+  function openCollegeChoice(){
+    state.pendingCollegeChoice = true;
+    const modal = $("#collegeModal");
+    const list = $("#collegeList");
+    const closeBtn = $("#collegeClose");
+
+    // Simple pool; can be expanded later.
+    const schools = [
+      "State University",
+      "Coastal Tech",
+      "Northern A&M",
+      "Metro College",
+      "Pine Valley",
+      "River City U",
+      "Desert State",
+      "Capitol University"
+    ];
+
+    list.innerHTML = schools.map(s => `
+      <button class="btn" data-school="${escapeHtml(s)}" style="width:100%; text-align:left; margin:.25rem 0;">
+        Commit to ${escapeHtml(s)}
+      </button>
+    `).join("");
+
+    const onClick = (e)=>{
+      const btn = e.target.closest("button[data-school]");
+      if(!btn) return;
+      const school = btn.getAttribute("data-school");
+      // Commit!
+      state.college = school;
+      state.phase = "COLLEGE";
+      state.year = 1;
+      state.week = 1;
+      state.record = { w:0, l:0 };
+      state.pendingCollegeChoice = false;
+      state.schedule = buildSchedule(state);
+      weeklyRefresh();
+      save();
+      render();
+      log(`Committed to ${school}. Welcome to College Football!`);
+      modal.close();
+      list.removeEventListener("click", onClick);
+      closeBtn.removeEventListener("click", onClose);
+    };
+    const onClose = ()=>{
+      // Don't allow skipping; keep modal open.
+      log("You must commit to a college to continue.");
+      try{ modal.showModal(); }catch(_){ /* ignore */ }
+    };
+
+    list.addEventListener("click", onClick);
+    closeBtn.addEventListener("click", onClose);
+
+    try{ modal.showModal(); }catch(_){ /* already open */ }
+  }
+
+  // ---------- Week advance ----------
+  function advanceWeek(){
+    if (state.pendingCollegeChoice){
+      log("You must commit to a college before continuing.");
+      openCollegeChoice();
+      return;
+    }
+
+    // If this is a game week and the game hasn't been resolved, require it.
+    if (isGameWeek(state) && !state.gameResolvedThisWeek){
+      log("Play or Sim your game before advancing the week.");
+      return;
+    }
+
+    // Move time forward.
+    state.week += 1;
+
+    // End of season?
+    if (state.week > state.seasonLength){
+      // Force HS -> College after Year 4
+      if (state.phase === "HS" && state.year >= 4){
+        state.week = state.seasonLength; // keep season visible
+        save();
+        render();
+        log("High school is over. It's time to commit to a college.");
+        openCollegeChoice();
+        return;
+      }
+
+      // Next season
+      state.year += 1;
+      state.week = 1;
+      state.record = { w:0, l:0 };
+      state.schedule = buildSchedule(state);
+      log(`New season started: ${state.phase} Year ${state.year}.`);
+    }
+
+    weeklyRefresh();
+    save();
+    render();
+  }
+
   const ACTIONS = [
     { id:"train",  label:"Train",  desc:"Earn XP (then spend points on skills)", baseEnergy:12, baseHours:1,
     options:[1,2,3],
