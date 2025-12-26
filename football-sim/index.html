@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Gridiron Career Sim v0.6.3 (Cheat Bar)</title>
+  <link rel="stylesheet" href="./style.css?v=63"/>
+</head>
+<body>
+<div class="app">
+
+<!-- CHEAT BAR -->
+<div id="cheatBar" class="cheat-bar">
+  <b>DEV CHEATS</b>
+  <button id="cheatEnergy">+100 Energy</button>
+  <button id="cheatHours">+40 Hours</button>
+  <button id="cheatMoney">+$10k</button>
+  <button id="cheatStats">+5 All Stats</button>
+  <button id="cheatWeek">+1 Week</button>
+  <button id="cheatYear">+1 Year</button>
+  <button id="cheatPhase">Next Phase</button>
+  <button id="toggleCheats">Hide</button>
+</div>
+
+<header class="topbar">
+  <h1>Gridiron Career Sim</h1>
+  <div class="actions">
+    <button id="btnContinue">Continue</button>
+    <button id="btnNew" class="primary">New Career</button>
+    <button id="btnWipe">Wipe Save</button>
+  </div>
+</header>
+
+<section id="screen-career" class="card">
+  <h2 id="careerSub"></h2>
+
+  <div class="grid">
+    <div class="panel">
+      <h3>Life</h3>
+
+      <div class="stat">
+        <b>Energy</b> <span id="energyText"></span>
+        <div class="bar"><div id="energyBar" class="fill"></div></div>
+      </div>
+
+      <div class="stat">
+        <b>Hours Remaining</b> <span id="hoursText"></span>
+        <div class="bar"><div id="hoursBar" class="fill"></div></div>
+      </div>
+
+      <div id="lifeStats"></div>
+
+      <div class="row">
+        <select id="trainHours">
+          <option value="1">Train 1h</option>
+          <option value="2">Train 2h</option>
+          <option value="3">Train 3h</option>
+        </select>
+        <button id="btnTrain">Train</button>
+      </div>
+
+      <div class="row">
+        <select id="studyHours">
+          <option value="1">Study 1h</option>
+          <option value="2">Study 2h</option>
+          <option value="3">Study 3h</option>
+        </select>
+        <button id="btnStudy">Study</button>
+      </div>
+
+      <div class="row">
+        <select id="socialHours">
+          <option value="1">Social 1h</option>
+          <option value="2">Social 2h</option>
+        </select>
+        <button id="btnSocial">Social</button>
+      </div>
+
+      <div class="row">
+        <select id="workHours">
+          <option value="1">Work 1h</option>
+          <option value="2">Work 2h</option>
+          <option value="3">Work 3h</option>
+        </select>
+        <button id="btnWork">Work</button>
+      </div>
+
+      <button id="btnAdvanceWeek" class="primary">Advance Week</button>
+    </div>
+
+    <div class="panel">
+      <h3>Shop</h3>
+      <div id="shop"></div>
+
+      <div class="hr"></div>
+
+      <h3>Career Log</h3>
+      <div id="log" class="log"></div>
+    </div>
+  </div>
+</section>
+
+<footer class="muted">v0.6.3 • Dev Cheat Bar Enabled</footer>
+</div>
+<script src="./game.js?v=63" defer></script>
+</body>
+</html>
