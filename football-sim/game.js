@@ -1,12 +1,14 @@
-const SAVE_KEY="gcs_v061_energy";
+const SAVE_KEY="gcs_v062_hours";
 let state;
 
-const ENERGY_COSTS = {
-  train:20,
-  study:15,
-  social:10,
-  work:15
+const ENERGY_PER_HOUR = {
+  train:8,
+  study:6,
+  social:4,
+  work:6
 };
+
+const HOURS_PER_WEEK = 40;
 
 const SHOP_ITEMS = [
   {id:"energy_drink", name:"Energy Drink", cost:75, restore:20},
@@ -31,7 +33,8 @@ function newCareer(){
       grades:70,
       social:50,
       money:0,
-      energy:100
+      energy:100,
+      hours:HOURS_PER_WEEK
     },
     hs:{wins:0,losses:0},
     college:{offers:[],committed:false},
@@ -48,18 +51,27 @@ function load(){
   state=JSON.parse(s);return true;
 }
 
-function spendEnergy(cost){
-  if(state.life.energy < cost){
+function canSpend(hours, energy){
+  if(state.life.hours < hours){
+    log("Not enough hours left this week.");
+    return false;
+  }
+  if(state.life.energy < energy){
     log("Not enough energy.");
     return false;
   }
-  state.life.energy -= cost;
   return true;
+}
+
+function spend(hours, energy){
+  state.life.hours -= hours;
+  state.life.energy -= energy;
 }
 
 function advanceWeek(){
   state.week++;
   state.life.energy = Math.min(100, state.life.energy + 30);
+  state.life.hours = HOURS_PER_WEEK;
 
   if(state.week>12){
     state.week=1;
@@ -106,9 +118,13 @@ function render(){
 
   document.getElementById("energyText").textContent =
     `${state.life.energy}/100`;
-
   document.getElementById("energyBar").style.width =
     state.life.energy + "%";
+
+  document.getElementById("hoursText").textContent =
+    `${state.life.hours}/${HOURS_PER_WEEK}`;
+  document.getElementById("hoursBar").style.width =
+    (state.life.hours/HOURS_PER_WEEK*100) + "%";
 
   renderShop();
 }
@@ -122,33 +138,45 @@ document.addEventListener("DOMContentLoaded",()=>{
   btnAdvanceWeek.onclick=advanceWeek;
 
   btnTrain.onclick=()=>{
-    if(spendEnergy(ENERGY_COSTS.train)){
-      state.player.ratings.speed++;
-      log("Training improved speed");
+    const h=parseInt(trainHours.value,10);
+    const e=h*ENERGY_PER_HOUR.train;
+    if(canSpend(h,e)){
+      spend(h,e);
+      state.player.ratings.speed+=h;
+      log(`Trained for ${h}h (+${h} speed)`);
       render();save();
     }
   };
 
   btnStudy.onclick=()=>{
-    if(spendEnergy(ENERGY_COSTS.study)){
-      state.life.grades+=2;
-      log("Studied");
+    const h=parseInt(studyHours.value,10);
+    const e=h*ENERGY_PER_HOUR.study;
+    if(canSpend(h,e)){
+      spend(h,e);
+      state.life.grades+=h*2;
+      log(`Studied for ${h}h`);
       render();save();
     }
   };
 
   btnSocial.onclick=()=>{
-    if(spendEnergy(ENERGY_COSTS.social)){
-      state.life.social+=2;
-      log("Socialized");
+    const h=parseInt(socialHours.value,10);
+    const e=h*ENERGY_PER_HOUR.social;
+    if(canSpend(h,e)){
+      spend(h,e);
+      state.life.social+=h*2;
+      log(`Socialized for ${h}h`);
       render();save();
     }
   };
 
   btnWork.onclick=()=>{
-    if(spendEnergy(ENERGY_COSTS.work)){
-      state.life.money+=100;
-      log("Worked part-time");
+    const h=parseInt(workHours.value,10);
+    const e=h*ENERGY_PER_HOUR.work;
+    if(canSpend(h,e)){
+      spend(h,e);
+      state.life.money+=h*100;
+      log(`Worked ${h}h (+$${h*100})`);
       render();save();
     }
   };
