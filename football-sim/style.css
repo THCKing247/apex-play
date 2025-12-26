@@ -1,14 +1,31 @@
-body{background:#0b1026;color:#e5e7eb;font-family:system-ui;margin:0}
-.app{max-width:1000px;margin:auto;padding:16px}
-.topbar{display:flex;justify-content:space-between;align-items:center}
-.card{background:rgba(255,255,255,.08);border-radius:14px;padding:16px}
-.stats{display:flex;gap:16px;flex-wrap:wrap}
-.bar{background:#222;height:10px;border-radius:6px;overflow:hidden}
-.bar div{background:#7c5cff;height:100%}
-.bar-wrap{margin:10px 0}
-button{padding:6px 10px;border-radius:6px;border:1px solid #555;background:#222;color:#fff}
-.advance{background:#7c5cff;margin-top:10px}
-.log{height:220px;overflow:auto;background:#0003;padding:8px;margin-top:10px}
-.skills{margin-top:10px;padding:10px;background:#0004;border-radius:10px}
+body{
+  background:radial-gradient(circle at top,#12193b,#070b1a);
+  color:#e5e7eb;font-family:system-ui;margin:0
+}
+.app{max-width:1200px;margin:auto;padding:24px}
+.card{
+  background:rgba(255,255,255,.08);
+  border-radius:18px;
+  padding:20px;
+  margin-bottom:20px
+}
+.header{display:flex;justify-content:space-between;align-items:center}
+.header .stats{display:flex;gap:18px}
+.stat span{font-size:12px;opacity:.7}
+.stat b{font-size:18px}
+.sub{opacity:.8}
+.grid{display:grid;grid-template-columns:1.2fr .8fr 1fr;gap:20px}
+.actions button,button{
+  padding:10px 14px;
+  border-radius:10px;
+  border:1px solid #555;
+  background:#1b1f3b;
+  color:#fff;
+  margin:4px
+}
+button.primary{background:#7c5cff}
+.bar{height:12px;background:#222;border-radius:10px;overflow:hidden}
+.bar div{height:100%;background:#7c5cff}
+.log{height:240px;overflow:auto}
+.skills div{margin-bottom:6px}
 .hidden{display:none}
-.cheat-bar{position:fixed;bottom:0;left:0;right:0;background:#111;padding:6px;display:flex;gap:6px}
