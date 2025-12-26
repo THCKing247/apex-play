@@ -1,7 +1,7 @@
 body{background:#0b1026;color:#e7e9ee;font-family:system-ui;margin:0}
 .app{max-width:1000px;margin:auto;padding:16px}
 .topbar{display:flex;justify-content:space-between;align-items:center}
-button,select{padding:8px 12px;border-radius:8px;border:1px solid #555;background:#222;color:#fff}
+button,select{padding:6px 10px;border-radius:6px;border:1px solid #555;background:#222;color:#fff}
 button.primary{background:#7c5cff}
 .card{background:rgba(255,255,255,.08);border-radius:14px;padding:16px;margin-top:16px}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
@@ -13,3 +13,19 @@ button.primary{background:#7c5cff}
 .hr{height:1px;background:#ffffff22;margin:12px 0}
 .stat{margin-bottom:10px}
 .muted{opacity:.7}
+
+/* CHEAT BAR */
+.cheat-bar{
+  position:fixed;
+  bottom:0;
+  left:0;
+  right:0;
+  background:#111;
+  border-top:1px solid #444;
+  padding:6px;
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+  z-index:9999;
+}
+.cheat-bar.hidden{display:none}
