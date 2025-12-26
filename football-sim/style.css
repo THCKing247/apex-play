@@ -29,3 +29,12 @@ button.primary{background:#7c5cff}
 .log{height:240px;overflow:auto}
 .skills div{margin-bottom:6px}
 .hidden{display:none}
+.game{border:2px solid #7c5cff}
+.modal{
+  position:fixed;inset:0;background:#000a;
+  display:flex;align-items:center;justify-content:center
+}
+.modal-card{
+  background:#0b1026;padding:20px;border-radius:16px;
+  width:420px;text-align:center
+}
