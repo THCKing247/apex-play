@@ -14,6 +14,58 @@
   const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
   const fmt = (n) => Intl.NumberFormat().format(n);
 
+  // ---------- Progression ----------
+  const xpToNext = (lvl) => 100 + (lvl - 1) * 35;
+
+  function calcOVR(s){
+    const a = s.attrs || {};
+    const core = (a.speed + a.strength + a.agility + a.stamina + a.awareness) / 5;
+    if (s.position === "QB"){
+      return Math.round((core * 0.55) + (a.throwPower * 0.20) + (a.accuracy * 0.25));
+    }
+    if (s.position === "RB"){
+      return Math.round((core * 0.70) + (a.catching * 0.15) + (a.awareness * 0.15));
+    }
+    // WR default
+    return Math.round((core * 0.65) + (a.catching * 0.25) + (a.awareness * 0.10));
+  }
+
+  function gainXp(amount){
+    amount = Math.max(0, Math.floor(amount));
+    if (!amount) return;
+    state.xp += amount;
+    let leveled = 0;
+    while (state.xp >= xpToNext(state.level)){
+      state.xp -= xpToNext(state.level);
+      state.level += 1;
+      state.skillPoints += 3;
+      leveled += 1;
+    }
+    if (leveled){
+      log(`✨ Level up! You reached Level ${state.level} (+${leveled*3} skill points).`);
+    }
+  }
+
+  function skillList(){
+    // Show only relevant + core
+    const base = ["speed","strength","agility","stamina","awareness"];
+    if (state.position === "QB") return [...base, "throwPower", "accuracy"];
+    if (state.position === "RB") return [...base, "catching"];
+    return [...base, "catching"];
+  }
+
+  const SKILL_LABELS = {
+    speed:"Speed",
+    strength:"Strength",
+    agility:"Agility",
+    stamina:"Stamina",
+    awareness:"Awareness",
+    throwPower:"Throw Power",
+    accuracy:"Accuracy",
+    catching:"Catching",
+    tackling:"Tackling",
+  };
+
   function chanceFromDiff(my, opp){
     // Logistic-ish: ~50% at equal, steeper with 12pt scale
     const diff = my - opp;
@@ -21,7 +73,44 @@
     return clamp(p, 0.05, 0.95);
   }
 
-  // ---------- Mini-game question bank ----------
+  
+  // ---------- Skills UI ----------
+  function renderSkills(){
+    const wrap = $("#skillsList");
+    if (!wrap) return;
+    wrap.innerHTML = "";
+    const keys = skillList();
+    keys.forEach(k=>{
+      const val = state.attrs[k] ?? 0;
+      const row = document.createElement("div");
+      row.className = "skillRow";
+      row.innerHTML = `
+        <div class="skillLeft">
+          <div class="skillName">${SKILL_LABELS[k] || k}</div>
+          <div class="skillMeta">${k === "awareness" ? "Improves decision-making in games." : "Max 99"}</div>
+        </div>
+        <div class="skillRight">
+          <div class="skillVal">${val}</div>
+          <button class="btnTiny" data-up="${k}" ${state.skillPoints>0 && val<99 ? "" : "disabled"}>+1</button>
+        </div>
+      `;
+      wrap.appendChild(row);
+    });
+
+    $$("#skillsList button[data-up]").forEach(b=>{
+      b.onclick = ()=> {
+        const k = b.dataset.up;
+        if (state.skillPoints <= 0) return;
+        if ((state.attrs[k]||0) >= 99) return;
+        state.attrs[k] = clamp((state.attrs[k]||0) + 1, 1, 99);
+        state.skillPoints -= 1;
+        log(`🧠 +1 ${SKILL_LABELS[k] || k}.`);
+        save();
+        render();
+      };
+    });
+  }
+// ---------- Mini-game question bank ----------
   const MINI_BANK = {
     QB: [
       { q:"3rd & 6. Defense shows Cover 2. Best quick throw?", a:["Stick route to TE", "Go ball outside", "QB draw"], correct:0 },
@@ -57,18 +146,35 @@
     year: 1,
     week: 1,
     money: 50,
-    ovr: 60,
-    skill: 60,             // training impacts
-    iq: 55,                // study impacts
+
+    // Progression
+    level: 1,
+    xp: 0,
+    skillPoints: 0,
+
+    // Core attributes (1-99)
+    attrs: {
+      speed: 60,
+      strength: 58,
+      agility: 60,
+      stamina: 60,
+      awareness: 55,
+      throwPower: 62,      // QB-focused
+      accuracy: 58,        // QB-focused
+      catching: 55,        // RB/WR-focused
+      tackling: 45         // placeholder (future)
+    },
+
     energy: 100,
     hoursLeft: 25,
     seasonWins: 0,
     seasonLosses: 0,
-    schedule: [],          // generated per season
-    gameResolvedThisWeek: false,
-    pendingCollegeChoice: false,
-    log: ["Welcome! Train + study each week, then play your game."],
-    cheatsOpen: true,
+    schedule: [],          // gen
+    gameResult: null,
+    log: [],
+    store: { snacks: 2, energyDrink: 1 },
+    cheats: { enabled: true },
+    minigame: null,
   });
 
   let state = load() ?? DEFAULTS();
@@ -105,7 +211,43 @@
     return [65, 92];
   }
 
-  function ensureSeason(){
+  
+  function ensureState(){
+    const d = DEFAULTS();
+    state = state || {};
+    // shallow defaults
+    for (const k of Object.keys(d)){
+      if (state[k] === undefined) state[k] = d[k];
+    }
+    // attrs defaults + migration
+    state.attrs = state.attrs || {};
+    for (const k of Object.keys(d.attrs)){
+      if (state.attrs[k] === undefined) state.attrs[k] = d.attrs[k];
+    }
+    // migrate legacy fields if present
+    if (state.skill !== undefined){
+      // map legacy "skill" into position-relevant attributes
+      const s = clamp(state.skill, 1, 99);
+      state.attrs.speed = clamp(state.attrs.speed + Math.round((s-60)*0.15), 1, 99);
+      state.attrs.agility = clamp(state.attrs.agility + Math.round((s-60)*0.15), 1, 99);
+      state.attrs.accuracy = clamp(state.attrs.accuracy + Math.round((s-60)*0.25), 1, 99);
+      state.attrs.catching = clamp(state.attrs.catching + Math.round((s-60)*0.20), 1, 99);
+      delete state.skill;
+    }
+    if (state.iq !== undefined){
+      state.attrs.awareness = clamp(state.iq, 1, 99);
+      delete state.iq;
+    }
+    // clamp attrs
+    for (const k of Object.keys(state.attrs)){
+      state.attrs[k] = clamp(state.attrs[k], 1, 99);
+    }
+    // progression sanity
+    state.level = Math.max(1, Math.floor(state.level||1));
+    state.xp = Math.max(0, Math.floor(state.xp||0));
+    state.skillPoints = Math.max(0, Math.floor(state.skillPoints||0));
+  }
+function ensureSeason(){
     const len = seasonLength();
     if(!Array.isArray(state.schedule) || state.schedule.length !== len){
       const [lo, hi] = opponentRange();
@@ -144,23 +286,29 @@
   }
 
   const ACTIONS = [
-    { id:"train",  label:"Train",  desc:"Improve skill / OVR", baseEnergy:10, baseHours:1, apply:(hrs)=>{
-      const gain = 0.6*hrs + (Math.random()*0.3);
-      state.skill = clamp(state.skill + gain, 0, 99);
-      state.ovr = clamp(Math.round((state.skill*0.65 + state.iq*0.35)), 0, 99);
-      log(`Training +${gain.toFixed(1)} skill.`);
-    }},
-    { id:"study",  label:"Study Playbook", desc:"Improve IQ / consistency", baseEnergy:8, baseHours:1, apply:(hrs)=>{
-      const gain = 0.5*hrs + (Math.random()*0.25);
-      state.iq = clamp(state.iq + gain, 0, 99);
-      state.ovr = clamp(Math.round((state.skill*0.65 + state.iq*0.35)), 0, 99);
-      log(`Studying +${gain.toFixed(1)} IQ.`);
-    }},
-    { id:"work",   label:"Part-Time Work", desc:"Earn money", baseEnergy:12, baseHours:2, apply:(hrs)=>{
-      const pay = 10*hrs;
+    { id:"train",  label:"Train",  desc:"Earn XP (then spend points on skills)", baseEnergy:12, baseHours:1,
+    options:[1,2,3],
+    apply:(hrs)=>{
+      const xp = 20*hrs + randInt(0, 10*hrs);
+      gainXp(xp);
+      log(`🏋️ Trained for ${hrs}h (+${xp} XP).`);
+    } },
+    { id:"study",  label:"Study Playbook", desc:"Earn XP and boost your preparation", baseEnergy:8, baseHours:1,
+    options:[1,2,3],
+    apply:(hrs)=>{
+      const xp = 15*hrs + randInt(0, 8*hrs);
+      gainXp(xp);
+      log(`📚 Studied for ${hrs}h (+${xp} XP).`);
+    } },
+    { id:"work",   label:"Part-Time Work", desc:"Earn money (and a little XP)", baseEnergy:6, baseHours:1,
+    options:[1,2,3],
+    apply:(hrs)=>{
+      const pay = 12*hrs;
       state.money += pay;
-      log(`Worked ${hrs}h and earned $${fmt(pay)}.`);
-    }},
+      const xp = 5*hrs;
+      gainXp(xp);
+      log(`💼 Worked ${hrs}h (+$${pay}, +${xp} XP).`);
+    } },
     { id:"rest",   label:"Rest", desc:"Restore energy", baseEnergy:-18, baseHours:2, apply:(hrs)=>{
       const restore = 18*hrs;
       state.energy = clamp(state.energy + restore, 0, 100);
@@ -287,183 +435,29 @@
     const wk = state.schedule[state.week-1];
     const oppOvr = wk?.oppOvr ?? rand(55,85);
 
-    const eff = clamp(state.ovr + perfMod, 0, 99);
+    const baseOvr = calcOVR(state);
+    const eff = clamp(baseOvr + perfMod, 0, 99);
     const pWin = chanceFromDiff(eff, oppOvr);
     const win = Math.random() < pWin;
 
-    // Simple stat line + XP
-    const xp = clamp(10 + points*3 + (win?10:0), 5, 80);
-    state.skill = clamp(state.skill + xp/120, 0, 99);
-    state.iq = clamp(state.iq + xp/180, 0, 99);
-    state.ovr = clamp(Math.round((state.skill*0.65 + state.iq*0.35)), 0, 99);
+    // XP + small cash on win
+    const xp = clamp(18 + points*4 + (win?18:8), 10, 140);
+    gainXp(xp);
+    if (win) state.money += 25;
 
     if(win) state.seasonWins++; else state.seasonLosses++;
 
-    const scoreMy  = Math.round(14 + pWin*24 + rand(-3,3));
-    const scoreOpp = Math.round(14 + (1-pWin)*24 + rand(-3,3));
-    const myFinal = win ? Math.max(scoreMy, scoreOpp+1) : Math.min(scoreMy, scoreOpp-1);
-    const oppFinal = win ? Math.min(scoreOpp, myFinal-1) : Math.max(scoreOpp, myFinal+1);
+    const scoreMy  = Math.round(14 + pWin*21 + rand(-6,6));
+    const scoreOpp = Math.round(14 + (1-pWin)*21 + rand(-6,6));
+    const res = { win, pWin, scoreMy, scoreOpp, oppOvr, eff, xp, points };
 
-    log(`Game vs ${wk.opp} (OVR ${oppOvr}). Performance ${perfMod>=0?"+":""}${perfMod}. Result: ${win?"WIN":"LOSS"} ${myFinal}-${oppFinal}. (+${xp} XP)`);
+    state.gameResult = res;
     state.gameResolvedThisWeek = true;
+
+    log(`🏟️ Game vs ${wk?.opp || "Opponent"}: ${scoreMy}-${scoreOpp} (${win?"W":"L"}) | +${xp} XP${win?" +$25":""}`);
   }
 
-  // ---------- College commit ----------
-  const COLLEGES = [
-    { id:"metroU",  name:"Metro U", rating:78, bonusOvr:+1, stipend:40 },
-    { id:"coastal", name:"Coastal Tech", rating:74, bonusOvr:+0, stipend:55 },
-    { id:"redval",  name:"Red Valley", rating:82, bonusOvr:+2, stipend:25 },
-    { id:"summit",  name:"Summit College", rating:76, bonusOvr:+1, stipend:45 },
-    { id:"canyon",  name:"Canyon State", rating:80, bonusOvr:+2, stipend:30 },
-  ];
-
-  function openCollegeChoice(){
-    state.pendingCollegeChoice = true;
-    const wrap = $("#collegeChoices");
-    wrap.innerHTML = "";
-    COLLEGES.forEach(c=>{
-      const btn = document.createElement("button");
-      btn.className = "btn";
-      btn.innerHTML = `<div class="btnTitle">${c.name}</div>
-                       <div class="btnSub">Team rating ${c.rating} • Weekly stipend $${c.stipend}${c.bonusOvr?` • +${c.bonusOvr} OVR boost`:``}</div>`;
-      btn.onclick = ()=> commitCollege(c);
-      wrap.appendChild(btn);
-    });
-    $("#collegeModal").classList.add("open");
-  }
-
-  function commitCollege(col){
-    $("#collegeModal").classList.remove("open");
-    state.pendingCollegeChoice = false;
-    state.phase = "COLLEGE";
-    state.year = 1;
-    state.week = 1;
-    state.money += col.stipend; // first stipend
-    state.ovr = clamp(state.ovr + col.bonusOvr, 0, 99);
-    state.schedule = []; // regen
-    ensureSeason();
-    log(`Committed to ${col.name}!`);
-    save();
-    render();
-  }
-
-  // ---------- Week advancement ----------
-  function endOfSeason(){
-    const len = seasonLength();
-    return state.week > len;
-  }
-
-  function advanceWeek(){
-    // Block advancement if we need a college choice
-    if(state.pendingCollegeChoice){
-      openCollegeChoice();
-      return;
-    }
-
-    // If it's a game week and we haven't resolved it, nudge player
-    if(isGameWeek() && !state.gameResolvedThisWeek){
-      // Default per user's choice: mini-game is the main driver
-      openMiniGame();
-      return;
-    }
-
-    // advance
-    state.week += 1;
-
-    // weekly refresh
-    weeklyRefresh();
-
-    // season rollover
-    if(endOfSeason()){
-      // Completed season: move year/phase
-      const len = seasonLength();
-      // state.week is len+1 now — reset below
-      log(`Season complete. Record: ${state.seasonWins}-${state.seasonLosses}.`);
-
-      if(state.phase === "HS"){
-        if(state.year >= 4){
-          // force commit
-          state.year = 4; // lock
-          state.week = 1;
-          state.schedule = [];
-          state.pendingCollegeChoice = true;
-          openCollegeChoice();
-          save();
-          render();
-          return;
-        }else{
-          state.year += 1;
-        }
-      }else if(state.phase === "COLLEGE"){
-        if(state.year >= 4){
-          state.phase = "PRO";
-          state.year = 1;
-          log("Drafted to the Pros!");
-        }else{
-          state.year += 1;
-        }
-      }else{
-        state.year += 1;
-      }
-
-      state.week = 1;
-      state.schedule = [];
-      ensureSeason();
-    }
-
-    // Pro bye week message
-    if(isByeWeek()){
-      log("This week is a BYE — use it to train/rest.");
-      state.gameResolvedThisWeek = true; // no game required
-    }
-
-    save();
-    render();
-  }
-
-  // ---------- Actions + store ----------
-  function doAction(actionId, hrs){
-    const action = ACTIONS.find(a=>a.id===actionId);
-    if(!action) return;
-    hrs = clamp(parseInt(hrs,10)||1, 1, 3);
-
-    const energyCost = action.baseEnergy * hrs;
-    const hoursCost = action.baseHours * hrs;
-
-    if(state.hoursLeft < hoursCost){
-      log(`Not enough hours left (${state.hoursLeft}) for that.`);
-      render();
-      return;
-    }
-    if(state.energy < energyCost && energyCost > 0){
-      log(`Not enough energy (${state.energy}) for that.`);
-      render();
-      return;
-    }
-
-    state.hoursLeft -= hoursCost;
-    state.energy = clamp(state.energy - energyCost, 0, 100);
-
-    action.apply(hrs);
-    save();
-    render();
-  }
-
-  function buyItem(itemId){
-    const it = STORE.find(x=>x.id===itemId);
-    if(!it) return;
-    if(state.money < it.cost){
-      log(`Not enough money for ${it.name}.`);
-      render(); return;
-    }
-    state.money -= it.cost;
-    state.energy = clamp(state.energy + it.energy, 0, 100);
-    log(`Used ${it.name}. Energy ${it.energy>0?"+":""}${it.energy}.`);
-    save();
-    render();
-  }
-
-  // ---------- Cheats ----------
+// ---------- Cheats ----------
   function applyCheat(kind){
     switch(kind){
       case "energy":
@@ -473,9 +467,12 @@
       case "money":
         state.money += 500; log("Cheat: +$500."); break;
       case "ovr":
-        state.ovr = clamp(state.ovr + 5, 0, 99);
-        state.skill = clamp(state.skill + 3, 0, 99);
-        log("Cheat: +OVR."); break;
+        // boost a few core skills for testing
+        ["speed","agility","awareness","throwPower","accuracy","catching"].forEach(k=>{
+          if (state.attrs && state.attrs[k] !== undefined) state.attrs[k] = clamp(state.attrs[k] + 3, 1, 99);
+        });
+        state.skillPoints += 5;
+        log("Cheat: Boosted skills (+5 skill points)."); break;
       case "week":
         // skip game requirement and advance
         state.gameResolvedThisWeek = true;
@@ -493,9 +490,12 @@
     $("#week").textContent = `Week ${state.week}/${seasonLength()}`;
     $("#record").textContent = `${state.seasonWins}-${state.seasonLosses}`;
     $("#money").textContent = `$${fmt(state.money)}`;
-    $("#ovr").textContent = `${Math.round(state.ovr)}`;
-    $("#skill").textContent = `${state.skill.toFixed(1)}`;
-    $("#iq").textContent = `${state.iq.toFixed(1)}`;
+    const ovr = calcOVR(state);
+    $("#ovr").textContent = `${ovr}`;
+    $("#level").textContent = `${state.level}`;
+    $("#xp").textContent = `${state.xp} / ${xpToNext(state.level)}`;
+    $("#sp").textContent = `${state.skillPoints}`;
+    $("#spPill").textContent = `${state.skillPoints}`;
 
     // bars
     $("#energyVal").textContent = `${Math.round(state.energy)}`;
