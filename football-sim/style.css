@@ -7,5 +7,9 @@ button.primary{background:#7c5cff}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .panel{background:rgba(0,0,0,.3);border-radius:12px;padding:12px}
 .row{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
-.log{height:280px;overflow:auto;background:#0003;padding:8px;border-radius:8px}
+.log{height:260px;overflow:auto;background:#0003;padding:8px;border-radius:8px}
+.bar{background:#222;height:10px;border-radius:6px;margin:4px 0}
+.fill{background:#7c5cff;height:100%;border-radius:6px}
+.hr{height:1px;background:#ffffff22;margin:12px 0}
+.stat{margin-bottom:10px}
 .muted{opacity:.7}
