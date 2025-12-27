@@ -2,7 +2,7 @@
 (() => {
   'use strict';
 
-  const VERSION = 'v1.1.2';
+  const VERSION = 'v1.1.3';
 
   const LS_KEY = 'gcs_save_v112';
 
