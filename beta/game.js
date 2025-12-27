@@ -183,6 +183,9 @@ const SAVE_KEY = 'gcs_save_v101';
   // ---------- Helpers ----------
   function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
   function fmt(n){ return n.toLocaleString(); }
+ // Store/Inventory UI expects fmtInt() in some builds.
+ // Keep as an alias so the Store button doesn't crash.
+  function fmtInt(n){ return Math.round(n).toLocaleString(); }
   function randInt(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
   function choice(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
 
