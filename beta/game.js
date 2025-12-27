@@ -303,6 +303,30 @@ function getStylesForPosition(pos){
     logPush(s, 'Used Item', `Used ${item.name}.`);
   }
 
+  function handlePositionChange(newPos){
+    if(!window.__draftPlayer) window.__draftPlayer = { name: "", position: "QB", highSchool: "", style: "Pocket" };
+    window.__draftPlayer.position = newPos;
+    const styles = getStylesForPosition(newPos);
+    if(styles && styles.length > 0){
+      window.__draftPlayer.style = styles[0].id;
+    }
+    openCreatePlayer(loadState());
+  }
+
+  function handleStyleChange(newStyle){
+    if(!window.__draftPlayer) window.__draftPlayer = { name: "", position: "QB", highSchool: "", style: "Pocket" };
+    window.__draftPlayer.style = newStyle;
+    // Update visual selection
+    document.querySelectorAll('.radioCard').forEach(card => {
+      card.classList.remove('selected');
+      const input = card.querySelector('input[type="radio"]');
+      if(input && input.value === newStyle){
+        card.classList.add('selected');
+        input.checked = true;
+      }
+    });
+  }
+
   function openCreatePlayer(s){
   // Persist draft across re-renders while the modal is open
   const st = s || loadState();
@@ -329,7 +353,7 @@ function getStylesForPosition(pos){
     return `
       <label class="radioCard ${sel?"selected":""}">
         <input type="radio" name="pstyle" value="${escapeHtml(sty.id)}" ${sel?"checked":""}
-          onchange="window.__draftPlayer.style=this.value">
+          onchange="handleStyleChange(this.value)">
         <div class="radioCardMain">
           <div class="radioCardTop">
             <div class="radioTitle">${escapeHtml(sty.name)}</div>
@@ -363,7 +387,7 @@ function getStylesForPosition(pos){
       <div class="field two">
         <div>
           <label>Position</label>
-          <select id="cp_pos" onchange="window.__draftPlayer.position=this.value; window.__draftPlayer.style=getStylesForPosition(this.value)[0].id; openCreatePlayer(loadState())">
+          <select id="cp_pos" onchange="handlePositionChange(this.value)">
             ${posOptions}
           </select>
         </div>
@@ -1099,6 +1123,10 @@ function startCareerFromCreator(){
     startCareerFromCreator,
     setModal,
     closeModal,
+    // Position/Style utilities
+    getStylesForPosition,
+    handlePositionChange,
+    handleStyleChange,
     // Modals
     openSkillsModal,
     openJobModal,
