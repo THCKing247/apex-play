@@ -1,4 +1,4 @@
-/* Gridiron Career Sim — v1.1.5 */
+/* Gridiron Career Sim — v1.1.3 */
 (() => {
   'use strict';
 
@@ -12,9 +12,9 @@
   }
 
 
-  const VERSION = 'v1.1.5';
+  const VERSION = 'v1.1.6';
 
-  const LS_KEY = 'gcs_save_v115';
+  const LS_KEY = 'gcs_save_v112';
 
   const MAX_ENERGY = 100;
   const WEEK_HOURS = 25;
@@ -221,6 +221,17 @@ function getStylesForPosition(pos){
       const inner = $('.modal-inner', dlg);
       if(inner && !inner.contains(ev.target)) close();
     }, { once:true });
+  }
+
+  // Backwards-compatible helper used by earlier UI code.
+  // Some flows (e.g., character creator) call setModal(title, bodyHTML, footHTML).
+  function setModal(title, bodyHTML, footHTML, onClose){
+    openModal({
+      title: title || 'Modal',
+      bodyHTML: bodyHTML || '',
+      footHTML: footHTML || '',
+      onClose
+    });
   }
 
   function derivedStats(s){
@@ -902,7 +913,7 @@ function startCareerFromCreator(){
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'gridiron-save-V115.json';
+      a.download = 'gridiron-save-v112.json';
       document.body.appendChild(a);
       a.click();
       a.remove();
