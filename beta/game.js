@@ -58,6 +58,18 @@
     { id:"Zone Cover",  name:"Zone Cover",  desc:"Reads routes and breaks on the ball.",       mods:{ speed:+2, stamina:+2, strength:-1, throwPower:+0, accuracy:+2 } },
     { id:"Ball Hawk",   name:"Ball Hawk",   desc:"Hunts interceptions.",                       mods:{ speed:+2, stamina:+1, strength:-1, throwPower:+0, accuracy:+3 } },
     { id:"Balanced",    name:"Balanced",    desc:"Reliable all-around corner.",               mods:{ speed:+2, stamina:+1, strength:+0, throwPower:+0, accuracy:+1 } },
+  ],
+  S: [
+    { id:"Free Safety", name:"Free Safety", desc:"Deep coverage and ball skills.",            mods:{ speed:+2, stamina:+2, strength:-1, throwPower:+0, accuracy:+3 } },
+    { id:"Strong Safety",name:"Strong Safety",desc:"Hard hitter, supports the run.",          mods:{ speed:+1, stamina:+2, strength:+2, throwPower:+0, accuracy:+1 } },
+    { id:"Ball Hawk",   name:"Ball Hawk",   desc:"Hunts interceptions.",                       mods:{ speed:+2, stamina:+1, strength:-1, throwPower:+0, accuracy:+3 } },
+    { id:"Balanced",    name:"Balanced",    desc:"Reliable all-around safety.",               mods:{ speed:+2, stamina:+2, strength:+0, throwPower:+0, accuracy:+2 } },
+  ],
+  DL: [
+    { id:"Pass Rusher", name:"Pass Rusher", desc:"Gets after the quarterback.",               mods:{ speed:+1, stamina:+1, strength:+3, throwPower:+0, accuracy:+0 } },
+    { id:"Run Stopper", name:"Run Stopper", desc:"Plugs gaps and stops the run.",             mods:{ speed:-1, stamina:+2, strength:+4, throwPower:+0, accuracy:+0 } },
+    { id:"Versatile",   name:"Versatile",   desc:"Balanced pass rush and run defense.",        mods:{ speed:+0, stamina:+2, strength:+3, throwPower:+0, accuracy:+0 } },
+    { id:"Balanced",    name:"Balanced",    desc:"Reliable all-around defensive lineman.",    mods:{ speed:+0, stamina:+1, strength:+2, throwPower:+0, accuracy:+0 } },
   ]
 };
 
@@ -95,6 +107,10 @@ function getStylesForPosition(pos){
   function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
   function rint(n){ return Math.round(n); }
   function fmtMoney(n){ return '$' + n.toLocaleString(); }
+  function pick(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
+  function toast(msg){ alert(msg); }
+  function loadState(){ return load(); }
+  function saveState(s){ save(s); }
 
   function basePlayerFromArchetype(position, styleId){
   const pos = (position || "QB").toUpperCase();
@@ -106,6 +122,8 @@ function getStylesForPosition(pos){
     TE: { throwPower:40, accuracy:60, speed:62, stamina:70, strength:72 },
     LB: { throwPower:40, accuracy:55, speed:62, stamina:72, strength:75 },
     CB: { throwPower:40, accuracy:65, speed:74, stamina:66, strength:52 },
+    S:  { throwPower:40, accuracy:65, speed:72, stamina:70, strength:58 },
+    DL: { throwPower:40, accuracy:50, speed:58, stamina:70, strength:78 },
   };
 
   const base = { ...(baseByPos[pos] || baseByPos.QB) };
@@ -244,6 +262,7 @@ function getStylesForPosition(pos){
   }
 
   function derivedStats(s){
+    if(!s.statsBase) return {};
     const base = {...s.statsBase};
     // apply equipped bonuses
     const eq = s.inventory?.equipped || {};
@@ -330,7 +349,6 @@ function getStylesForPosition(pos){
   }).join("");
 
   const body = `
-    <div class="modalTitle">Create Your Player</div>
     <div class="muted small">Enter your player details to start a 4-year high school career (12 regular season games + up to 3 postseason games).</div>
 
     <div class="form">
@@ -369,7 +387,7 @@ function getStylesForPosition(pos){
     </div>
   `;
 
-  setModal(body, `
+  setModal('Create Your Player', body, `
     <button class="btn" onclick="closeModal()">Cancel</button>
     <button class="btn primary" onclick="startCareerFromCreator()">Start Career</button>
   `);
@@ -404,21 +422,25 @@ function startCareerFromCreator(){
   st.player.highSchool = hs;
 
   // Career reset
-  st.career = { stage:"HS", year:1, week:1, seasonWeek:1, regularWeeks:12, postWeeksMax:3, inPost:false, postWeek:0 };
-  st.record = { w:0, l:0 };
+  st.career = { year:1, week:1, maxWeeks:12, recordW:0, recordL:0, inPost:false, postWeek:0, jobId:'none' };
   st.money = 250;
   st.xp = 0;
   st.level = 1;
-  st.skillPts = 0;
+  st.skillPoints = 0;
   st.energy = 100;
-  st.energyMax = 100;
   st.hours = 25;
-  st.hoursMax = 25;
-  st.inventory = st.inventory || { owned:{}, equipped:{} };
-  st.job = null;
+  st.prep = 0;
+  st.inventory = st.inventory || { owned:[], equipped:{ shoes:null, gloves:null, accessory:null, training:null, recovery:null } };
+  st.statsBase = {
+    throwPower: st.player.throwPower,
+    accuracy: st.player.accuracy,
+    speed: st.player.speed,
+    stamina: st.player.stamina,
+    strength: st.player.strength
+  };
 
   st.log = [];
-  logEvent(st, "Career Started", `${name} begins at ${hs} as a ${pos} (${style}).`);
+  logPush(st, "Career Started", `${name} begins at ${hs} as a ${pos} (${style}).`);
   saveState(st);
   closeModal();
   render();
@@ -508,10 +530,10 @@ function startCareerFromCreator(){
     const prepBonus = clamp(s.prep, 0, 60) / 100; // up to +0.6
     const energyFactor = (0.6 + (s.energy/MAX_ENERGY)*0.4); // 0.6..1.0
     const base = (ovr - opp) / 28; // -1..1ish
-    const style = s.player.style;
+    const style = s.player.archetype;
     let variance = 0.10;
-    if(style === 'gunslinger') variance = 0.16;
-    if(style === 'pocket') variance = 0.08;
+    if(style === 'Gunslinger') variance = 0.16;
+    if(style === 'Pocket') variance = 0.08;
 
     const winP = clamp(0.48 + base*0.22 + prepBonus*0.10, 0.12, 0.88);
     const didWin = Math.random() < winP;
@@ -959,7 +981,7 @@ function startCareerFromCreator(){
       $('#sp').textContent = '—';
       $('#seasonTag').textContent = '—';
       $('#gameWeekTag').textContent = '—';
-      setBars(0,0,0,0);
+      setBars(0,0,0);
       $('#jobName').textContent = 'No Job';
       $('#jobMeta').textContent = 'Auto: 0h/week • $0/week';
       renderLog(s);
@@ -972,7 +994,9 @@ function startCareerFromCreator(){
     const ovr = calcOVR(stats);
 
     $('#careerTitle').textContent = `${s.player.name} — High School Year ${s.career.year}`;
-    $('#careerSub').textContent = `${s.player.school} • ${s.player.position} (${STYLES.find(x=>x.id===s.player.style)?.name||s.player.style})`;
+    const styleList = getStylesForPosition(s.player.position);
+    const styleName = styleList.find(x=>x.id===s.player.archetype)?.name || s.player.archetype;
+    $('#careerSub').textContent = `${s.player.highSchool} • ${s.player.position} (${styleName})`;
     $('#seasonTag').textContent = `Week ${s.career.week}/${s.career.maxWeeks}`;
     $('#gameWeekTag').textContent = s.career.inPost ? `Postseason G${s.career.postWeek}/3` : 'Regular Season';
 
@@ -986,7 +1010,7 @@ function startCareerFromCreator(){
     $('#jobName').textContent = job.name;
     $('#jobMeta').textContent = `Auto: ${job.hours}h/week • ${fmtMoney(job.pay)}/week`;
 
-    setBars(s.energy/MAX_ENERGY, s.hours/WEEK_HOURS, s.xp/xpNeeded(s.level), s.energy, s.hours, s.xp);
+    setBars(s.energy/MAX_ENERGY, s.hours/WEEK_HOURS, s.xp/xpNeeded(s.level));
 
     // enable/disable play button: if already committed end-of-demo, still allow?
     $('#btnPlayGame').disabled = false;
@@ -998,8 +1022,10 @@ function startCareerFromCreator(){
     $('#energyFill').style.width = `${clamp(energyP*100, 0, 100)}%`;
     $('#hoursFill').style.width = `${clamp(hoursP*100, 0, 100)}%`;
     $('#xpFill').style.width = `${clamp(xpP*100, 0, 100)}%`;
-    $('#energyTxt').textContent = `${Math.round(energyP*MAX_ENERGY)}/${MAX_ENERGY}`;
-    $('#hoursTxt').textContent = `${Math.round(hoursP*WEEK_HOURS)}/${WEEK_HOURS}`;
+    const energyVal = Math.round(energyP*MAX_ENERGY);
+    const hoursVal = Math.round(hoursP*WEEK_HOURS);
+    $('#energyTxt').textContent = `${energyVal}/${MAX_ENERGY}`;
+    $('#hoursTxt').textContent = `${hoursVal}/${WEEK_HOURS}`;
     $('#xpTxt').textContent = `${Math.round(clamp(xpP*100,0,100))}%`;
   }
 
