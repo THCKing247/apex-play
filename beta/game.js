@@ -1,4 +1,4 @@
-/* Gridiron Career Sim — v1.1.2 */
+/* Gridiron Career Sim — v1.1.3 */
 (() => {
   'use strict';
 
