@@ -1,4 +1,4 @@
-/* Gridiron Career Sim — v1.1.3 */
+/* Gridiron Career Sim — v1.2.7 */
 (() => {
   'use strict';
 
@@ -12,9 +12,9 @@
   }
 
 
-  const VERSION = 'v1.1.7';
+  const VERSION = 'v1.2.7';
 
-  const LS_KEY = 'gcs_save_v112';
+  const LS_KEY = 'gcs_save_v127';
 
   const MAX_ENERGY = 100;
   const WEEK_HOURS = 25;
@@ -417,18 +417,42 @@ function getStylesForPosition(pos){
   `);
 }
 
-function randomizeName(){
-  const first = ["Kenny","Jayden","Marcus","Darius","Eli","Noah","Ty","Chris","Jordan","Malik","Cameron","Drew","Logan","Zeke","Mason"];
-  const last  = ["King","Johnson","Carter","Harris","Walker","Reed","Bennett","Collins","Moore","Brooks","Sanders","Foster","Allen","Graham","Turner"];
-  window.__draftPlayer.name = `${pick(first)} ${pick(last)}`;
-  const el = document.getElementById("cp_name"); if(el) el.value = window.__draftPlayer.name;
-}
-function randomizeSchool(){
-  const cities = ["Lake Wales","Tampa","Orlando","Miami","Jacksonville","Sarasota","Lakeland","Gainesville","Tallahassee","Pensacola"];
-  const mascots = ["High","Prep","Central","North","South","East","West","Academy"];
-  window.__draftPlayer.highSchool = `${pick(cities)} ${pick(mascots)} HS`;
-  const el = document.getElementById("cp_school"); if(el) el.value = window.__draftPlayer.highSchool;
-}
+  function randomizeName(){
+    try {
+      const first = ["Kenny","Jayden","Marcus","Darius","Eli","Noah","Ty","Chris","Jordan","Malik","Cameron","Drew","Logan","Zeke","Mason"];
+      const last  = ["King","Johnson","Carter","Harris","Walker","Reed","Bennett","Collins","Moore","Brooks","Sanders","Foster","Allen","Graham","Turner"];
+      if(!window.__draftPlayer) window.__draftPlayer = { name: "", position: "QB", highSchool: "", style: "Pocket" };
+      window.__draftPlayer.name = `${pick(first)} ${pick(last)}`;
+      const el = document.getElementById("cp_name");
+      if(el) {
+        el.value = window.__draftPlayer.name;
+        // Trigger input event to ensure the value is properly set
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    } catch(e) {
+      console.error('randomizeName error:', e);
+    }
+  }
+  function randomizeSchool(){
+    try {
+      const cities = ["Lake Wales","Tampa","Orlando","Miami","Jacksonville","Sarasota","Lakeland","Gainesville","Tallahassee","Pensacola"];
+      const mascots = ["High","Prep","Central","North","South","East","West","Academy"];
+      if(!window.__draftPlayer) window.__draftPlayer = { name: "", position: "QB", highSchool: "", style: "Pocket" };
+      window.__draftPlayer.highSchool = `${pick(cities)} ${pick(mascots)} HS`;
+      const el = document.getElementById("cp_school");
+      if(el) {
+        el.value = window.__draftPlayer.highSchool;
+        // Trigger input event to ensure the value is properly set
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    } catch(e) {
+      console.error('randomizeSchool error:', e);
+    }
+  }
+
+  // Expose randomizer functions immediately after definition
+  window.randomizeName = randomizeName;
+  window.randomizeSchool = randomizeSchool;
 function startCareerFromCreator(){
   const d = window.__draftPlayer || {};
   const name = (d.name||"").trim();
@@ -968,7 +992,7 @@ function startCareerFromCreator(){
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'gridiron-save-v112.json';
+      a.download = 'gridiron-save-v127.json';
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -1143,6 +1167,9 @@ function startCareerFromCreator(){
     getStylesForPosition,
     handlePositionChange,
     handleStyleChange,
+    // Randomizers
+    randomizeName,
+    randomizeSchool,
     // Modals
     openSkillsModal,
     openJobModal,
