@@ -12,12 +12,48 @@
   const XP_BASE = 300;
 
   const POSITIONS = ['QB','RB','WR','TE','LB','CB','S','DL'];
-  const STYLES = [
-    { id:'pocket', name:'Pocket', desc:'Safer, accurate passer / steady performer.' },
-    { id:'scrambler', name:'Scrambler', desc:'More speed and improvisation.' },
-    { id:'gunslinger', name:'Gunslinger', desc:'Bigger plays, a bit riskier.' },
-    { id:'balanced', name:'Balanced', desc:'Even distribution.' },
-  ];
+  const STYLES_BY_POS = {
+  QB: [
+    { id:"Pocket",      name:"Pocket",      desc:"Safer, accurate passer / steady performer.", mods:{ throwPower:+1, accuracy:+2, speed:-1, stamina:+0, strength:+0 } },
+    { id:"Scrambler",   name:"Scrambler",   desc:"More speed and improvisation.",               mods:{ throwPower:+0, accuracy:+0, speed:+3, stamina:+1, strength:+0 } },
+    { id:"Gunslinger",  name:"Gunslinger",  desc:"Bigger plays, a bit riskier.",               mods:{ throwPower:+3, accuracy:-1, speed:+0, stamina:+0, strength:+0 } },
+    { id:"Balanced",    name:"Balanced",    desc:"Even distribution.",                         mods:{ throwPower:+1, accuracy:+1, speed:+1, stamina:+1, strength:+0 } },
+  ],
+  RB: [
+    { id:"Power Back",  name:"Power Back",  desc:"Runs through contact.",                      mods:{ speed:+0, stamina:+2, strength:+3, throwPower:+0, accuracy:+0 } },
+    { id:"Elusive",     name:"Elusive",     desc:"Quick cuts and jukes.",                      mods:{ speed:+3, stamina:+1, strength:+0, throwPower:+0, accuracy:+0 } },
+    { id:"Receiving",   name:"Receiving",   desc:"Great hands & routes out of the backfield.", mods:{ speed:+1, stamina:+1, strength:+0, throwPower:+0, accuracy:+2 } },
+    { id:"Balanced",    name:"Balanced",    desc:"A bit of everything.",                       mods:{ speed:+2, stamina:+1, strength:+1, throwPower:+0, accuracy:+0 } },
+  ],
+  WR: [
+    { id:"Route Runner",name:"Route Runner",desc:"Crisp routes and reliable hands.",           mods:{ speed:+2, stamina:+1, strength:+0, throwPower:+0, accuracy:+2 } },
+    { id:"Deep Threat", name:"Deep Threat", desc:"Burns defenders over the top.",              mods:{ speed:+4, stamina:+0, strength:+0, throwPower:+0, accuracy:+0 } },
+    { id:"Slot",        name:"Slot",        desc:"Quick separation underneath.",               mods:{ speed:+3, stamina:+1, strength:-1, throwPower:+0, accuracy:+1 } },
+    { id:"YAC",         name:"YAC",         desc:"Turns short catches into big gains.",        mods:{ speed:+2, stamina:+2, strength:+0, throwPower:+0, accuracy:+0 } },
+  ],
+  TE: [
+    { id:"Blocking",    name:"Blocking",    desc:"Extra strength at the line.",                mods:{ speed:-1, stamina:+1, strength:+4, throwPower:+0, accuracy:+0 } },
+    { id:"Receiving",   name:"Receiving",   desc:"Mismatch in the middle.",                    mods:{ speed:+1, stamina:+2, strength:+1, throwPower:+0, accuracy:+2 } },
+    { id:"Red Zone",    name:"Red Zone",    desc:"Big body, tough catches.",                   mods:{ speed:+0, stamina:+1, strength:+3, throwPower:+0, accuracy:+1 } },
+    { id:"Balanced",    name:"Balanced",    desc:"Reliable all-around tight end.",            mods:{ speed:+1, stamina:+1, strength:+2, throwPower:+0, accuracy:+1 } },
+  ],
+  LB: [
+    { id:"Run Stopper", name:"Run Stopper", desc:"Fills gaps and hits hard.",                  mods:{ speed:+0, stamina:+2, strength:+4, throwPower:+0, accuracy:+0 } },
+    { id:"Coverage",    name:"Coverage",    desc:"Better in space and zones.",                 mods:{ speed:+2, stamina:+2, strength:+0, throwPower:+0, accuracy:+2 } },
+    { id:"Blitzer",     name:"Blitzer",     desc:"Gets after the QB.",                         mods:{ speed:+1, stamina:+1, strength:+3, throwPower:+0, accuracy:+0 } },
+    { id:"Balanced",    name:"Balanced",    desc:"Solid at everything.",                       mods:{ speed:+1, stamina:+2, strength:+2, throwPower:+0, accuracy:+1 } },
+  ],
+  CB: [
+    { id:"Man Cover",   name:"Man Cover",   desc:"Sticks tight in man coverage.",              mods:{ speed:+3, stamina:+1, strength:-1, throwPower:+0, accuracy:+2 } },
+    { id:"Zone Cover",  name:"Zone Cover",  desc:"Reads routes and breaks on the ball.",       mods:{ speed:+2, stamina:+2, strength:-1, throwPower:+0, accuracy:+2 } },
+    { id:"Ball Hawk",   name:"Ball Hawk",   desc:"Hunts interceptions.",                       mods:{ speed:+2, stamina:+1, strength:-1, throwPower:+0, accuracy:+3 } },
+    { id:"Balanced",    name:"Balanced",    desc:"Reliable all-around corner.",               mods:{ speed:+2, stamina:+1, strength:+0, throwPower:+0, accuracy:+1 } },
+  ]
+};
+
+function getStylesForPosition(pos){
+  return STYLES_BY_POS[pos] || STYLES_BY_POS.QB;
+}
 
   const JOBS = [
     { id:'none', name:'No Job', hours:0, pay:0, desc:'Focus entirely on football.' },
@@ -50,30 +86,40 @@
   function rint(n){ return Math.round(n); }
   function fmtMoney(n){ return '$' + n.toLocaleString(); }
 
-  function basePlayerFromArchetype(styleId, position){
-    // baseline 70-ish stats with archetype tilt
-    let p = { throwPower:70, accuracy:70, speed:70, strength:70, stamina:70 };
-    if(position === 'QB'){
-      p.throwPower += 2; p.accuracy += 2; p.speed -= 1;
-    } else if(position === 'RB' || position === 'WR'){
-      p.speed += 3; p.strength -= 1;
-    } else if(position === 'LB' || position === 'DL'){
-      p.strength += 3; p.speed -= 1;
-    }
+  function basePlayerFromArchetype(position, styleId){
+  const pos = (position || "QB").toUpperCase();
 
-    if(styleId === 'pocket'){
-      p.accuracy += 3; p.stamina += 1; p.speed -= 1;
-    } else if(styleId === 'scrambler'){
-      p.speed += 4; p.throwPower -= 1;
-    } else if(styleId === 'gunslinger'){
-      p.throwPower += 4; p.accuracy -= 1;
-    } else if(styleId === 'balanced'){
-      p.stamina += 1;
-    }
-    // clamp to sane starting range
-    for(const k of Object.keys(p)) p[k] = clamp(p[k], 55, 80);
-    return p;
+  const baseByPos = {
+    QB: { throwPower:70, accuracy:70, speed:60, stamina:65, strength:60 },
+    RB: { throwPower:40, accuracy:55, speed:70, stamina:70, strength:65 },
+    WR: { throwPower:40, accuracy:65, speed:72, stamina:68, strength:55 },
+    TE: { throwPower:40, accuracy:60, speed:62, stamina:70, strength:72 },
+    LB: { throwPower:40, accuracy:55, speed:62, stamina:72, strength:75 },
+    CB: { throwPower:40, accuracy:65, speed:74, stamina:66, strength:52 },
+  };
+
+  const base = { ...(baseByPos[pos] || baseByPos.QB) };
+
+  // Apply style mods (small boosts)
+  const style = (getStylesForPosition(pos) || []).find(x => x.id === styleId) || getStylesForPosition(pos)[0];
+  const mods = style?.mods || {};
+  for(const k of ["throwPower","accuracy","speed","stamina","strength"]){
+    base[k] = clamp((base[k]||60) + (mods[k]||0), 40, 99);
   }
+
+  return {
+    name: "Player",
+    position: pos,
+    archetype: style?.id || styleId || "Balanced",
+    highSchool: "High School",
+    throwPower: base.throwPower,
+    accuracy: base.accuracy,
+    speed: base.speed,
+    stamina: base.stamina,
+    strength: base.strength,
+  };
+}
+
 
   function calcOVR(stats){
     const keys = ['throwPower','accuracy','speed','strength','stamina'];
@@ -209,73 +255,145 @@
   }
 
   function openCreatePlayer(s){
-    const posOptions = POSITIONS.map(p=>`<option value="${p}">${p}</option>`).join('');
-    const styleOptions = STYLES.map(st=>`
-      <label class="radio">
-        <input type="radio" name="style" value="${st.id}" ${st.id==='balanced'?'checked':''} />
-        <div>
-          <div class="r-title">${st.name}</div>
-          <div class="muted tiny">${st.desc}</div>
+  // Persist draft across re-renders while the modal is open
+  const st = s || loadState();
+  window.__draftPlayer = window.__draftPlayer || {
+    name: "",
+    position: "QB",
+    highSchool: "",
+    style: "Pocket"
+  };
+  const d = window.__draftPlayer;
+
+  const positions = Object.keys(STYLES_BY_POS);
+  // include older positions list if present
+  const allPos = Array.from(new Set([...(Array.isArray(POSITIONS)?POSITIONS:[]), ...positions]));
+  const posOptions = allPos.map(p => `<option value="${escapeHtml(p)}" ${d.position===p?"selected":""}>${escapeHtml(p)}</option>`).join("");
+
+  const styles = getStylesForPosition(d.position);
+  if(!styles.some(x=>x.id===d.style)) d.style = styles[0].id;
+
+  const styleCards = styles.map(sty => {
+    const sel = d.style===sty.id;
+    const mods = sty.mods || {};
+    const modLine = (k,label)=> (mods[k]||0)!==0 ? `<span class="chip ${mods[k]>0?"good":"bad"}">${label} ${mods[k]>0?"+":""}${mods[k]}</span>` : "";
+    return `
+      <label class="radioCard ${sel?"selected":""}">
+        <input type="radio" name="pstyle" value="${escapeHtml(sty.id)}" ${sel?"checked":""}
+          onchange="window.__draftPlayer.style=this.value">
+        <div class="radioCardMain">
+          <div class="radioCardTop">
+            <div class="radioTitle">${escapeHtml(sty.name)}</div>
+            <div class="radioDot" aria-hidden="true"></div>
+          </div>
+          <div class="radioDesc">${escapeHtml(sty.desc||"")}</div>
+          <div class="radioMods">
+            ${modLine("throwPower","Throw")}
+            ${modLine("accuracy","Acc")}
+            ${modLine("speed","Spd")}
+            ${modLine("stamina","Stam")}
+            ${modLine("strength","Str")}
+          </div>
         </div>
       </label>
-    `).join('');
-    openModal({
-      title:'Create Your Player',
-      bodyHTML: `
-        <div class="muted">Enter your player details to start a 4-year high school career (12 regular season games + up to 3 postseason games).</div>
-        <div class="form">
-          <label class="field">
-            <span>Player Name</span>
-            <input id="fName" maxlength="24" placeholder="e.g., Kenny King" />
-          </label>
-          <div class="row">
-            <label class="field">
-              <span>Position</span>
-              <select id="fPos">${posOptions}</select>
-            </label>
-            <label class="field">
-              <span>High School</span>
-              <input id="fSchool" maxlength="28" placeholder="e.g., Lake Wales HS" />
-            </label>
-          </div>
+    `;
+  }).join("");
 
-          <div class="field">
-            <span>Play Style</span>
-            <div class="radios">${styleOptions}</div>
+  const body = `
+    <div class="modalTitle">Create Your Player</div>
+    <div class="muted small">Enter your player details to start a 4-year high school career (12 regular season games + up to 3 postseason games).</div>
+
+    <div class="form">
+      <div class="field">
+        <label>Player Name</label>
+        <div class="row">
+          <input id="cp_name" value="${escapeHtml(d.name)}" placeholder="e.g., Kenny King" oninput="window.__draftPlayer.name=this.value">
+          <button class="btn ghost" type="button" onclick="randomizeName()">Random</button>
+        </div>
+      </div>
+
+      <div class="field two">
+        <div>
+          <label>Position</label>
+          <select id="cp_pos" onchange="window.__draftPlayer.position=this.value; window.__draftPlayer.style=getStylesForPosition(this.value)[0].id; openCreatePlayer(loadState())">
+            ${posOptions}
+          </select>
+        </div>
+        <div>
+          <label>High School</label>
+          <div class="row">
+            <input id="cp_school" value="${escapeHtml(d.highSchool)}" placeholder="e.g., Lake Wales HS" oninput="window.__draftPlayer.highSchool=this.value">
+            <button class="btn ghost" type="button" onclick="randomizeSchool()">Random</button>
           </div>
         </div>
-      `,
-      footHTML: `<button class="btn primary" id="btnCreate">Start Career</button>`,
-      onClose: () => {}
-    });
+      </div>
 
-    $('#btnCreate').onclick = () => {
-      const name = ($('#fName').value || '').trim();
-      const school = ($('#fSchool').value || '').trim();
-      const pos = $('#fPos').value;
-      const style = ($$('input[name="style"]').find(r=>r.checked)||{value:'balanced'}).value;
+      <div class="field">
+        <label>Play Style</label>
+        <div class="radioGrid">
+          ${styleCards}
+        </div>
+      </div>
 
-      if(!name || !school){
-        alert('Please enter a player name and high school name.');
-        return;
-      }
+      <div class="muted tiny">Tip: You can change jobs later. Your style adds small starting stat bonuses.</div>
+    </div>
+  `;
 
-      s.player = { name, position: pos, style, school };
-      s.statsBase = basePlayerFromArchetype(style, pos);
-      s.level = 1; s.xp = 0; s.skillPoints = 0;
-      s.money = 250;
-      s.energy = 100;
-      s.hours = WEEK_HOURS;
-      s.prep = 0;
-      s.career = { year:1, week:1, maxWeeks:12, recordW:0, recordL:0, inPost:false, postWeek:0, jobId:'none' };
-      s.inventory = { owned:[], equipped:{ shoes:null, gloves:null, accessory:null, training:null, recovery:null } };
-      s.log = [];
-      logPush(s, 'Career Started', `${name} begins at ${school} as a ${pos} (${STYLES.find(x=>x.id===style)?.name||style}).`);
-      save(s);
-      $('#modal').close();
-      render(s);
-    };
-  }
+  setModal(body, `
+    <button class="btn" onclick="closeModal()">Cancel</button>
+    <button class="btn primary" onclick="startCareerFromCreator()">Start Career</button>
+  `);
+}
+
+function randomizeName(){
+  const first = ["Kenny","Jayden","Marcus","Darius","Eli","Noah","Ty","Chris","Jordan","Malik","Cameron","Drew","Logan","Zeke","Mason"];
+  const last  = ["King","Johnson","Carter","Harris","Walker","Reed","Bennett","Collins","Moore","Brooks","Sanders","Foster","Allen","Graham","Turner"];
+  window.__draftPlayer.name = `${pick(first)} ${pick(last)}`;
+  const el = document.getElementById("cp_name"); if(el) el.value = window.__draftPlayer.name;
+}
+function randomizeSchool(){
+  const cities = ["Lake Wales","Tampa","Orlando","Miami","Jacksonville","Sarasota","Lakeland","Gainesville","Tallahassee","Pensacola"];
+  const mascots = ["High","Prep","Central","North","South","East","West","Academy"];
+  window.__draftPlayer.highSchool = `${pick(cities)} ${pick(mascots)} HS`;
+  const el = document.getElementById("cp_school"); if(el) el.value = window.__draftPlayer.highSchool;
+}
+function startCareerFromCreator(){
+  const d = window.__draftPlayer || {};
+  const name = (d.name||"").trim();
+  const hs = (d.highSchool||"").trim();
+  if(!name){ toast("Please enter a player name."); return; }
+  if(!hs){ toast("Please enter a high school name."); return; }
+  const pos = d.position || "QB";
+  const style = d.style || getStylesForPosition(pos)[0].id;
+
+  const st = loadState();
+  st.player = basePlayerFromArchetype(pos, style);
+  st.player.name = name;
+  st.player.position = pos;
+  st.player.archetype = style;
+  st.player.highSchool = hs;
+
+  // Career reset
+  st.career = { stage:"HS", year:1, week:1, seasonWeek:1, regularWeeks:12, postWeeksMax:3, inPost:false, postWeek:0 };
+  st.record = { w:0, l:0 };
+  st.money = 250;
+  st.xp = 0;
+  st.level = 1;
+  st.skillPts = 0;
+  st.energy = 100;
+  st.energyMax = 100;
+  st.hours = 25;
+  st.hoursMax = 25;
+  st.inventory = st.inventory || { owned:{}, equipped:{} };
+  st.job = null;
+
+  st.log = [];
+  logEvent(st, "Career Started", `${name} begins at ${hs} as a ${pos} (${style}).`);
+  saveState(st);
+  closeModal();
+  render();
+}
+
 
   function doAction(s, kind, hours){
     hours = Number(hours)||1;
