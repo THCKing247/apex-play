@@ -1,5 +1,5 @@
-const VERSION="0.7.2";
-const SAVE_KEY="gcs_v072";
+const VERSION="0.7.3";
+const SAVE_KEY="gcs_v073";
 
 const WEEKS_PER_SEASON=12;
 const HOURS_PER_WEEK=25;
@@ -73,7 +73,25 @@ momentum:0
 }
 
 function startGame(){
-  state.game = { active:true, drive:0, myPoints:0, oppPoints:0, momentum:0, selectedPlay:null, meterWidth:0.18 };
+  // Prevent double-starts (can spam logs and break state)
+  if(state.game && state.game.active) return;
+  state.game = {
+    active:true,
+    // Drive-based mini game state
+    driveIndex:0,
+    maxDrives:4,
+    driveState:null,
+    // Scoring / momentum
+    myPoints:0,
+    oppPoints:0,
+    momentum:0,
+    // Interaction
+    selectedPlay:null,
+    meterWidth:0.18
+  };
+  // Some deployments can end up missing the mini-game markup (or it can be edited accidentally).
+  // If key elements are missing, rebuild the mini-game panel so the game remains playable.
+  ensureMiniGameDOM();
   showMiniGame(true);
   log("🏈 Game Day started! You get 4 drives — make them count.");
   nextDrive();
@@ -95,6 +113,48 @@ function showMiniGame(on){
   const mg = document.getElementById("miniGame");
   if(!mg) return;
   mg.classList.toggle("hidden", !on);
+}
+
+function ensureMiniGameDOM(){
+  const mg = document.getElementById("miniGame");
+  if(!mg) return;
+  // If any critical element is missing, reconstruct the panel.
+  const needsRebuild = !document.getElementById("driveCount") || !document.getElementById("driveTotal") ||
+    !document.getElementById("downToGo") || !document.getElementById("ballPos") || !document.getElementById("driveChoices") ||
+    !document.getElementById("meter") || !document.getElementById("meterMarker") || !document.getElementById("meterTarget") ||
+    !document.getElementById("btnStart") || !document.getElementById("btnStop");
+
+  if(!needsRebuild) return;
+
+  mg.innerHTML = `
+    <div class="mini-head">
+      <div class="mini-title">Game Day — Drive <span id="driveCount">1</span>/<span id="driveTotal">4</span></div>
+      <div class="mini-meta">
+        <span id="ballPos">Ball: 25</span>
+        <span id="downToGo">Down: 1 &amp; 10</span>
+      </div>
+    </div>
+
+    <div class="mini-instructions">Pick a play, then stop the marker inside the green zone for a better outcome.</div>
+
+    <div class="mini-choices" id="driveChoices"></div>
+
+    <div class="meter" id="meter">
+      <div class="meter-target" id="meterTarget"></div>
+      <div class="meter-marker" id="meterMarker"></div>
+    </div>
+
+    <div class="mini-controls">
+      <button class="btn" id="btnStart" type="button">Start</button>
+      <button class="btn" id="btnStop" type="button" disabled>Stop</button>
+    </div>
+  `;
+
+  // Re-bind controls
+  const bStart = document.getElementById("btnStart");
+  const bStop  = document.getElementById("btnStop");
+  if(bStart) bStart.onclick = startMeter;
+  if(bStop)  bStop.onclick  = stopMeter;
 }
 
 function statVal(stat){
@@ -148,7 +208,9 @@ function stopMeter(){
 }
 
 function nextDrive(){
+  ensureMiniGameDOM();
   if(!state.game?.active) return;
+  if(!Number.isFinite(state.game.driveIndex)) state.game.driveIndex = 0;
 
   const driveNum = document.getElementById('driveNum');
   const driveStatus = document.getElementById('driveStatus');
@@ -160,8 +222,8 @@ function nextDrive(){
   const bar = document.getElementById('timingBar');
   const res = document.getElementById('driveResult');
 
-  // Max 4 drives per game
-  if(state.game.driveIndex >= 4){
+  // Max drives per game
+  if(state.game.driveIndex >= state.game.maxDrives){
     finishGame();
     return;
   }
