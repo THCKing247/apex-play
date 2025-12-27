@@ -1091,38 +1091,42 @@ function applyItemEffects(effects){
 }
 
 function openStoreModal(s){
-  const rows = STORE_ITEMS.map(def => {
+  // Render as a simple card grid (easier to read + harder to "look empty" if CSS changes)
+  const cards = STORE_ITEMS.map(def => {
     const affordable = s.career.money >= def.price;
+    const pills = [
+      (def.energyDelta||0) ? `${def.energyDelta>0?'+':''}${def.energyDelta} energy` : null,
+      (def.hoursDelta||0) ? `${def.hoursDelta>0?'+':''}${def.hoursDelta} hours` : null,
+      (def.throwPower||0) ? `Throw +${def.throwPower}` : null,
+      (def.accuracy||0) ? `Acc +${def.accuracy}` : null,
+      (def.speed||0) ? `Spd +${def.speed}` : null,
+      def.slot ? `Slot: ${def.slot}` : null,
+    ].filter(Boolean);
+
     return `
-      <tr>
-        <td>
-          <div style="display:flex;flex-direction:column;gap:2px">
-            <strong>${def.name}</strong>
-            <span class="muted" style="font-size:12px">${def.desc}</span>
-          </div>
-        </td>
-        <td style="text-align:right;white-space:nowrap">$${def.price}</td>
-        <td style="text-align:right">
-          <button class="btn ${affordable ? '' : 'disabled'}" data-buy="${def.id}" ${affordable ? '' : 'disabled'}>Buy</button>
-        </td>
-      </tr>`;
+      <div class="storeCard">
+        <div class="storeTop">
+          <div class="storeName">${escapeHtml(def.name)}</div>
+          <div class="storePrice">$${fmtInt(def.price)}</div>
+        </div>
+        <div class="storeDesc">${escapeHtml(def.desc)}</div>
+        ${pills.length ? `<div class="pillRow">${pills.map(p=>`<span class=\"pill\">${escapeHtml(p)}</span>`).join('')}</div>` : ''}
+        <div class="storeActions">
+          <button class="btn ${affordable ? '' : 'disabled'}" data-buy="${def.id}" ${affordable ? '' : 'disabled'}>${affordable ? 'Buy' : 'Need $' + fmtInt(def.price - s.career.money)}</button>
+        </div>
+      </div>`;
   }).join('');
 
   const body = `
-    <div class="stack" style="gap:10px">
-      <div class="row" style="justify-content:space-between;align-items:center">
+    <div class="stack" style="gap:12px">
+      <div class="row" style="justify-content:space-between;align-items:flex-start;gap:12px">
         <div>
           <div class="h">Store</div>
-          <div class="muted">Spend money on items that boost stats, energy, or hours.</div>
+          <div class="muted">Spend money on items that boost stats, energy, or hours. Gear can be equipped in Inventory.</div>
         </div>
         <div class="pill">Money: <strong>$${fmtInt(s.career.money)}</strong></div>
       </div>
-      <div class="tableWrap">
-        <table class="table">
-          <thead><tr><th>Item</th><th style="text-align:right">Price</th><th></th></tr></thead>
-          <tbody>${rows || '<tr><td colspan="3" class="muted">No items.</td></tr>'}</tbody>
-        </table>
-      </div>
+      <div class="storeGrid">${cards || '<div class="muted">No items.</div>'}</div>
       <div class="row" style="justify-content:flex-end;gap:8px">
         <button class="btn ghost" id="storeGoInv">Open Inventory</button>
       </div>
