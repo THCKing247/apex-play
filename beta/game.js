@@ -1056,6 +1056,11 @@ function startCareerFromCreator(){
 
   // boot
   const state = load();
+  // Modal open helpers (kept for older onclick hooks / compatibility)
+  function openSkillsModal(){ openSkills(state); }
+  function openStoreModal(){ openStore(state); }
+  function openInventoryModal(){ openInventory(state); }
+
   $('#ver').textContent = VERSION.replace('v','v');
   document.title = `Gridiron Career Sim ${VERSION}`;
   wireUI(state);
