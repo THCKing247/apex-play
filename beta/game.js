@@ -1,1321 +1,906 @@
-/* Gridiron Career Sim — v1.0.0 (High School only) */
+/* Gridiron Career Sim — v1.1.2 */
 (() => {
   'use strict';
 
-  const VERSION = '1.0.1';
-  
+  const VERSION = 'v1.1.2';
 
-// Store + Inventory
-const STORE_ITEMS = [
-  { id:'protein_shake', name:'Protein Shake', type:'consumable', price:25, desc:'+20 Energy', effects:{ energy:+20 } },
-  { id:'energy_bar', name:'Energy Bar', type:'consumable', price:15, desc:'+10 Energy', effects:{ energy:+10 } },
-  { id:'study_planner', name:'Study Planner', type:'consumable', price:20, desc:'+5 Hours (this week)', effects:{ hours:+5 } },
-  { id:'cleats', name:'Speed Cleats', type:'gear', slot:'feet', price:120, desc:'+2 Speed', effects:{ stats:{ speed:+2 } } },
-  { id:'qb_gloves', name:'QB Gloves', type:'gear', slot:'hands', price:120, desc:'+2 Accuracy', effects:{ stats:{ accuracy:+2 } } },
-  { id:'weighted_vest', name:'Weighted Vest', type:'gear', slot:'body', price:160, desc:'+2 Throw Power', effects:{ stats:{ throwPower:+2 } } },
-  { id:'film_tablet', name:'Film Tablet', type:'gear', slot:'accessory', price:180, desc:'+1 Accuracy, +1 Throw Power', effects:{ stats:{ accuracy:+1, throwPower:+1 } } },
-];
+  const LS_KEY = 'gcs_save_v112';
 
-function makeInvItem(def){
-  return {
-    uid: 'inv_' + Math.random().toString(16).slice(2) + Date.now().toString(16),
-    id: def.id,
-    name: def.name,
-    type: def.type,
-    slot: def.slot || null,
-    price: def.price,
-    desc: def.desc,
-    effects: def.effects || {},
-    equipped: false,
-    boughtAt: Date.now(),
-  };
-}
+  const MAX_ENERGY = 100;
+  const WEEK_HOURS = 25;
 
-  const SAVE_KEY = 'gcs_save_v101';
-  const $ = (sel, root=document) => root.querySelector(sel);
+  const XP_BASE = 300;
 
-  // Basic HTML escaping for safe innerHTML rendering in modals
-  function escapeHtml(input){
-    const s = String(input ?? '');
-    return s
-      .replace(/&/g,'&amp;')
-      .replace(/</g,'&lt;')
-      .replace(/>/g,'&gt;')
-      .replace(/"/g,'&quot;')
-      .replace(/'/g,'&#39;');
-  }
-
-  const app = $('#app');
-  const verPill = $('#verPill');
-  verPill.textContent = 'v' + VERSION;
-  document.title = 'Gridiron Career Sim v' + VERSION;
-
-  // ---------- Data ----------
-  const POSITIONS = [
-    { id:'QB', name:'Quarterback' },
-    { id:'RB', name:'Running Back' },
-    { id:'WR', name:'Wide Receiver' },
-    { id:'CB', name:'Cornerback' },
-    { id:'LB', name:'Linebacker' },
+  const POSITIONS = ['QB','RB','WR','TE','LB','CB','S','DL'];
+  const STYLES = [
+    { id:'pocket', name:'Pocket', desc:'Safer, accurate passer / steady performer.' },
+    { id:'scrambler', name:'Scrambler', desc:'More speed and improvisation.' },
+    { id:'gunslinger', name:'Gunslinger', desc:'Bigger plays, a bit riskier.' },
+    { id:'balanced', name:'Balanced', desc:'Even distribution.' },
   ];
-
-  const STYLES = {
-    QB: [
-      { id:'Pocket', name:'Pocket Passer', desc:'High throw power & accuracy focus.' },
-      { id:'Dual', name:'Dual Threat', desc:'Balanced passing + speed.' },
-      { id:'Gunslinger', name:'Gunslinger', desc:'Max throw power, more volatility.' },
-    ],
-    RB: [
-      { id:'Power', name:'Power Back', desc:'Break tackles, grind yards.' },
-      { id:'Speed', name:'Speed Back', desc:'Hit the edge, big plays.' },
-      { id:'All', name:'All-Purpose', desc:'Balanced runner + hands.' },
-    ],
-    WR: [
-      { id:'Route', name:'Route Technician', desc:'Separation & hands.' },
-      { id:'Deep', name:'Deep Threat', desc:'Speed, explosive plays.' },
-      { id:'Poss', name:'Possession', desc:'Reliable catches, chains.' },
-    ],
-    CB: [
-      { id:'Lock', name:'Lockdown', desc:'Coverage & instincts.' },
-      { id:'Ball', name:'Ball Hawk', desc:'Plays on the ball, picks.' },
-      { id:'Speed', name:'Speed Corner', desc:'Recovery speed & agility.' },
-    ],
-    LB: [
-      { id:'Field', name:'Field General', desc:'Instincts, tackling, leadership.' },
-      { id:'Blitz', name:'Blitzer', desc:'Pass rush impact.' },
-      { id:'Coverage', name:'Coverage', desc:'Athletic in space.' },
-    ],
-  };
 
   const JOBS = [
-    { id:'grocery', name:'Grocery Bagger', weeklyPay:110, weeklyHours:6, note:'Easy money. Steady schedule.' },
-    { id:'barista', name:'Coffee Shop Barista', weeklyPay:150, weeklyHours:8, note:'Slightly better pay. Busy shifts.' },
-    { id:'lifeguard', name:'Community Pool Lifeguard', weeklyPay:175, weeklyHours:9, note:'Seasonal vibes. Requires energy.' },
-    { id:'tutor', name:'Math Tutor', weeklyPay:200, weeklyHours:7, note:'Best pay. More mental strain.' },
-    { id:'none', name:'No Job', weeklyPay:0, weeklyHours:0, note:'More time for training & rest.' },
+    { id:'none', name:'No Job', hours:0, pay:0, desc:'Focus entirely on football.' },
+    { id:'dogwalker', name:'Dog Walker', hours:4, pay:90, desc:'Walk neighborhood dogs after school.' },
+    { id:'grocery', name:'Grocery Clerk', hours:6, pay:120, desc:'Stock shelves and bag groceries.' },
+    { id:'tutor', name:'Math Tutor', hours:7, pay:200, desc:'Help classmates with math homework.' },
+    { id:'lifeguard', name:'Lifeguard', hours:8, pay:180, desc:'Keep the pool safe on weekends.' },
   ];
 
-  const ACTIONS = [
-    {
-      id:'train',
-      name:'Train',
-      desc:'Earn XP from drills and film work.',
-      energyPerHour: 12,
-      hoursPerHour: 1,
-      xpPerHour: 28,
-      moneyPerHour: 0,
-      prepPerHour: 2,
-    },
-    {
-      id:'rest',
-      name:'Rest',
-      desc:'Restore energy. A good week starts with recovery.',
-      energyPerHour: -18, // negative cost = restore
-      hoursPerHour: 1,
-      xpPerHour: 6,
-      moneyPerHour: 0,
-      prepPerHour: 1,
-    },
-    {
-      id:'study',
-      name:'Study Playbook',
-      desc:'Earn XP and improve game readiness.',
-      energyPerHour: 8,
-      hoursPerHour: 1,
-      xpPerHour: 18,
-      moneyPerHour: 0,
-      prepPerHour: 6,
-    },
+  // Equipment: can be equipped (one per slot)
+  // Consumable: can be used from inventory (applies immediate effect, then removed)
+  const STORE_ITEMS = [
+    { id:'protein_snack', name:'Protein Snack', type:'consumable', price:25, effects:{ energy:+20 }, desc:'+20 energy.' },
+    { id:'energy_drink', name:'Energy Drink', type:'consumable', price:40, effects:{ energy:+35 }, desc:'+35 energy.' },
+    { id:'meal_prep', name:'Meal Prep Kit', type:'consumable', price:60, effects:{ energy:+55 }, desc:'+55 energy.' },
+    { id:'planner', name:'Study Planner', type:'consumable', price:35, effects:{ hours:+3 }, desc:'+3 weekly hours (this week only).' },
+
+    { id:'cleats', name:'Speed Cleats', type:'equipment', slot:'shoes', price:175, effects:{ speed:+2 }, desc:'+2 Speed (equipped).' },
+    { id:'gloves', name:'Grip Gloves', type:'equipment', slot:'gloves', price:165, effects:{ accuracy:+2 }, desc:'+2 Accuracy (equipped).' },
+    { id:'arm_sleeve', name:'QB Arm Sleeve', type:'equipment', slot:'accessory', price:210, effects:{ throwPower:+2 }, desc:'+2 Throw Power (equipped).' },
+    { id:'wristband', name:'Playcall Wristband', type:'equipment', slot:'accessory', price:190, effects:{ accuracy:+1, stamina:+1 }, desc:'+1 Accuracy, +1 Stamina (equipped).' },
+    { id:'weight_vest', name:'Training Weight Vest', type:'equipment', slot:'training', price:240, effects:{ strength:+2, stamina:+1 }, desc:'+2 Strength, +1 Stamina (equipped).' },
+    { id:'compression', name:'Recovery Compression', type:'equipment', slot:'recovery', price:220, effects:{ stamina:+2 }, desc:'+2 Stamina (equipped).' },
   ];
 
-  // ---------- State ----------
+  const $ = (sel, root=document) => root.querySelector(sel);
+  const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+
+  function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
+  function rint(n){ return Math.round(n); }
+  function fmtMoney(n){ return '$' + n.toLocaleString(); }
+
+  function basePlayerFromArchetype(styleId, position){
+    // baseline 70-ish stats with archetype tilt
+    let p = { throwPower:70, accuracy:70, speed:70, strength:70, stamina:70 };
+    if(position === 'QB'){
+      p.throwPower += 2; p.accuracy += 2; p.speed -= 1;
+    } else if(position === 'RB' || position === 'WR'){
+      p.speed += 3; p.strength -= 1;
+    } else if(position === 'LB' || position === 'DL'){
+      p.strength += 3; p.speed -= 1;
+    }
+
+    if(styleId === 'pocket'){
+      p.accuracy += 3; p.stamina += 1; p.speed -= 1;
+    } else if(styleId === 'scrambler'){
+      p.speed += 4; p.throwPower -= 1;
+    } else if(styleId === 'gunslinger'){
+      p.throwPower += 4; p.accuracy -= 1;
+    } else if(styleId === 'balanced'){
+      p.stamina += 1;
+    }
+    // clamp to sane starting range
+    for(const k of Object.keys(p)) p[k] = clamp(p[k], 55, 80);
+    return p;
+  }
+
+  function calcOVR(stats){
+    const keys = ['throwPower','accuracy','speed','strength','stamina'];
+    const avg = keys.reduce((a,k)=>a+stats[k],0)/keys.length;
+    return clamp(rint(avg), 50, 99);
+  }
+
+  function xpNeeded(level){
+    return rint(XP_BASE * Math.pow(1.12, level-1));
+  }
+
   function defaultState(){
     return {
-      meta: { version: VERSION, createdAt: Date.now() },
-      character: null, // filled after creation
+      version: VERSION,
+      createdAt: Date.now(),
+      player: null, // set after creation
+      statsBase: null,
+      level: 1,
+      xp: 0,
+      skillPoints: 0,
+      money: 250,
+      energy: 100,
+      hours: WEEK_HOURS,
+      prep: 0, // study prep this week
       career: {
-        stage: 'HS',
         year: 1,
-        week: 1, // 1..15 (12 reg + up to 3 post)
-        regSeasonWeeks: 12,
-        postSeasonMax: 3,
-        postseason: { active:false, round:0, eliminated:false },
-        record: { w:0, l:0 },
-        money: 250,
-        energy: 100,
-        energyMax: 100,
-        hours: 25,
-        hoursMax: 25,
-        xp: 0,
-        level: 1,
-        xpToNext: 300,
-        skillPoints: 0,
-        stats: {
-          throwPower: 70,
-          accuracy: 70,
-          speed: 70,
-          tackling: 70,
-          hands: 70,
-        },
-        prep: 0, // 0..100 used as small bonus in games
+        week: 1,
+        maxWeeks: 12,
+        recordW: 0,
+        recordL: 0,
+        inPost: false,
+        postWeek: 0, // 1..3 when in postseason
         jobId: 'none',
-        inventory: [],
-        equipment: { head:null, body:null, hands:null, feet:null, accessory:null },
-        log: [],
-        games: [], // per year history summary
-      }
+      },
+      inventory: {
+        owned: [], // array of item ids (including duplicates for consumables)
+        equipped: { shoes:null, gloves:null, accessory:null, training:null, recovery:null }
+      },
+      log: []
     };
   }
 
-  function statCaps(){ return { min: 40, max: 99 }; }
-
-  // ---------- Save / Load ----------
-  function save(state){
-    try{ localStorage.setItem(SAVE_KEY, JSON.stringify(state)); }
-    catch(e){ /* ignore */ }
-  }
   function load(){
     try{
-      const raw = localStorage.getItem(SAVE_KEY);
-      if(!raw) return null;
+      const raw = localStorage.getItem(LS_KEY);
+      if(!raw) return defaultState();
       const s = JSON.parse(raw);
+      // migrate minimal
+      if(!s.version) s.version = VERSION;
+      if(!s.inventory) s.inventory = defaultState().inventory;
+      if(!s.career) s.career = defaultState().career;
+      if(!s.log) s.log = [];
       return s;
-    }catch(e){ return null; }
+    }catch(e){
+      console.warn('load failed', e);
+      return defaultState();
+    }
+  }
+  function save(s){
+    localStorage.setItem(LS_KEY, JSON.stringify(s));
   }
 
-  function pushLog(s, type, strong, text){
-    s.career.log.unshift({
+  function logPush(s, title, msg){
+    s.log.unshift({
       t: Date.now(),
-      type, strong, text
+      title,
+      msg
     });
-    s.career.log = s.career.log.slice(0, 60);
+    s.log = s.log.slice(0, 200);
   }
 
-  // ---------- Helpers ----------
-  function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
-  function fmt(n){ return n.toLocaleString(); }
- // Store/Inventory UI expects fmtInt() in some builds.
- // Keep as an alias so the Store button doesn't crash.
-  function fmtInt(n){ return Math.round(n).toLocaleString(); }
-  function randInt(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
-  function choice(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
-
-  function positionKeyStat(pos){
-    switch(pos){
-      case 'QB': return ['throwPower','accuracy','speed'];
-      case 'RB': return ['speed','hands','tackling']; // tackling as toughness surrogate
-      case 'WR': return ['hands','speed','accuracy']; // accuracy as route/tech proxy
-      case 'CB': return ['speed','hands','tackling'];
-      case 'LB': return ['tackling','speed','hands'];
-      default: return ['speed','hands','tackling'];
-    }
+  function openModal({title, bodyHTML, footHTML, onClose}){
+    const dlg = $('#modal');
+    $('#modalTitle').textContent = title || 'Modal';
+    $('#modalBody').innerHTML = bodyHTML || '';
+    $('#modalFoot').innerHTML = footHTML || '';
+    const close = () => {
+      if(dlg.open) dlg.close();
+      if(typeof onClose === 'function') onClose();
+    };
+    $('#modalClose').onclick = close;
+    dlg.oncancel = (e) => { e.preventDefault(); close(); };
+    dlg.showModal();
+    // click outside to close
+    dlg.addEventListener('click', (ev) => {
+      const r = dlg.getBoundingClientRect();
+      const inBox = (ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom);
+      // dialog's rect is the whole element; need inner
+      const inner = $('.modal-inner', dlg);
+      if(inner && !inner.contains(ev.target)) close();
+    }, { once:true });
   }
 
-  function overall(s){
-    const keys = positionKeyStat(s.character.position);
-    const st = effectiveStats(s);
-    const base = (st[keys[0]] + st[keys[1]] + st[keys[2]]) / 3;
-    // small level effect
-    const lvl = s.career.level;
-    return clamp(Math.round(base + Math.min(8, (lvl-1)*0.6)), 40, 99);
-  }
-
-
-  function getEquippedItems(s){
-    const inv = s?.career?.inventory || [];
-    const eq = s?.career?.equipment || {};
-    const out = [];
+  function derivedStats(s){
+    const base = {...s.statsBase};
+    // apply equipped bonuses
+    const eq = s.inventory?.equipped || {};
     for(const slot of Object.keys(eq)){
-      const uid = eq[slot];
-      if(!uid) continue;
-      const it = inv.find(x => x.uid === uid);
-      if(it) out.push(it);
-    }
-    return out;
-  }
-
-  function applyEquipmentToStats(s, baseStats){
-    const stats = { ...baseStats };
-    for(const it of getEquippedItems(s)){
-      const bonus = (it.effects && it.effects.stats) ? it.effects.stats : {};
-      for(const [k,v] of Object.entries(bonus)){
-        if(typeof stats[k] === 'number') stats[k] += v;
+      const id = eq[slot];
+      if(!id) continue;
+      const item = STORE_ITEMS.find(it=>it.id===id);
+      if(!item) continue;
+      if(item.effects){
+        for(const [k,v] of Object.entries(item.effects)){
+          if(typeof base[k] === 'number') base[k] += v;
+        }
       }
     }
-    // clamp to caps
-    const caps = statCaps();
-    for(const k of Object.keys(stats)){
-      if(typeof stats[k] === 'number') stats[k] = clamp(stats[k], caps.min, caps.max);
-    }
-    return stats;
+    for(const k of Object.keys(base)) base[k] = clamp(base[k], 40, 99);
+    return base;
   }
 
-  function effectiveStats(s){
-    return applyEquipmentToStats(s, s.career.stats);
+  function canAfford(s, price){ return s.money >= price; }
+
+  function addOwned(s, itemId){
+    s.inventory.owned.push(itemId);
   }
 
-  function updateXp(s, add){
-    if(add <= 0) return;
-    s.career.xp += add;
-    let leveled = false;
-    while(s.career.xp >= s.career.xpToNext){
-      s.career.xp -= s.career.xpToNext;
-      s.career.level += 1;
-      s.career.skillPoints += 3;
-      s.career.xpToNext = Math.round(s.career.xpToNext * 1.18 + 40);
-      leveled = true;
-    }
-    if(leveled){
-      pushLog(s, 'good', 'Level Up!', `You reached Level ${s.career.level}. (+3 Skill Points)`);
-    }
+  function removeOneOwned(s, itemId){
+    const idx = s.inventory.owned.indexOf(itemId);
+    if(idx>=0) s.inventory.owned.splice(idx,1);
   }
 
-  function applyAction(s, actionId, hoursCount){
-    const action = ACTIONS.find(a => a.id === actionId);
-    if(!action) return;
+  function useConsumable(s, itemId){
+    const item = STORE_ITEMS.find(it=>it.id===itemId);
+    if(!item || item.type!=='consumable') return;
+    if(!s.inventory.owned.includes(itemId)) return;
+    const eff = item.effects || {};
+    if(typeof eff.energy === 'number') s.energy = clamp(s.energy + eff.energy, 0, MAX_ENERGY);
+    if(typeof eff.hours === 'number') s.hours = clamp(s.hours + eff.hours, 0, WEEK_HOURS);
+    removeOneOwned(s, itemId);
+    logPush(s, 'Used Item', `Used ${item.name}.`);
+  }
 
-    // Check resources
-    const needHours = action.hoursPerHour * hoursCount;
-    if(s.career.hours < needHours){
-      pushLog(s, 'bad', 'Not enough hours', 'You are out of weekly hours. Rest or advance the week.');
+  function openCreatePlayer(s){
+    const posOptions = POSITIONS.map(p=>`<option value="${p}">${p}</option>`).join('');
+    const styleOptions = STYLES.map(st=>`
+      <label class="radio">
+        <input type="radio" name="style" value="${st.id}" ${st.id==='balanced'?'checked':''} />
+        <div>
+          <div class="r-title">${st.name}</div>
+          <div class="muted tiny">${st.desc}</div>
+        </div>
+      </label>
+    `).join('');
+    openModal({
+      title:'Create Your Player',
+      bodyHTML: `
+        <div class="muted">Enter your player details to start a 4-year high school career (12 regular season games + up to 3 postseason games).</div>
+        <div class="form">
+          <label class="field">
+            <span>Player Name</span>
+            <input id="fName" maxlength="24" placeholder="e.g., Kenny King" />
+          </label>
+          <div class="row">
+            <label class="field">
+              <span>Position</span>
+              <select id="fPos">${posOptions}</select>
+            </label>
+            <label class="field">
+              <span>High School</span>
+              <input id="fSchool" maxlength="28" placeholder="e.g., Lake Wales HS" />
+            </label>
+          </div>
+
+          <div class="field">
+            <span>Play Style</span>
+            <div class="radios">${styleOptions}</div>
+          </div>
+        </div>
+      `,
+      footHTML: `<button class="btn primary" id="btnCreate">Start Career</button>`,
+      onClose: () => {}
+    });
+
+    $('#btnCreate').onclick = () => {
+      const name = ($('#fName').value || '').trim();
+      const school = ($('#fSchool').value || '').trim();
+      const pos = $('#fPos').value;
+      const style = ($$('input[name="style"]').find(r=>r.checked)||{value:'balanced'}).value;
+
+      if(!name || !school){
+        alert('Please enter a player name and high school name.');
+        return;
+      }
+
+      s.player = { name, position: pos, style, school };
+      s.statsBase = basePlayerFromArchetype(style, pos);
+      s.level = 1; s.xp = 0; s.skillPoints = 0;
+      s.money = 250;
+      s.energy = 100;
+      s.hours = WEEK_HOURS;
+      s.prep = 0;
+      s.career = { year:1, week:1, maxWeeks:12, recordW:0, recordL:0, inPost:false, postWeek:0, jobId:'none' };
+      s.inventory = { owned:[], equipped:{ shoes:null, gloves:null, accessory:null, training:null, recovery:null } };
+      s.log = [];
+      logPush(s, 'Career Started', `${name} begins at ${school} as a ${pos} (${STYLES.find(x=>x.id===style)?.name||style}).`);
+      save(s);
+      $('#modal').close();
+      render(s);
+    };
+  }
+
+  function doAction(s, kind, hours){
+    hours = Number(hours)||1;
+    if(!s.player) return;
+    if(s.hours < hours){
+      logPush(s, 'Not enough hours', `You only have ${s.hours} hour(s) left this week.`);
+      return;
+    }
+    const costs = {
+      train: { e:-12, xp:+28, prep:0 },
+      rest:  { e:+18, xp:+6,  prep:0 },
+      study: { e:-8,  xp:+18, prep:+10 },
+    };
+    const c = costs[kind];
+    if(!c) return;
+
+    const totalE = c.e * hours;
+    if(totalE < 0 && s.energy < Math.abs(totalE)){
+      logPush(s, 'Too tired', `You need more energy for that. Try resting or buying energy items.`);
       return;
     }
 
-    const energyDelta = -action.energyPerHour * hoursCount; // convert "energyPerHour cost" into delta
-    // action.energyPerHour positive means cost; negative means restore
-    const newEnergy = clamp(s.career.energy - (action.energyPerHour * hoursCount), 0, s.career.energyMax);
-    // BUT: if restoring (energyPerHour negative), this subtract makes +. Works.
+    s.hours = clamp(s.hours - hours, 0, WEEK_HOURS);
+    s.energy = clamp(s.energy + totalE, 0, MAX_ENERGY);
+    const gainedXP = rint(c.xp * hours);
+    s.xp += gainedXP;
+    if(c.prep) s.prep += rint(c.prep * hours);
 
-    s.career.hours = clamp(s.career.hours - needHours, 0, s.career.hoursMax);
-    s.career.energy = newEnergy;
-
-    const xpGain = Math.max(0, Math.round(action.xpPerHour * hoursCount * (0.92 + Math.random()*0.18)));
-    updateXp(s, xpGain);
-
-    s.career.prep = clamp(s.career.prep + action.prepPerHour * hoursCount, 0, 100);
-
-    let energyWord = action.energyPerHour >= 0 ? `-${action.energyPerHour*hoursCount} energy` : `+${Math.abs(action.energyPerHour)*hoursCount} energy`;
-    pushLog(s, action.id === 'rest' ? 'good' : 'warn', action.name, `Spent ${needHours}h, ${energyWord}, earned ${xpGain} XP.`);
+    logPush(s, kind==='train'?'Training':'Action', `${kind==='train'?'Trained':kind==='rest'?'Rested':'Studied'} ${hours}h. ${totalE>=0?'+':''}${totalE} energy, +${gainedXP} XP${c.prep?`, +${rint(c.prep*hours)} prep`:''}.`);
+    handleLevelUp(s);
+    save(s);
+    render(s);
   }
 
-  function setJob(s, jobId){
-    const job = JOBS.find(j => j.id === jobId);
-    if(!job) return;
-    s.career.jobId = jobId;
-    pushLog(s, 'warn', 'Job Updated', `You are now working as: ${job.name} (${job.weeklyHours}h/week, $${job.weeklyPay}/week).`);
-  }
-
-  function weeklyReset(s){
-    // Auto job deduction + pay
-    const job = JOBS.find(j => j.id === s.career.jobId) || JOBS.find(j => j.id === 'none');
-    const beforeHours = s.career.hoursMax;
-    s.career.hours = s.career.hoursMax;
-
-    // Deduct job hours immediately for the week (recurring)
-    s.career.hours = clamp(s.career.hours - job.weeklyHours, 0, s.career.hoursMax);
-    s.career.money += job.weeklyPay;
-
-    // Partial energy recharge each week (+35% of missing)
-    const missing = s.career.energyMax - s.career.energy;
-    const recharge = Math.round(missing * 0.35);
-    s.career.energy = clamp(s.career.energy + recharge, 0, s.career.energyMax);
-
-    // Prep decays slightly each week
-    s.career.prep = clamp(Math.round(s.career.prep * 0.72), 0, 100);
-
-    if(job.weeklyPay > 0){
-      pushLog(s, 'good', 'Payday', `Job: ${job.name}. Earned $${job.weeklyPay}. Job hours auto-used: ${job.weeklyHours}h.`);
+  function handleLevelUp(s){
+    let needed = xpNeeded(s.level);
+    while(s.xp >= needed){
+      s.xp -= needed;
+      s.level += 1;
+      s.skillPoints += 3;
+      // tiny base growth per level
+      for(const k of Object.keys(s.statsBase)){
+        s.statsBase[k] = clamp(s.statsBase[k] + 1, 40, 99);
+      }
+      logPush(s, 'Level Up', `You reached Level ${s.level}! +3 skill points.`);
+      needed = xpNeeded(s.level);
     }
-    pushLog(s, 'warn', 'New Week', `Energy partially recharged (+${recharge}). Weekly hours reset (${beforeHours}h).`);
   }
 
-  function isGameWeek(s){
-    // Games every regular season week 1..12
-    // Postseason games if active and not eliminated, up to 3 rounds.
-    const c = s.career;
-    if(c.week <= c.regSeasonWeeks) return true;
-    if(c.postseason.active && !c.postseason.eliminated && c.postseason.round < c.postSeasonMax) return true;
-    return false;
-  }
-
-  function weekLabel(s){
-    const c = s.career;
-    if(c.week <= c.regSeasonWeeks) return `Week ${c.week}/${c.regSeasonWeeks}`;
-    if(c.postseason.active){
-      const r = c.postseason.round + 1;
-      return `Postseason — Game ${r}/${c.postSeasonMax}`;
+  function weeklyJobApply(s){
+    const job = JOBS.find(j=>j.id===s.career.jobId) || JOBS[0];
+    if(job.id === 'none') return;
+    // If you have hours, deduct; otherwise, still pay but lose energy a bit (overworked)
+    s.money += job.pay;
+    const before = s.hours;
+    s.hours = clamp(s.hours - job.hours, 0, WEEK_HOURS);
+    if(before < job.hours){
+      s.energy = clamp(s.energy - 10, 0, MAX_ENERGY);
+      logPush(s, 'Payday', `Job: ${job.name}. Earned ${fmtMoney(job.pay)}. You were short on hours and got overworked (-10 energy).`);
+    } else {
+      logPush(s, 'Payday', `Job: ${job.name}. Earned ${fmtMoney(job.pay)}. Job hours auto-used: ${job.hours}h.`);
     }
-    return `Offseason`;
+  }
+
+  function startNewWeek(s){
+    // partial energy recharge each week
+    const gain = rint(10 + s.level * 0.5);
+    s.energy = clamp(s.energy + gain, 0, MAX_ENERGY);
+    s.hours = WEEK_HOURS;
+    s.prep = 0;
+    logPush(s, 'New Week', `Energy partially recharged (+${gain}). Weekly hours reset (${WEEK_HOURS}h).`);
+    weeklyJobApply(s);
   }
 
   function simulateGame(s){
-    const c = s.career;
-    const ovr = overall(s);
-    const opp = clamp(62 + (c.year-1)*3 + randInt(-6, 9), 55, 95);
+    const stats = derivedStats(s);
+    const ovr = calcOVR(stats);
+    // Opponent revealed only on game week UI; internally we generate now
+    const opp = clamp(rint(ovr + (Math.random()*18 - 9)), 55, 99);
 
-    // Prep, energy affect performance
-    const prepBonus = (c.prep/100) * 6; // up to +6
-    const energyPenalty = (1 - (c.energy / c.energyMax)) * 10; // up to -10
-    const variance = randInt(-8, 8);
+    // performance factors
+    const prepBonus = clamp(s.prep, 0, 60) / 100; // up to +0.6
+    const energyFactor = (0.6 + (s.energy/MAX_ENERGY)*0.4); // 0.6..1.0
+    const base = (ovr - opp) / 28; // -1..1ish
+    const style = s.player.style;
+    let variance = 0.10;
+    if(style === 'gunslinger') variance = 0.16;
+    if(style === 'pocket') variance = 0.08;
 
-    const playerPower = ovr + prepBonus - energyPenalty + variance;
-    const oppPower = opp + randInt(-6, 6);
+    const winP = clamp(0.48 + base*0.22 + prepBonus*0.10, 0.12, 0.88);
+    const didWin = Math.random() < winP;
 
-    const win = playerPower >= oppPower;
+    // produce a scoreline
+    const offense = (ovr*energyFactor) + (prepBonus*12) + (Math.random()*12 - 6);
+    const defense = (opp*0.95) + (Math.random()*10 - 5);
+    let ptsFor = clamp(rint(offense - defense + 24), 7, 56);
+    let ptsAg  = clamp(rint((opp - ovr)*0.5 + 21 + (Math.random()*10 - 5)), 3, 52);
+    if(didWin && ptsFor <= ptsAg) ptsFor = ptsAg + rint(3 + Math.random()*10);
+    if(!didWin && ptsFor >= ptsAg) ptsAg = ptsFor + rint(3 + Math.random()*10);
 
-    // Scorelines
-    const base = 14 + Math.round((playerPower + oppPower)/10);
-    const spread = Math.round((playerPower - oppPower)/2);
-    const myScore = clamp(base + spread + randInt(-7, 7), 7, 63);
-    const theirScore = clamp(base - spread + randInt(-7, 7), 7, 63);
+    // XP: base on closeness and performance
+    const margin = Math.abs(ptsFor - ptsAg);
+    const xpGain = clamp(rint(55 + (didWin?30:10) + prepBonus*35 + (energyFactor*20) - margin*0.8 + (Math.random()*10)), 25, 140);
+    s.xp += xpGain;
 
-    // Ensure no ties
-    let ms = myScore, ts = theirScore;
-    if(ms === ts){
-      if(win) ms += 3; else ts += 3;
-    }
+    // energy cost
+    const eCost = clamp(rint(22 + (Math.random()*10) - s.level*0.3), 12, 35);
+    s.energy = clamp(s.energy - eCost, 0, MAX_ENERGY);
 
-    // XP based on performance and opponent
-    const perf = win ? 1.1 : 0.9;
-    const difficulty = 0.85 + (opp/100)*0.5; // ~1.1-1.35
-    const xp = Math.round((55 + randInt(0, 35)) * perf * difficulty);
+    // update record and week progression
+    if(didWin) s.career.recordW += 1; else s.career.recordL += 1;
 
-    updateXp(s, xp);
+    const weekLabel = s.career.inPost ? `Postseason G${s.career.postWeek}/3` : `Week ${s.career.week}/${s.career.maxWeeks}`;
+    logPush(s, 'Game', `${weekLabel} vs Opponent (OVR ${opp}) — ${didWin?'W':'L'} ${ptsFor}-${ptsAg}. (+${xpGain} XP, -${eCost} energy)`);
 
-    // Energy cost for game
-    const gameEnergyCost = 22 + randInt(0, 12);
-    c.energy = clamp(c.energy - gameEnergyCost, 0, c.energyMax);
+    handleLevelUp(s);
 
-    // Record
-    if(win) c.record.w += 1; else c.record.l += 1;
-
-    // Log
-    const label = (c.week <= c.regSeasonWeeks) ? `Game — ${weekLabel(s)}` : `Game — ${weekLabel(s)}`;
-    pushLog(s, win ? 'good' : 'bad', label, `vs Opponent (OVR ${opp}) — ${win?'W':'L'} ${ms}-${ts}. (+${xp} XP, -${gameEnergyCost} energy)`);
-
-    // Store history
-    c.games.unshift({
-      year: c.year,
-      week: c.week,
-      postseason: c.week > c.regSeasonWeeks,
-      oppOvr: opp,
-      win,
-      scoreFor: ms,
-      scoreAgainst: ts,
-      xp
-    });
-    c.games = c.games.slice(0, 60);
-
-    return { win, oppOvr: opp, scoreFor: ms, scoreAgainst: ts, xp };
-  }
-
-  function startPostseasonIfEligible(s){
-    const c = s.career;
-    if(c.postseason.active || c.postseason.eliminated) return;
-    const wins = c.record.w;
-    // Simple rule: 8+ wins makes playoffs.
-    if(wins >= 8){
-      c.postseason.active = true;
-      c.postseason.round = 0;
-      c.postseason.eliminated = false;
-      pushLog(s, 'good', 'Playoffs!', `You made the postseason. Up to ${c.postSeasonMax} playoff games.`);
-    }else{
-      pushLog(s, 'warn', 'Season Over', 'No playoffs this year. Train harder and come back next season.');
-    }
-  }
-
-  function finishYearAndAdvance(s){
-    const c = s.career;
-    // Summary
-    pushLog(s, 'warn', `Year ${c.year} Complete`, `Final record: ${c.record.w}-${c.record.l}.`);
-    c.year += 1;
-    c.week = 1;
-    c.record = { w:0, l:0 };
-    c.postseason = { active:false, round:0, eliminated:false };
-    // Small offseason boost
-    c.energy = clamp(c.energy + 25, 0, c.energyMax);
-    c.prep = 0;
-
-    weeklyReset(s);
-
-    if(c.year > 4){
-      // College commitment prompt
-      showCollegeCommit(s);
-    }else{
-      pushLog(s, 'good', 'New Season', `Welcome to High School Year ${c.year}.`);
-      render(s);
-    }
-  }
-
-  function advanceWeek(s){
-    const c = s.career;
-
-    // If it's a game week and user hasn't played, require play? We'll allow advance but it counts as sim game.
-    if(isGameWeek(s)){
-      simulateGame(s);
-
-      // Advance timeline
-      if(c.week <= c.regSeasonWeeks){
-        c.week += 1;
-        if(c.week === c.regSeasonWeeks + 1){
-          // End of regular season reached
-          startPostseasonIfEligible(s);
-        }
-      }else if(c.postseason.active){
-        c.postseason.round += 1;
-        // Each postseason game happens on the same "week slot" after reg season
-        // If lost, eliminated
-        const last = c.games[0];
-        if(last && last.postseason && !last.win){
-          c.postseason.eliminated = true;
-          c.postseason.active = false;
-          pushLog(s, 'bad', 'Eliminated', 'Your season ends in the playoffs.');
-        }else if(c.postseason.round >= c.postSeasonMax){
-          c.postseason.active = false;
-          pushLog(s, 'good', 'Championship!', 'You survived the postseason run. Massive momentum next year.');
+    // advance schedule within the "Play Game" action
+    if(!s.career.inPost){
+      if(s.career.week < s.career.maxWeeks){
+        s.career.week += 1;
+      } else {
+        // decide postseason
+        const qualifies = s.career.recordW >= 8;
+        if(qualifies){
+          s.career.inPost = true;
+          s.career.postWeek = 1;
+          logPush(s, 'Playoffs', 'You qualified for the postseason! Up to 3 games.');
+        } else {
+          endOfSeason(s);
         }
       }
-
-      // If regular season over and postseason not active, year ends now.
-      if(c.week === c.regSeasonWeeks + 1 && !c.postseason.active){
-        finishYearAndAdvance(s);
-        save(s);
-        return;
+    } else {
+      // in postseason
+      if(s.career.postWeek < 3){
+        s.career.postWeek += 1;
+      } else {
+        endOfSeason(s);
       }
-
-      // If postseason ended (either eliminated or completed), year ends.
-      if(c.week > c.regSeasonWeeks && !c.postseason.active){
-        finishYearAndAdvance(s);
-        save(s);
-        return;
-      }
-    }else{
-      // Offseason week (not really used in v1, but safe)
-      c.week += 1;
     }
-
-    // Weekly reset resources
-    weeklyReset(s);
-    save(s);
-    render(s);
   }
 
-  function spendSkill(s, statKey){
-    const caps = statCaps();
-    const st = s.career.stats;
-    if(s.career.skillPoints <= 0) return;
-    if(!(statKey in st)) return;
-    if(st[statKey] >= caps.max) return;
-    s.career.skillPoints -= 1;
-    st[statKey] = clamp(st[statKey] + 1, caps.min, caps.max);
-    pushLog(s, 'good', 'Skill Improved', `${prettyStat(statKey)} increased to ${st[statKey]}.`);
-    save(s);
-    render(s);
+  function endOfSeason(s){
+    const y = s.career.year;
+    const rec = `${s.career.recordW}-${s.career.recordL}`;
+    logPush(s, 'Season End', `High School Year ${y} complete. Record: ${rec}.`);
+    // reset for next year or end
+    if(y >= 4){
+      promptCommit(s);
+      return;
+    }
+    s.career.year += 1;
+    s.career.week = 1;
+    s.career.maxWeeks = 12;
+    s.career.recordW = 0;
+    s.career.recordL = 0;
+    s.career.inPost = false;
+    s.career.postWeek = 0;
+    startNewWeek(s);
   }
 
-  function prettyStat(k){
-    return k.replace(/([A-Z])/g,' $1').replace(/^./, m => m.toUpperCase());
-  }
-
-  // ---------- Modal ----------
-  const modal = $('#modal');
-  const modalTitle = $('#modalTitle');
-  const modalBody = $('#modalBody');
-  const modalFoot = $('#modalFoot');
-
-  function openModal({ title, bodyHTML, footHTML }){
-    modalTitle.textContent = title;
-    modalBody.innerHTML = bodyHTML;
-    modalFoot.innerHTML = footHTML || '<button class="btn" value="ok">OK</button>';
-    modal.showModal();
-  }
-
-  function showCollegeCommit(s){
-    const ovr = overall(s);
-    const tier = (ovr >= 92) ? 'Elite' : (ovr >= 84) ? 'Great' : (ovr >= 76) ? 'Solid' : 'Project';
-    const schools = buildSchoolOptions(ovr);
-
-    const rows = schools.map(sc => `
-      <tr>
-        <td><strong>${sc.name}</strong><div class="muted">${sc.type}</div></td>
-        <td>⭐ ${sc.stars}</td>
-        <td>${sc.pitch}</td>
-        <td style="text-align:right"><button class="btn small" data-commit="${sc.name}">Commit</button></td>
-      </tr>
-    `).join('');
-
+  function promptCommit(s){
     openModal({
-      title: 'College Commitment',
+      title: 'Recruiting — Commit to a College',
       bodyHTML: `
-        <div class="muted">High school is complete. Your overall is <strong>${ovr}</strong> (${tier}). Choose a college to commit to.</div>
-        <table class="table">
-          <thead><tr><th>School</th><th>Offer</th><th>Pitch</th><th></th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-        <div class="help">This is the end of v1 (college+pro coming later). Your choice is saved.</div>
+        <div class="muted">You finished 4 years of high school. For now, the game ends here — but we can expand to college next.</div>
+        <div class="form">
+          <label class="field">
+            <span>Choose a college to commit to</span>
+            <select id="commit">
+              <option>State University</option>
+              <option>Coastal Tech</option>
+              <option>Midwest A&amp;M</option>
+              <option>North Valley College</option>
+              <option>Sunrise University</option>
+            </select>
+          </label>
+        </div>
       `,
-      footHTML: `<button class="btn ghost" value="cancel">Close</button>`
+      footHTML: `<button class="btn primary" id="btnCommit">Commit</button>`,
+      onClose: () => {}
     });
-
-    // Wire commit buttons
-    modalBody.querySelectorAll('[data-commit]').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        const name = btn.getAttribute('data-commit');
-        s.career.collegeCommit = name;
-        pushLog(s, 'good', 'Committed!', `You committed to ${name}. (End of demo)`);
-        s.career.stage = 'END';
-        save(s);
-        modal.close();
-        render(s);
-      });
-    });
+    $('#btnCommit').onclick = () => {
+      const college = $('#commit').value;
+      logPush(s, 'Committed', `${s.player.name} committed to ${college}. (End of demo)`);
+      save(s);
+      $('#modal').close();
+      render(s);
+    };
   }
 
-  function buildSchoolOptions(ovr){
-    const pool = [
-      { name:'North Valley State', type:'Power Conference', pitch:'Immediate playing time and big-stage games.' },
-      { name:'Coastal Tech', type:'Power Conference', pitch:'High-octane offense and national spotlight.' },
-      { name:'Midland University', type:'Power Conference', pitch:'Pro-style development and strong boosters.' },
-      { name:'Pine Ridge College', type:'Group of 5', pitch:'Be the face of the program and break records.' },
-      { name:'River City U', type:'Group of 5', pitch:'Fast tempo and a coach who believes in you.' },
-      { name:'Ironwood College', type:'FCS', pitch:'Build a legacy and lead the turnaround.' },
-      { name:'Lakeshore Institute', type:'FCS', pitch:'Scholarship offer and a great support system.' },
+  function openSkills(s){
+    const stats = derivedStats(s);
+    const keys = [
+      ['throwPower','Throw Power'],
+      ['accuracy','Accuracy'],
+      ['speed','Speed'],
+      ['strength','Strength'],
+      ['stamina','Stamina'],
     ];
 
-    // Stars based on ovr
-    function starsFor(o){
-      if(o >= 93) return 5;
-      if(o >= 86) return 4;
-      if(o >= 78) return 3;
-      if(o >= 70) return 2;
-      return 1;
-    }
-    const stars = starsFor(ovr);
-
-    // pick 5 relevant
-    const sorted = pool.slice().sort((a,b) => (b.type.localeCompare(a.type)));
-    let picks;
-    if(stars >= 5) picks = [pool[1], pool[0], pool[2], pool[3], pool[4]];
-    else if(stars === 4) picks = [pool[0], pool[2], pool[1], pool[3], pool[4]];
-    else if(stars === 3) picks = [pool[3], pool[4], pool[0], pool[5], pool[6]];
-    else picks = [pool[4], pool[5], pool[6], pool[3], pool[0]];
-
-    return picks.map(p => ({...p, stars}));
-  }
-
-  // ---------- UI ----------
-  function render(s){
-    if(!s || !s.character){
-      renderCreate();
-      return;
-    }
-    if(s.career.stage === 'END'){
-      renderEnd(s);
-      return;
-    }
-    renderDashboard(s);
-  }
-
-  function renderCreate(){
-    const posOptions = POSITIONS.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
-    app.innerHTML = `
-      <div class="grid2">
-        <section class="card">
-          <h2>Create Your Player</h2>
-          <div class="muted">Choose a name, position, style, and your high school. Then start your 4-year journey.</div>
-          <hr class="sep" />
-          <div class="form" id="createForm">
-            <div class="field">
-              <label>Player Name</label>
-              <input id="cName" placeholder="e.g., Kenny McEachin" maxlength="26" />
-              <div class="help">This will show in your career header and logs.</div>
-            </div>
-            <div class="twoCol">
-              <div class="field">
-                <label>Position</label>
-                <select id="cPos">${posOptions}</select>
-              </div>
-              <div class="field">
-                <label>Style</label>
-                <select id="cStyle"></select>
-              </div>
-            </div>
-            <div class="field">
-              <label>High School Name</label>
-              <input id="cSchool" placeholder="e.g., Lake Wales High" maxlength="32" />
-            </div>
-            <div class="row">
-              <button class="btn" id="btnStart">Start Career</button>
-              <span class="muted">High school: 4 years • 12 regular season games • up to 3 postseason games/year</span>
-            </div>
-          </div>
-        </section>
-
-        <section class="card">
-          <h2>How it Works</h2>
-          <div class="list">
-            <div class="logline"><span class="dot good"></span><div class="txt"><strong>Each week</strong> you have Hours and Energy. Training/Study costs energy & hours. Rest restores energy.</div></div>
-            <div class="logline"><span class="dot warn"></span><div class="txt"><strong>Part-time job</strong> pays weekly and auto-uses hours every week (set it and forget it).</div></div>
-            <div class="logline"><span class="dot good"></span><div class="txt"><strong>Games</strong> happen weekly during the season. Performance is influenced by overall, prep, and energy.</div></div>
-            <div class="logline"><span class="dot warn"></span><div class="txt"><strong>XP & Level</strong> — earn XP from games and training. Level ups grant skill points to spend.</div></div>
-            <div class="logline"><span class="dot good"></span><div class="txt"><strong>After Year 4</strong> you will commit to a college (end of v1).</div></div>
-          </div>
-        </section>
-      </div>
-    `;
-
-    const posSel = $('#cPos');
-    const styleSel = $('#cStyle');
-    const syncStyles = () => {
-      const pos = posSel.value;
-      const styles = (STYLES[pos] || []).map(st => `<option value="${st.id}">${st.name}</option>`).join('');
-      styleSel.innerHTML = styles;
-    };
-    posSel.addEventListener('change', syncStyles);
-    syncStyles();
-
-    $('#btnStart').addEventListener('click', (e) => {
-      e.preventDefault();
-      const name = ($('#cName').value || '').trim();
-      const hs = ($('#cSchool').value || '').trim();
-      const pos = posSel.value;
-      const style = styleSel.value;
-
-      if(name.length < 2 || hs.length < 2){
-        openModal({
-          title:'Missing info',
-          bodyHTML:`<div class="muted">Please enter a <strong>Player Name</strong> and <strong>High School Name</strong>.</div>`,
-          footHTML:`<button class="btn" value="ok">Got it</button>`
-        });
-        return;
-      }
-
-      const s = defaultState();
-      s.character = { name, position: pos, style, highschool: hs };
-
-      // Style-based starting stats tweaks
-      applyStyleBonus(s);
-
-      pushLog(s, 'good', 'Career Started', `${name} begins at ${hs} as a ${pos} (${style}).`);
-      weeklyReset(s);
-      save(s);
-      render(s);
-    });
-  }
-
-  function applyStyleBonus(s){
-    const pos = s.character.position;
-    const style = s.character.style;
-    const st = s.career.stats;
-
-    function bump(key, val){ st[key] = clamp(st[key] + val, 40, 99); }
-
-    if(pos === 'QB'){
-      if(style === 'Pocket'){ bump('accuracy', 4); bump('throwPower', 2); bump('speed', -2); }
-      if(style === 'Dual'){ bump('speed', 4); bump('accuracy', 1); }
-      if(style === 'Gunslinger'){ bump('throwPower', 6); bump('accuracy', -2); }
-    }else if(pos === 'RB'){
-      if(style === 'Power'){ bump('tackling', 4); bump('speed', -1); }
-      if(style === 'Speed'){ bump('speed', 6); bump('hands', -1); }
-      if(style === 'All'){ bump('hands', 3); bump('speed', 2); }
-    }else if(pos === 'WR'){
-      if(style === 'Route'){ bump('accuracy', 4); bump('hands', 2); }
-      if(style === 'Deep'){ bump('speed', 6); bump('hands', -1); }
-      if(style === 'Poss'){ bump('hands', 5); bump('speed', -1); }
-    }else if(pos === 'CB'){
-      if(style === 'Lock'){ bump('accuracy', 2); bump('tackling', 2); }
-      if(style === 'Ball'){ bump('hands', 4); bump('accuracy', 1); }
-      if(style === 'Speed'){ bump('speed', 6); bump('tackling', -1); }
-    }else if(pos === 'LB'){
-      if(style === 'Field'){ bump('tackling', 3); bump('accuracy', 2); }
-      if(style === 'Blitz'){ bump('tackling', 2); bump('throwPower', 1); bump('speed', 2); }
-      if(style === 'Coverage'){ bump('speed', 4); bump('hands', 2); }
-    }
-  }
-
-  function renderEnd(s){
-    const c = s.career;
-    app.innerHTML = `
-      <section class="card">
-        <h2>End of v1 (High School Complete)</h2>
-        <div class="muted">
-          <strong>${s.character.name}</strong> finished high school at <strong>${s.character.highschool}</strong> and committed to
-          <strong>${c.collegeCommit || 'a college'}</strong>.
-        </div>
-        <hr class="sep" />
-        <div class="kpi">
-          <div class="chip"><div class="label">Final Overall</div><div class="value">${overall(s)}</div></div>
-          <div class="chip"><div class="label">Level</div><div class="value">${c.level}</div></div>
-          <div class="chip"><div class="label">Money</div><div class="value">$${fmt(c.money)}</div></div>
-        </div>
-        <div class="section">
-          <button class="btn" id="btnSeeLog">View Career Log</button>
-        </div>
-      </section>
-    `;
-    $('#btnSeeLog').addEventListener('click', () => openLogModal(s));
-  }
-
-  function renderDashboard(s){
-    const c = s.career;
-    const ovr = overall(s);
-    const job = JOBS.find(j => j.id === c.jobId) || JOBS.find(j => j.id === 'none');
-
-    const energyPct = Math.round((c.energy / c.energyMax) * 100);
-    const hoursPct = Math.round((c.hours / c.hoursMax) * 100);
-    const xpPct = Math.round((c.xp / c.xpToNext) * 100);
-
-    const gameStatus = isGameWeek(s)
-      ? `<span class="badge">🏟️ Game Week</span> <span class="muted">Opponent OVR is revealed when you play.</span>`
-      : `<span class="badge">🧊 Offseason</span> <span class="muted">No game this week.</span>`;
-
-    const actionCards = ACTIONS.map(a => {
-      const costE = a.energyPerHour >= 0 ? `-${a.energyPerHour}/h` : `+${Math.abs(a.energyPerHour)}/h`;
-      const costH = `${a.hoursPerHour}/h`;
-      const per = a.id === 'rest' ? 'good' : 'warn';
-      return `
-        <div class="action">
-          <div class="name">${a.name}</div>
-          <div class="desc">${a.desc}</div>
-          <div class="costs">
-            <span class="badge">⚡ ${costE} energy</span>
-            <span class="badge">⏱️ ${costH} hours</span>
-            <span class="badge">✨ ~${a.xpPerHour}/h XP</span>
-          </div>
-          <div class="btnrow">
-            <button class="btn small" data-act="${a.id}" data-h="1">1 hour</button>
-            <button class="btn small" data-act="${a.id}" data-h="2">2 hours</button>
-            <button class="btn small" data-act="${a.id}" data-h="3">3 hours</button>
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    const jobRows = JOBS.filter(j => j.id !== 'none').map(j => `
-      <tr>
-        <td><strong>${j.name}</strong><div class="muted">${j.note}</div></td>
-        <td>${j.weeklyHours}h/week</td>
-        <td>$${j.weeklyPay}/week</td>
-        <td style="text-align:right">
-          <button class="btn small" data-job="${j.id}">Choose</button>
-        </td>
-      </tr>
-    `).join('');
-
-    const logHTML = c.log.slice(0, 18).map(x => `
-      <div class="logline">
-        <span class="dot ${x.type}"></span>
-        <div class="txt"><strong>${x.strong}</strong><div>${x.text}</div></div>
-      </div>
-    `).join('') || `<div class="muted">No events yet.</div>`;
-
-    const stats = c.stats;
-    const statKeys = Object.keys(stats);
-    const skillRows = statKeys.map(k => {
-      const val = stats[k];
-      const cap = 99;
-      const can = c.skillPoints > 0 && val < cap;
+    const rows = keys.map(([k, label]) => {
+      const base = s.statsBase[k];
+      const shown = stats[k];
+      const bonus = shown - base;
       return `
         <tr>
-          <td><strong>${prettyStat(k)}</strong></td>
-          <td>${val}</td>
-          <td style="text-align:right">
-            <button class="btn small" ${can ? '' : 'disabled'} data-skill="${k}">+1</button>
-          </td>
+          <td>${label}</td>
+          <td><span class="pill2">${shown}${bonus?` <span class="muted">(base ${base}${bonus>0?` +${bonus}`:''})</span>`:''}</span></td>
+          <td class="right"><button class="btn small" data-up="${k}" ${s.skillPoints<=0?'disabled':''}>+1</button></td>
         </tr>
       `;
     }).join('');
 
-    app.innerHTML = `
-      <div class="grid2">
-        <section class="card">
-          <div class="row space">
-            <div>
-              <h2>${s.character.highschool} — High School Year ${c.year}</h2>
-              <div class="muted">${weekLabel(s)} • Record ${c.record.w}-${c.record.l} • ${gameStatus}</div>
-            </div>
-            <div class="kpi">
-              <div class="chip"><div class="label">Money</div><div class="value">$${fmt(c.money)}</div></div>
-              <div class="chip"><div class="label">OVR</div><div class="value">${ovr}</div></div>
-              <div class="chip"><div class="label">Level</div><div class="value">${c.level}</div></div>
-              <div class="chip"><div class="label">XP</div><div class="value">${c.xp}/${c.xpToNext}</div></div>
-              <div class="chip"><div class="label">Skill Pts</div><div class="value">${c.skillPoints}</div></div>
-            </div>
-          </div>
-
-          <div class="bars">
-            <div class="bar">
-              <div class="name">Energy</div>
-              <div class="track"><div class="fill" style="width:${energyPct}%"></div></div>
-              <div class="num">${c.energy}/${c.energyMax}</div>
-            </div>
-            <div class="bar">
-              <div class="name">Hours Left</div>
-              <div class="track"><div class="fill" style="width:${hoursPct}%"></div></div>
-              <div class="num">${c.hours}/${c.hoursMax}</div>
-            </div>
-            <div class="bar">
-              <div class="name">XP to Level</div>
-              <div class="track"><div class="fill" style="width:${xpPct}%"></div></div>
-              <div class="num">${xpPct}%</div>
-            </div>
-          </div>
-
-          <div class="section">
-            <div class="row space">
-              <h2 style="margin:0">Weekly Actions</h2>
-              <div class="row">
-                <button class="btn" id="btnPlayGame">${isGameWeek(s) ? 'Play This Week’s Game' : 'No Game This Week'}</button>
-                <button class="btn ghost" id="btnAdvance">Advance Week</button>
-              </div>
-            </div>
-            <div class="muted">Training earns XP (no more “overall points”). Rest restores energy. Study builds prep for games.</div>
-            <div class="actions">${actionCards}</div>
-          </div>
-        </section>
-
-        <aside class="card">
-          <h2>Skills & Job</h2>
-          <div class="muted">Spend skill points from leveling up. Choose a job to earn weekly pay (auto-deducts hours each week).</div>
-          <hr class="sep" />
-          <div class="row space">
-            <div>
-              <div class="muted">Current Job</div>
-              <div style="font-weight:900">${job.name}</div>
-              <div class="muted">Auto: ${job.weeklyHours}h/week • +$${job.weeklyPay}/week</div>
-            </div>
-            <button class="btn ghost" id="btnJobs">Change Job</button>
-          </div>
-
-          <hr class="sep" />
-          <div class="row space">
-            <div>
-              <div class="muted">Skill Points</div>
-              <div style="font-weight:900; font-size:20px">${c.skillPoints}</div>
-            </div>
-            <div class="row" style="gap:8px">
-              <button class="btn ghost" id="btnSkills">Open Skills</button>
-              <button class="btn ghost" id="btnStore">Store</button>
-              <button class="btn ghost" id="btnInv">Inventory</button>
-            </div>
-          </div>
-
-          <div class="section">
-            <h2>Game Log</h2>
-            <div class="list" id="logList">${logHTML}</div>
-            <div class="row">
-              <button class="btn ghost" id="btnLogAll">View All</button>
-            </div>
-          </div>
-        </aside>
-      </div>
-    `;
-
-    // Wire actions
-    app.querySelectorAll('[data-act]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const act = btn.getAttribute('data-act');
-        const h = parseInt(btn.getAttribute('data-h'), 10);
-        applyAction(s, act, h);
-        save(s);
-        render(s);
-      });
+    openModal({
+      title: 'Spend Skill Points',
+      bodyHTML: `
+        <div class="muted">Skill points available: <b>${s.skillPoints}</b></div>
+        <table class="table">
+          <thead><tr><th>Skill</th><th>Value</th><th class="right">Upgrade</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <div class="tiny muted">Upgrades increase your base stats. OVR is calculated from your equipped bonuses + base stats.</div>
+      `,
+      footHTML: `<button class="btn" id="closeSkills">Close</button>`,
+      onClose: () => {}
     });
 
-    $('#btnAdvance').addEventListener('click', () => advanceWeek(s));
+    $('#closeSkills').onclick = () => $('#modal').close();
 
-    $('#btnPlayGame').addEventListener('click', () => {
-      if(!isGameWeek(s)){
-        pushLog(s, 'warn', 'No Game', 'There is no scheduled game this week.');
+    $$('button[data-up]').forEach(btn => {
+      btn.onclick = () => {
+        const k = btn.getAttribute('data-up');
+        if(s.skillPoints <= 0) return;
+        s.skillPoints -= 1;
+        s.statsBase[k] = clamp(s.statsBase[k] + 1, 40, 99);
+        logPush(s, 'Skill Up', `+1 ${k}.`);
         save(s);
+        $('#modal').close();
         render(s);
-        return;
-      }
-      // Playing game consumes the week immediately (and then resets week resources)
-      // We'll simulate and then call advanceWeek but without simulating twice:
-      // We'll temporarily simulate here and then do the rest of advance.
-      // For simplicity: just call advanceWeek(s) which simulates.
-      advanceWeek(s);
+      };
     });
-
-    $('#btnJobs').addEventListener('click', () => openJobsModal(s, jobRows));
-    $('#btnSkills').addEventListener('click', () => openSkillsModal(s, statKeys, skillRows));
-    $('#btnStore').addEventListener('click', () => openStoreModal(s));
-    $('#btnInv').addEventListener('click', () => openInventoryModal(s));
-    $('#btnLogAll').addEventListener('click', () => openLogModal(s));
   }
 
-  function openJobsModal(s, jobRows){
-    const current = JOBS.find(j => j.id === s.career.jobId) || JOBS.find(j => j.id === 'none');
+  function openJobs(s){
+    const current = JOBS.find(j=>j.id===s.career.jobId) || JOBS[0];
+    const rows = JOBS.map(j => `
+      <tr>
+        <td><b>${j.name}</b><div class="tiny muted">${j.desc}</div></td>
+        <td>${j.hours}h</td>
+        <td>${fmtMoney(j.pay)}/wk</td>
+        <td class="right"><button class="btn small" data-job="${j.id}" ${j.id===current.id?'disabled':''}>Select</button></td>
+      </tr>
+    `).join('');
+
     openModal({
-      title: 'Choose a Part-time Job',
+      title:'Choose a Part-time Job',
       bodyHTML: `
-        <div class="muted">Your current job is <strong>${current.name}</strong>. Jobs pay weekly and automatically use hours each week.</div>
+        <div class="muted">Your current job is <b>${current.name}</b>. Jobs pay weekly and automatically use hours each week.</div>
         <table class="table">
           <thead><tr><th>Job</th><th>Hours</th><th>Pay</th><th></th></tr></thead>
-          <tbody>
-            ${jobRows}
-            <tr>
-              <td><strong>No Job</strong><div class="muted">Keep all your hours for football.</div></td>
-              <td>0h/week</td><td>$0/week</td>
-              <td style="text-align:right"><button class="btn small" data-job="none">Choose</button></td>
-            </tr>
-          </tbody>
+          <tbody>${rows}</tbody>
         </table>
       `,
-      footHTML: `<button class="btn ghost" value="cancel">Close</button>`
+      footHTML: `<button class="btn" id="closeJobs">Close</button>`,
     });
 
-    modalBody.querySelectorAll('[data-job]').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
+    $('#closeJobs').onclick = () => $('#modal').close();
+    $$('button[data-job]').forEach(btn => {
+      btn.onclick = () => {
         const id = btn.getAttribute('data-job');
-        setJob(s, id);
+        s.career.jobId = id;
+        const j = JOBS.find(x=>x.id===id) || JOBS[0];
+        logPush(s, 'Job Updated', `You are now working as: ${j.name} (${j.hours}h/week, ${fmtMoney(j.pay)}/week).`);
         save(s);
-        modal.close();
+        $('#modal').close();
         render(s);
-      });
+      };
     });
   }
 
-  function openSkillsModal(s, statKeys, skillRows){
+  function openStore(s){
+    const ownedCount = (id) => s.inventory.owned.filter(x=>x===id).length;
+    const eq = s.inventory.equipped;
+
+    const rows = STORE_ITEMS.map(it => {
+      const count = ownedCount(it.id);
+      const ownedText = it.type==='consumable'
+        ? (count>0 ? `<span class="pill2">Owned: ${count}</span>` : `<span class="pill2">Owned: 0</span>`)
+        : (Object.values(eq).includes(it.id) ? `<span class="pill2">Equipped</span>` : (count>0 ? `<span class="pill2">Owned</span>` : `<span class="pill2">—</span>`));
+      const afford = canAfford(s, it.price);
+      return `
+        <tr>
+          <td><b>${it.name}</b><div class="tiny muted">${it.desc}</div></td>
+          <td><span class="pill2">${it.type==='equipment' ? ('Equip • ' + (it.slot||'slot')) : 'Consumable'}</span></td>
+          <td>${fmtMoney(it.price)}</td>
+          <td>${ownedText}</td>
+          <td class="right"><button class="btn small" data-buy="${it.id}" ${afford?'':'disabled'}>Buy</button></td>
+        </tr>
+      `;
+    }).join('');
+
     openModal({
-      title: 'Skills',
+      title:'Store',
       bodyHTML: `
-        <div class="muted">Spend skill points to improve your attributes (cap 99). Overall (OVR) is derived from key stats for your position.</div>
-        <hr class="sep" />
-        <div class="row space">
-          <div><div class="muted">Available Skill Points</div><div style="font-weight:900; font-size:20px">${s.career.skillPoints}</div></div>
-          <div class="muted">Position: <strong>${s.character.position}</strong></div>
-        </div>
+        <div class="muted">Money: <b>${fmtMoney(s.money)}</b></div>
         <table class="table">
-          <thead><tr><th>Attribute</th><th>Value</th><th></th></tr></thead>
-          <tbody>${skillRows}</tbody>
+          <thead><tr><th>Item</th><th>Type</th><th>Price</th><th>Owned</th><th class="right"></th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <div class="tiny muted">Equipment bonuses apply only when equipped. Consumables can be used from Inventory.</div>
+      `,
+      footHTML: `<button class="btn" id="closeStore">Close</button>`,
+    });
+    $('#closeStore').onclick = () => $('#modal').close();
+
+    $$('button[data-buy]').forEach(btn => {
+      btn.onclick = () => {
+        const id = btn.getAttribute('data-buy');
+        const it = STORE_ITEMS.find(x=>x.id===id);
+        if(!it) return;
+        if(!canAfford(s, it.price)) return;
+        s.money -= it.price;
+        addOwned(s, id);
+        logPush(s, 'Purchased', `Bought ${it.name} for ${fmtMoney(it.price)}.`);
+        save(s);
+        $('#modal').close();
+        render(s);
+      };
+    });
+  }
+
+  function openInventory(s){
+    const owned = s.inventory.owned.slice();
+    const eq = s.inventory.equipped;
+
+    const counts = owned.reduce((m,id)=>{ m[id]=(m[id]||0)+1; return m; }, {});
+    const ownedItems = Object.keys(counts).map(id => {
+      const it = STORE_ITEMS.find(x=>x.id===id);
+      if(!it) return null;
+      return { ...it, count: counts[id] };
+    }).filter(Boolean);
+
+    const slots = Object.keys(eq).map(slot => {
+      const id = eq[slot];
+      const it = id ? STORE_ITEMS.find(x=>x.id===id) : null;
+      return `
+        <tr>
+          <td><b>${slot}</b></td>
+          <td>${it ? it.name : '<span class="muted">None</span>'}</td>
+          <td class="right">${it ? `<button class="btn small" data-unequip="${slot}">Unequip</button>` : ''}</td>
+        </tr>
+      `;
+    }).join('');
+
+    const rows = ownedItems.map(it => {
+      const isEq = Object.values(eq).includes(it.id);
+      const actions = it.type==='consumable'
+        ? `<button class="btn small" data-use="${it.id}" ${it.count>0?'':'disabled'}>Use</button>`
+        : `<button class="btn small" data-eq="${it.id}" ${isEq?'disabled':''}>Equip</button>`;
+      return `
+        <tr>
+          <td><b>${it.name}</b><div class="tiny muted">${it.desc}</div></td>
+          <td>${it.type==='consumable' ? `x${it.count}` : (isEq ? 'Equipped' : 'Owned')}</td>
+          <td class="right">${actions}</td>
+        </tr>
+      `;
+    }).join('');
+
+    openModal({
+      title:'Inventory',
+      bodyHTML: `
+        <div class="muted">Energy: <b>${s.energy}/${MAX_ENERGY}</b> • Hours: <b>${s.hours}/${WEEK_HOURS}</b></div>
+
+        <div style="margin-top:10px" class="muted"><b>Equipped</b></div>
+        <table class="table">
+          <thead><tr><th>Slot</th><th>Item</th><th class="right"></th></tr></thead>
+          <tbody>${slots}</tbody>
+        </table>
+
+        <div style="margin-top:10px" class="muted"><b>Owned Items</b></div>
+        <table class="table">
+          <thead><tr><th>Item</th><th>Status</th><th class="right">Action</th></tr></thead>
+          <tbody>${rows || `<tr><td colspan="3" class="muted">Your inventory is empty. Buy items in the Store.</td></tr>`}</tbody>
         </table>
       `,
-      footHTML:`<button class="btn ghost" value="cancel">Close</button>`
+      footHTML: `<button class="btn" id="closeInv">Close</button>`,
+    });
+    $('#closeInv').onclick = () => $('#modal').close();
+
+    $$('button[data-use]').forEach(btn=>{
+      btn.onclick = () => {
+        const id = btn.getAttribute('data-use');
+        useConsumable(s, id);
+        save(s);
+        $('#modal').close();
+        render(s);
+      };
     });
 
-    modalBody.querySelectorAll('[data-skill]').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        const k = btn.getAttribute('data-skill');
-        spendSkill(s, k);
-        // re-open updated modal
-        modal.close();
-        openSkillsModal(s, statKeys, statKeys.map(sk => {
-          const val = s.career.stats[sk];
-          const can = s.career.skillPoints > 0 && val < 99;
-          return `
-            <tr>
-              <td><strong>${prettyStat(sk)}</strong></td>
-              <td>${val}</td>
-              <td style="text-align:right"><button class="btn small" ${can ? '' : 'disabled'} data-skill="${sk}">+1</button></td>
-            </tr>`;
-        }).join(''));
-      });
+    $$('button[data-eq]').forEach(btn=>{
+      btn.onclick = () => {
+        const id = btn.getAttribute('data-eq');
+        const it = STORE_ITEMS.find(x=>x.id===id);
+        if(!it || it.type!=='equipment') return;
+        const slot = it.slot || 'accessory';
+        // ensure owned
+        if(!s.inventory.owned.includes(id)) return;
+        // if already something in slot, unequip
+        s.inventory.equipped[slot] = id;
+        logPush(s, 'Equipped', `Equipped ${it.name} (${slot}).`);
+        save(s);
+        $('#modal').close();
+        render(s);
+      };
+    });
+
+    $$('button[data-unequip]').forEach(btn=>{
+      btn.onclick = () => {
+        const slot = btn.getAttribute('data-unequip');
+        s.inventory.equipped[slot] = null;
+        logPush(s, 'Unequipped', `Unequipped ${slot}.`);
+        save(s);
+        $('#modal').close();
+        render(s);
+      };
     });
   }
 
-  
-
-function buyStoreItem(itemId){
-  const def = STORE_ITEMS.find(x=>x.id===itemId);
-  if(!def) return;
-  if(state.career.money < def.price){
-    toast('Not enough money.');
-    return;
-  }
-  state.career.money -= def.price;
-  state.career.inventory.push(makeInvItem(def));
-  log(`Purchased ${def.name} for $${def.price}.`);
-  save();
-  render();
-  openStoreModal(state);
-}
-
-function equippedUidInSlot(slot){
-  return (state.career.equipment && state.career.equipment[slot]) || null;
-}
-
-function setEquip(slot, uid){
-  if(!state.career.equipment) state.career.equipment = { head:null, body:null, hands:null, feet:null, accessory:null };
-  // un-equip current
-  const cur = state.career.equipment[slot];
-  if(cur){
-    const curItem = state.career.inventory.find(it=>it.uid===cur);
-    if(curItem) curItem.equipped = false;
-  }
-  state.career.equipment[slot] = uid;
-  const it = state.career.inventory.find(it=>it.uid===uid);
-  if(it) it.equipped = true;
-}
-
-function useInventory(uid){
-  const inv = state.career.inventory || [];
-  const idx = inv.findIndex(it=>it.uid===uid);
-  if(idx<0) return;
-  const it = inv[idx];
-  if(it.type==='consumable'){
-    applyItemEffects(it.effects);
-    inv.splice(idx,1);
-    log(`Used ${it.name}.`);
-    save();
-    render();
-    openInventoryModal(state);
-    return;
-  }
-  toast('That item cannot be used. Try equipping it.');
-}
-
-function toggleEquip(uid){
-  const inv = state.career.inventory || [];
-  const it = inv.find(x=>x.uid===uid);
-  if(!it) return;
-  if(it.type!=='gear') return;
-  const slot = it.slot || 'accessory';
-  const cur = equippedUidInSlot(slot);
-  if(cur===uid){
-    // unequip
-    state.career.equipment[slot]=null;
-    it.equipped=false;
-  } else {
-    setEquip(slot, uid);
-  }
-  log(`${it.equipped ? 'Equipped' : 'Unequipped'} ${it.name}.`);
-  save();
-  render();
-  openInventoryModal(state);
-}
-
-function applyItemEffects(effects){
-  if(!effects) return;
-  if(typeof effects.energy==='number') state.career.energy = clamp(state.career.energy + effects.energy, 0, state.career.maxEnergy);
-  if(typeof effects.hours==='number') state.career.hoursLeft = clamp(state.career.hoursLeft + effects.hours, 0, state.career.maxHours);
-  if(effects.stats){
-    const st = state.career.stats;
-    for(const [k,v] of Object.entries(effects.stats)){
-      if(typeof st[k]==='number') st[k] = clamp(st[k] + v, 40, 99);
-    }
-  }
-}
-
-function openStoreModal(s){
-  // Render as a simple card grid (easier to read + harder to "look empty" if CSS changes)
-  const cards = STORE_ITEMS.map(def => {
-    const affordable = s.career.money >= def.price;
-    const pills = [
-      (def.energyDelta||0) ? `${def.energyDelta>0?'+':''}${def.energyDelta} energy` : null,
-      (def.hoursDelta||0) ? `${def.hoursDelta>0?'+':''}${def.hoursDelta} hours` : null,
-      (def.throwPower||0) ? `Throw +${def.throwPower}` : null,
-      (def.accuracy||0) ? `Acc +${def.accuracy}` : null,
-      (def.speed||0) ? `Spd +${def.speed}` : null,
-      def.slot ? `Slot: ${def.slot}` : null,
-    ].filter(Boolean);
-
-    return `
-      <div class="storeCard">
-        <div class="storeTop">
-          <div class="storeName">${escapeHtml(def.name)}</div>
-          <div class="storePrice">$${fmtInt(def.price)}</div>
-        </div>
-        <div class="storeDesc">${escapeHtml(def.desc)}</div>
-        ${pills.length ? `<div class="pillRow">${pills.map(p=>`<span class=\"pill\">${escapeHtml(p)}</span>`).join('')}</div>` : ''}
-        <div class="storeActions">
-          <button class="btn ${affordable ? '' : 'disabled'}" data-buy="${def.id}" ${affordable ? '' : 'disabled'}>${affordable ? 'Buy' : 'Need $' + fmtInt(def.price - s.career.money)}</button>
-        </div>
-      </div>`;
-  }).join('');
-
-  const body = `
-    <div class="stack" style="gap:12px">
-      <div class="row" style="justify-content:space-between;align-items:flex-start;gap:12px">
-        <div>
-          <div class="h">Store</div>
-          <div class="muted">Spend money on items that boost stats, energy, or hours. Gear can be equipped in Inventory.</div>
-        </div>
-        <div class="pill">Money: <strong>$${fmtInt(s.career.money)}</strong></div>
-      </div>
-      <div class="storeGrid">${cards || '<div class="muted">No items.</div>'}</div>
-      <div class="row" style="justify-content:flex-end;gap:8px">
-        <button class="btn ghost" id="storeGoInv">Open Inventory</button>
-      </div>
-    </div>`;
-
-  openModal('store', body);
-  qsa('[data-buy]').forEach(btn => btn.addEventListener('click', () => buyStoreItem(btn.getAttribute('data-buy'))));
-  const goInv = qs('#storeGoInv');
-  if(goInv) goInv.addEventListener('click', () => openInventoryModal(state));
-}
-
-function openInventoryModal(s){
-  const inv = s.career.inventory || [];
-  const eq = s.career.equipment || { head:null, body:null, hands:null, feet:null, accessory:null };
-  const eqSet = new Set(Object.values(eq).filter(Boolean));
-
-  const rows = inv.map(it => {
-    const isEquipped = eqSet.has(it.uid);
-    const kind = it.type==='consumable' ? 'Consumable' : `Gear${it.slot ? ' · ' + it.slot : ''}`;
-    const actions = it.type==='consumable'
-      ? `<button class="btn" data-use="${it.uid}">Use</button>`
-      : `<button class="btn" data-equip="${it.uid}">${isEquipped ? 'Unequip' : 'Equip'}</button>`;
-    return `
-      <tr>
-        <td>
-          <div style="display:flex;flex-direction:column;gap:2px">
-            <strong>${it.name}${isEquipped ? ' <span class="tag">Equipped</span>' : ''}</strong>
-            <span class="muted" style="font-size:12px">${kind} · ${it.desc}</span>
-          </div>
-        </td>
-        <td style="text-align:right">${actions}</td>
-      </tr>`;
-  }).join('');
-
-  const equipSummary = ['head','body','hands','feet','accessory'].map(slot => {
-    const uid = eq[slot];
-    const it = inv.find(x=>x.uid===uid);
-    return `<div class="chip"><span class="muted" style="text-transform:capitalize">${slot}</span> <strong>${it ? it.name : '—'}</strong></div>`;
-  }).join('');
-
-  const body = `
-    <div class="stack" style="gap:10px">
-      <div class="row" style="justify-content:space-between;align-items:center">
-        <div>
-          <div class="h">Inventory</div>
-          <div class="muted">Use consumables or equip gear for permanent boosts.</div>
-        </div>
-        <div class="row" style="gap:8px">
-          <button class="btn ghost" id="invGoStore">Open Store</button>
-        </div>
-      </div>
-      <div class="row" style="flex-wrap:wrap;gap:8px">${equipSummary}</div>
-      <div class="tableWrap">
-        <table class="table">
-          <thead><tr><th>Item</th><th style="text-align:right">Action</th></tr></thead>
-          <tbody>${rows || '<tr><td colspan="2" class="muted">Inventory is empty.</td></tr>'}</tbody>
-        </table>
-      </div>
-    </div>`;
-
-  openModal('inventory', body);
-  qsa('[data-use]').forEach(btn => btn.addEventListener('click', () => useInventory(btn.getAttribute('data-use'))));
-  qsa('[data-equip]').forEach(btn => btn.addEventListener('click', () => toggleEquip(btn.getAttribute('data-equip'))));
-  const goStore = qs('#invGoStore');
-  if(goStore) goStore.addEventListener('click', () => openStoreModal(state));
-}
-
-function openLogModal(s){
-    const items = s.career.log.slice(0, 60).map(x => {
-      const d = new Date(x.t);
-      const ts = d.toLocaleString();
-      return `<div class="logline">
-        <span class="dot ${x.type}"></span>
-        <div class="txt"><strong>${x.strong}</strong><div>${x.text}</div><div class="muted" style="margin-top:4px">${ts}</div></div>
-      </div>`;
-    }).join('') || '<div class="muted">No log entries.</div>';
-
+  function openLogAll(s){
+    const items = s.log.slice(0, 200).map(it => {
+      const d = new Date(it.t);
+      const stamp = d.toLocaleString();
+      return `<div class="logitem"><div class="logmeta">${stamp} • ${it.title}</div><div class="logmsg">${it.msg}</div></div>`;
+    }).join('');
     openModal({
-      title:'Career Log',
-      bodyHTML:`<div class="list" style="max-height: 420px">${items}</div>`,
-      footHTML:`<button class="btn ghost" value="cancel">Close</button>`
+      title:'Full Game Log',
+      bodyHTML: `<div class="log" style="max-height:60vh">${items || '<div class="muted">No log yet.</div>'}</div>`,
+      footHTML: `<button class="btn" id="closeLog">Close</button>`,
     });
+    $('#closeLog').onclick = () => $('#modal').close();
   }
 
-  // ---------- Export / Import / Reset ----------
-  $('#btnReset').addEventListener('click', () => {
-    openModal({
-      title:'Reset Save?',
-      bodyHTML:`<div class="muted">This will clear your current career. This cannot be undone.</div>`,
-      footHTML:`<button class="btn danger" id="confirmReset" value="ok">Reset</button><button class="btn ghost" value="cancel">Cancel</button>`
+  function wireUI(s){
+    // action buttons
+    $$('#careerCard button[data-act]').forEach(b => {
+      b.onclick = () => doAction(s, b.dataset.act, b.dataset.h);
     });
-    $('#confirmReset').addEventListener('click', (e) => {
-      e.preventDefault();
-      localStorage.removeItem(SAVE_KEY);
-      modal.close();
-      state = defaultState();
-      render(state);
-    }, { once:true });
-  });
-
-  $('#btnExport').addEventListener('click', () => {
-    const s = state || defaultState();
-    const data = JSON.stringify(s, null, 2);
-    const blob = new Blob([data], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `gridiron-save-v${VERSION}.json`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 600);
-  });
-
-  $('#btnImport').addEventListener('click', async () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'application/json';
-    input.addEventListener('change', async () => {
-      const file = input.files && input.files[0];
-      if(!file) return;
-      try{
-        const text = await file.text();
-        const s = JSON.parse(text);
-        // Minimal validation
-        if(!s || !s.career) throw new Error('Invalid save');
-        localStorage.setItem(SAVE_KEY, JSON.stringify(s));
-        state = s;
-        pushLog(state, 'good', 'Save Imported', 'Save loaded successfully.');
-        save(state);
-        render(state);
-      }catch(err){
-        openModal({
-          title:'Import failed',
-          bodyHTML:`<div class="muted">That file doesn't look like a valid save.</div>`,
-          footHTML:`<button class="btn" value="ok">OK</button>`
-        });
+    $('#btnAdvance').onclick = () => {
+      if(!s.player) return openCreatePlayer(s);
+      // advance without playing game: new week
+      startNewWeek(s);
+      // advance schedule but keep game for week
+      if(!s.career.inPost){
+        if(s.career.week < s.career.maxWeeks) s.career.week += 1;
+        else {
+          // season end check
+          const qualifies = s.career.recordW >= 8;
+          if(qualifies){
+            s.career.inPost = true; s.career.postWeek = 1;
+            logPush(s, 'Playoffs', 'You qualified for the postseason! Up to 3 games.');
+          } else endOfSeason(s);
+        }
+      } else {
+        if(s.career.postWeek < 3) s.career.postWeek += 1;
+        else endOfSeason(s);
       }
-    });
-    input.click();
-  });
+      save(s);
+      render(s);
+    };
 
-  // ---------- Boot ----------
-  let state = load() || defaultState();
+    $('#btnPlayGame').onclick = () => {
+      if(!s.player) return openCreatePlayer(s);
+      simulateGame(s);
+      save(s);
+      render(s);
+    };
 
-  // If save version mismatch, keep but update meta
-  if(state?.meta){ state.meta.version = VERSION; }
-  save(state);
+    $('#btnSkills').onclick = () => s.player ? openSkills(s) : openCreatePlayer(s);
+    $('#btnJob').onclick = () => s.player ? openJobs(s) : openCreatePlayer(s);
+    $('#btnStore').onclick = () => s.player ? openStore(s) : openCreatePlayer(s);
+    $('#btnInv').onclick = () => s.player ? openInventory(s) : openCreatePlayer(s);
+    $('#btnLog').onclick = () => openLogAll(s);
+
+    $('#btnReset').onclick = () => {
+      if(confirm('Reset your save?')){
+        localStorage.removeItem(LS_KEY);
+        const ns = defaultState();
+        save(ns);
+        location.reload();
+      }
+    };
+
+    $('#btnExport').onclick = () => {
+      const blob = new Blob([JSON.stringify(s, null, 2)], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'gridiron-save-v112.json';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    };
+
+    $('#fileImport').onchange = async (ev) => {
+      const f = ev.target.files && ev.target.files[0];
+      if(!f) return;
+      try{
+        const txt = await f.text();
+        const obj = JSON.parse(txt);
+        localStorage.setItem(LS_KEY, JSON.stringify(obj));
+        location.reload();
+      }catch(e){
+        alert('Import failed: invalid JSON.');
+      }finally{
+        ev.target.value = '';
+      }
+    };
+  }
+
+  function render(s){
+    document.title = `Gridiron Career Sim ${VERSION}`;
+
+    // create if missing
+    if(!s.player){
+      $('#careerTitle').textContent = 'New Career';
+      $('#careerSub').textContent = 'Create your player to begin.';
+      $('#money').textContent = '$0';
+      $('#ovr').textContent = '—';
+      $('#level').textContent = '—';
+      $('#xp').textContent = '—';
+      $('#sp').textContent = '—';
+      $('#seasonTag').textContent = '—';
+      $('#gameWeekTag').textContent = '—';
+      setBars(0,0,0,0);
+      $('#jobName').textContent = 'No Job';
+      $('#jobMeta').textContent = 'Auto: 0h/week • $0/week';
+      renderLog(s);
+      // prompt create
+      openCreatePlayer(s);
+      return;
+    }
+
+    const stats = derivedStats(s);
+    const ovr = calcOVR(stats);
+
+    $('#careerTitle').textContent = `${s.player.name} — High School Year ${s.career.year}`;
+    $('#careerSub').textContent = `${s.player.school} • ${s.player.position} (${STYLES.find(x=>x.id===s.player.style)?.name||s.player.style})`;
+    $('#seasonTag').textContent = `Week ${s.career.week}/${s.career.maxWeeks}`;
+    $('#gameWeekTag').textContent = s.career.inPost ? `Postseason G${s.career.postWeek}/3` : 'Regular Season';
+
+    $('#money').textContent = fmtMoney(s.money);
+    $('#ovr').textContent = String(ovr);
+    $('#level').textContent = String(s.level);
+    $('#xp').textContent = `${s.xp}/${xpNeeded(s.level)}`;
+    $('#sp').textContent = String(s.skillPoints);
+
+    const job = JOBS.find(j=>j.id===s.career.jobId) || JOBS[0];
+    $('#jobName').textContent = job.name;
+    $('#jobMeta').textContent = `Auto: ${job.hours}h/week • ${fmtMoney(job.pay)}/week`;
+
+    setBars(s.energy/MAX_ENERGY, s.hours/WEEK_HOURS, s.xp/xpNeeded(s.level), s.energy, s.hours, s.xp);
+
+    // enable/disable play button: if already committed end-of-demo, still allow?
+    $('#btnPlayGame').disabled = false;
+
+    renderLog(s);
+  }
+
+  function setBars(energyP, hoursP, xpP){
+    $('#energyFill').style.width = `${clamp(energyP*100, 0, 100)}%`;
+    $('#hoursFill').style.width = `${clamp(hoursP*100, 0, 100)}%`;
+    $('#xpFill').style.width = `${clamp(xpP*100, 0, 100)}%`;
+    $('#energyTxt').textContent = `${Math.round(energyP*MAX_ENERGY)}/${MAX_ENERGY}`;
+    $('#hoursTxt').textContent = `${Math.round(hoursP*WEEK_HOURS)}/${WEEK_HOURS}`;
+    $('#xpTxt').textContent = `${Math.round(clamp(xpP*100,0,100))}%`;
+  }
+
+  function renderLog(s){
+    const el = $('#log');
+    const items = s.log.slice(0, 8).map(it => {
+      const d = new Date(it.t);
+      const stamp = d.toLocaleString();
+      return `<div class="logitem"><div class="logmeta">${stamp} • ${it.title}</div><div class="logmsg">${it.msg}</div></div>`;
+    }).join('');
+    el.innerHTML = items || '<div class="muted">No activity yet.</div>';
+  }
+
+  // Extra CSS for modal form controls (injected once)
+  const extra = document.createElement('style');
+  extra.textContent = `
+    .form{margin-top:12px; display:grid; gap:12px}
+    .field{display:grid; gap:6px}
+    .field > span{font-size:12px; color: rgba(232,236,255,.70)}
+    input, select{
+      width:100%;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.18);
+      color: rgba(232,236,255,.95);
+      outline:none;
+    }
+    input:focus, select:focus{border-color: rgba(124,92,255,.55)}
+    .row{display:grid; grid-template-columns: 1fr 1fr; gap:12px}
+    @media (max-width: 520px){ .row{grid-template-columns:1fr} }
+    .radios{display:grid; gap:10px; margin-top:8px}
+    .radio{
+      display:flex; gap:10px; align-items:flex-start;
+      padding:10px 10px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04);
+      cursor:pointer;
+    }
+    .radio input{margin-top:4px}
+    .r-title{font-weight:900}
+  `;
+  document.head.appendChild(extra);
+
+  // boot
+  const state = load();
+  $('#ver').textContent = VERSION.replace('v','v');
+  wireUI(state);
   render(state);
 
 })();
-
-// === STORE SYSTEM v1.1.1 ===
-const STORE_ITEMS = [
-  { id:"energy_drink", name:"Energy Drink", description:"Restore 20 energy", price:25, type:"consumable", energy:20 },
-  { id:"protein_bar", name:"Protein Bar", description:"Restore 10 energy", price:15, type:"consumable", energy:10 },
-  { id:"cleats_basic", name:"Basic Cleats", description:"+1 Speed", price:75, type:"equipment", stats:{speed:1} }
-];
-
-function renderStoreItems(){
-  const el=document.getElementById("storeItems");
-  if(!el) return;
-  el.innerHTML="";
-  STORE_ITEMS.forEach(i=>{
-    const d=document.createElement("div");
-    d.className="store-item";
-    d.innerHTML=`<strong>${i.name}</strong><p>${i.description}</p><p>$${i.price}</p><button onclick="buyItem('${i.id}')">Buy</button>`;
-    el.appendChild(d);
-  });
-}
-
-function buyItem(id){
-  const item=STORE_ITEMS.find(i=>i.id===id);
-  if(!item) return;
-  if(player.money < item.price){ alert("Not enough money"); return; }
-  player.money -= item.price;
-  player.inventory = player.inventory || [];
-  player.inventory.push(item);
-  alert(item.name + " purchased!");
-  if(typeof updateHUD==="function") updateHUD();
-}
