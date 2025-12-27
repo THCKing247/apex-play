@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Gridiron Career Sim v1.0.0</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div class="bg" aria-hidden="true">
+    <div class="glow g1"></div>
+    <div class="glow g2"></div>
+    <div class="glow g3"></div>
+    <div class="grid"></div>
+  </div>
+
+  <div class="wrap">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo">🏈</div>
+        <div>
+          <div class="title">Gridiron Career Sim <span class="pill" id="verPill">v1.0.0</span></div>
+          <div class="sub" id="subtitle">Build your high school legend.</div>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button class="btn ghost" id="btnExport">Export Save</button>
+        <button class="btn ghost" id="btnImport">Import Save</button>
+        <button class="btn danger" id="btnReset">Reset</button>
+      </div>
+    </header>
+
+    <main id="app">
+      <!-- injected by game.js -->
+    </main>
+
+    <footer class="footer">
+      <span>Tip: Training earns XP. Rest restores energy. Choose a part-time job for weekly money (hours auto-deduct each week).</span>
+    </footer>
+  </div>
+
+  <dialog id="modal" class="modal">
+    <form method="dialog" class="modal-card">
+      <div class="modal-head">
+        <div class="modal-title" id="modalTitle">Modal</div>
+        <button class="icon-btn" value="cancel" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+      <div class="modal-foot" id="modalFoot">
+        <button class="btn" value="ok">OK</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="./game.js"></script>
+</body>
+</html>
