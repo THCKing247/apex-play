@@ -1058,6 +1058,7 @@ function startCareerFromCreator(){
   const state = load();
   // Modal open helpers (kept for older onclick hooks / compatibility)
   function openSkillsModal(){ openSkills(state); }
+  function openJobModal(){ openJobs(state); }
   function openStoreModal(){ openStore(state); }
   function openInventoryModal(){ openInventory(state); }
 
