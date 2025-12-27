@@ -1,8 +1,8 @@
-/* Gridiron Career Sim — v1.0.0 (High School only) */
+/* Gridiron Career Sim — v1.0.5 (High School only) */
 (() => {
   'use strict';
 
-  const VERSION = '1.0.1';
+  const VERSION = '1.0.5';
   
 
 // Store + Inventory
