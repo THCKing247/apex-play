@@ -1,8 +1,18 @@
-/* Gridiron Career Sim — v1.1.4 */
+/* Gridiron Career Sim — v1.1.3 */
 (() => {
   'use strict';
 
-  const VERSION = 'v1.1.4';
+  function escapeHtml(str){
+    return String(str ?? '')
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;')
+      .replace(/'/g,'&#39;');
+  }
+
+
+  const VERSION = 'v1.1.3';
 
   const LS_KEY = 'gcs_save_v112';
 
