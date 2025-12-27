@@ -1036,9 +1036,28 @@ function startCareerFromCreator(){
   `;
   document.head.appendChild(extra);
 
+
+  // expose functions needed by inline onclick handlers (GitHub Pages-safe)
+  Object.assign(window, {
+    openCreatePlayer,
+    startCareerFromCreator,
+    openSkillsModal,
+    openStoreModal,
+    openInventoryModal,
+    openJobModal,
+    exportSave,
+    importSaveFromFile,
+    resetAll,
+    playGame,
+    advanceWeek,
+    doAction
+  });
+
+
   // boot
   const state = load();
   $('#ver').textContent = VERSION.replace('v','v');
+  document.title = `Gridiron Career Sim ${VERSION}`;
   wireUI(state);
   render(state);
 
