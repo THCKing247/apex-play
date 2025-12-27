@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gridiron Career Sim v1.1.7</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="bg" aria-hidden="true"></div>
+
+  <div class="wrap">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">🏈</div>
+        <div>
+          <div class="title">Gridiron Career Sim <span class="pill" id="ver">v1.1.7</span></div>
+          <div class="subtitle">Build your high school legend.</div>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button class="btn" id="btnExport">Export Save</button>
+        <label class="btn file">
+          Import Save<input type="file" id="fileImport" accept="application/json" />
+        </label>
+        <button class="btn danger" id="btnReset">Reset</button>
+      </div>
+    </header>
+
+    <main class="grid">
+      <section class="card" id="careerCard">
+        <div class="card-h">
+          <div>
+            <div class="h1" id="careerTitle">New Career</div>
+            <div class="muted" id="careerSub">Create your player to begin.</div>
+          </div>
+          <div class="tags">
+            <span class="tag" id="seasonTag">—</span>
+            <span class="tag" id="gameWeekTag">—</span>
+          </div>
+        </div>
+
+        <div class="stats-row">
+          <div class="stat">
+            <div class="k">Money</div>
+            <div class="v" id="money">$0</div>
+          </div>
+          <div class="stat">
+            <div class="k">OVR</div>
+            <div class="v" id="ovr">—</div>
+          </div>
+          <div class="stat">
+            <div class="k">Level</div>
+            <div class="v" id="level">—</div>
+          </div>
+          <div class="stat">
+            <div class="k">XP</div>
+            <div class="v" id="xp">—</div>
+          </div>
+          <div class="stat">
+            <div class="k">Skill Pts</div>
+            <div class="v" id="sp">—</div>
+          </div>
+        </div>
+
+        <div class="bars">
+          <div class="bar">
+            <div class="bar-top"><span>Energy</span><span id="energyTxt">0/100</span></div>
+            <div class="meter"><div class="fill" id="energyFill"></div></div>
+          </div>
+          <div class="bar">
+            <div class="bar-top"><span>Hours Left</span><span id="hoursTxt">0/25</span></div>
+            <div class="meter"><div class="fill" id="hoursFill"></div></div>
+          </div>
+          <div class="bar">
+            <div class="bar-top"><span>XP to Level</span><span id="xpTxt">0%</span></div>
+            <div class="meter"><div class="fill" id="xpFill"></div></div>
+          </div>
+        </div>
+
+        <div class="row-actions">
+          <button class="btn primary" id="btnPlayGame">Play This Week’s Game</button>
+          <button class="btn" id="btnAdvance">Advance Week</button>
+        </div>
+
+        <div class="muted tiny" id="hint">
+          Tip: Training and studying earn XP. Rest restores energy. Jobs auto-pay weekly and auto-use hours.
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-h">
+          <div>
+            <div class="h1">Weekly Actions</div>
+            <div class="muted">Spend hours and energy to improve. Values scale with the time you choose.</div>
+          </div>
+        </div>
+
+        <div class="actions-grid">
+          <div class="action">
+            <div class="a-title">Train</div>
+            <div class="muted">Earn XP from drills and film work.</div>
+            <div class="chips">
+              <span class="chip">Energy: <b id="trainCostE">-12/h</b></span>
+              <span class="chip">Hours: <b>-1/h</b></span>
+              <span class="chip">XP: <b id="trainGainX">+28/h</b></span>
+            </div>
+            <div class="btnrow">
+              <button class="btn small" data-act="train" data-h="1">1 hour</button>
+              <button class="btn small" data-act="train" data-h="2">2 hours</button>
+              <button class="btn small" data-act="train" data-h="3">3 hours</button>
+            </div>
+          </div>
+
+          <div class="action">
+            <div class="a-title">Rest</div>
+            <div class="muted">Recover energy and stay fresh.</div>
+            <div class="chips">
+              <span class="chip">Energy: <b id="restGainE">+18/h</b></span>
+              <span class="chip">Hours: <b>-1/h</b></span>
+              <span class="chip">XP: <b id="restGainX">+6/h</b></span>
+            </div>
+            <div class="btnrow">
+              <button class="btn small" data-act="rest" data-h="1">1 hour</button>
+              <button class="btn small" data-act="rest" data-h="2">2 hours</button>
+              <button class="btn small" data-act="rest" data-h="3">3 hours</button>
+            </div>
+          </div>
+
+          <div class="action">
+            <div class="a-title">Study Playbook</div>
+            <div class="muted">Build prep for a better game outcome.</div>
+            <div class="chips">
+              <span class="chip">Energy: <b id="studyCostE">-8/h</b></span>
+              <span class="chip">Hours: <b>-1/h</b></span>
+              <span class="chip">XP: <b id="studyGainX">+18/h</b></span>
+            </div>
+            <div class="btnrow">
+              <button class="btn small" data-act="study" data-h="1">1 hour</button>
+              <button class="btn small" data-act="study" data-h="2">2 hours</button>
+              <button class="btn small" data-act="study" data-h="3">3 hours</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-h">
+          <div>
+            <div class="h1">Skills & Job</div>
+            <div class="muted">Spend skill points from leveling up. Choose a job for weekly money (auto-deducts hours).</div>
+          </div>
+        </div>
+
+        <div class="two">
+          <div class="box">
+            <div class="box-h">Current Job</div>
+            <div class="box-v" id="jobName">No Job</div>
+            <div class="muted tiny" id="jobMeta">Auto: 0h/week • $0/week</div>
+            <button class="btn" id="btnJob">Change Job</button>
+          </div>
+
+          <div class="box">
+            <div class="box-h">Manage</div>
+            <div class="btncol">
+              <button class="btn" id="btnSkills">Open Skills</button>
+              <button class="btn" id="btnStore">Store</button>
+              <button class="btn" id="btnInv">Inventory</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" id="logCard">
+        <div class="card-h">
+          <div>
+            <div class="h1">Game Log</div>
+            <div class="muted">Key events from your career.</div>
+          </div>
+          <button class="btn" id="btnLog">View All</button>
+        </div>
+        <div class="log" id="log"></div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="modal" class="modal">
+    <div class="modal-inner">
+      <div class="modal-h">
+        <div class="modal-title" id="modalTitle">Modal</div>
+        <button class="iconbtn" id="modalClose" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-b" id="modalBody"></div>
+      <div class="modal-f" id="modalFoot"></div>
+    </div>
+  </dialog>
+
+  <script src="./game.js"></script>
+</body>
+</html>
