@@ -1,4 +1,4 @@
-/* Gridiron Career Sim — v1.1.3 */
+/* Gridiron Career Sim — v1.1.5 */
 (() => {
   'use strict';
 
@@ -12,9 +12,9 @@
   }
 
 
-  const VERSION = 'v1.1.3';
+  const VERSION = 'v1.1.5';
 
-  const LS_KEY = 'gcs_save_v112';
+  const LS_KEY = 'gcs_save_v115';
 
   const MAX_ENERGY = 100;
   const WEEK_HOURS = 25;
@@ -902,7 +902,7 @@ function startCareerFromCreator(){
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'gridiron-save-v112.json';
+      a.download = 'gridiron-save-V115.json';
       document.body.appendChild(a);
       a.click();
       a.remove();
