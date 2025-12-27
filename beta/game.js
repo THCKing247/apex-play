@@ -1075,17 +1075,33 @@ function startCareerFromCreator(){
       padding:10px 12px;
       border-radius:12px;
       border:1px solid rgba(255,255,255,.20);
-      background: rgba(255,255,255,.08);
+      background: rgba(10,14,28,.85);
       color: #fff8f0;
       outline:none;
       font-weight:500;
       transition: border-color .2s ease, background .2s ease;
     }
+    select{
+      cursor:pointer;
+      appearance:none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23b8d4ff' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 36px;
+    }
+    select option{
+      background: #0a0e1c;
+      color: #fff8f0;
+      padding: 8px;
+    }
     input::placeholder{color: rgba(184,212,255,.50)}
     input:focus, select:focus{
       border-color: rgba(124,92,255,.65);
-      background: rgba(255,255,255,.12);
+      background: rgba(10,14,28,.95);
       box-shadow: 0 0 0 3px rgba(124,92,255,.15);
+    }
+    select:hover{
+      background-color: rgba(10,14,28,.95);
     }
     .row{display:grid; grid-template-columns: 1fr 1fr; gap:12px}
     @media (max-width: 520px){ .row{grid-template-columns:1fr} }
