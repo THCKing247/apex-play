@@ -1044,17 +1044,25 @@ function startCareerFromCreator(){
   extra.textContent = `
     .form{margin-top:12px; display:grid; gap:12px}
     .field{display:grid; gap:6px}
-    .field > span{font-size:12px; color: rgba(232,236,255,.70)}
+    .field > span{font-size:12px; color: #b8d4ff}
+    .field label{font-size:13px; color: #b8d4ff; font-weight:600; margin-bottom:4px}
     input, select{
       width:100%;
       padding:10px 12px;
       border-radius:12px;
-      border:1px solid rgba(255,255,255,.14);
-      background: rgba(0,0,0,.18);
-      color: rgba(232,236,255,.95);
+      border:1px solid rgba(255,255,255,.20);
+      background: rgba(255,255,255,.08);
+      color: #fff8f0;
       outline:none;
+      font-weight:500;
+      transition: border-color .2s ease, background .2s ease;
     }
-    input:focus, select:focus{border-color: rgba(124,92,255,.55)}
+    input::placeholder{color: rgba(184,212,255,.50)}
+    input:focus, select:focus{
+      border-color: rgba(124,92,255,.65);
+      background: rgba(255,255,255,.12);
+      box-shadow: 0 0 0 3px rgba(124,92,255,.15);
+    }
     .row{display:grid; grid-template-columns: 1fr 1fr; gap:12px}
     @media (max-width: 520px){ .row{grid-template-columns:1fr} }
     .radios{display:grid; gap:10px; margin-top:8px}
@@ -1062,12 +1070,14 @@ function startCareerFromCreator(){
       display:flex; gap:10px; align-items:flex-start;
       padding:10px 10px;
       border-radius:14px;
-      border:1px solid rgba(255,255,255,.12);
-      background: rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.06);
       cursor:pointer;
+      transition: all .15s ease;
     }
+    .radio:hover{background: rgba(255,255,255,.10); border-color: rgba(124,92,255,.40)}
     .radio input{margin-top:4px}
-    .r-title{font-weight:900}
+    .r-title{font-weight:900; color: #fff8f0}
   `;
   document.head.appendChild(extra);
 
