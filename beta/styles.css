@@ -33,6 +33,19 @@ body{
   overflow-x:hidden;
 }
 
+/* Global select styling for better readability */
+select{
+  background-color: rgba(10,14,28,.85) !important;
+  color: #fff8f0 !important;
+}
+select option{
+  background-color: #0a0e1c !important;
+  color: #fff8f0 !important;
+}
+select:focus option:checked{
+  background-color: rgba(124,92,255,.25) !important;
+}
+
 .bg{
   position:fixed; inset:0;
   background:
@@ -395,3 +408,4 @@ label.file input{
 }
 .chip.good{ border-color: rgba(74,222,128,.40); background: rgba(74,222,128,.15); color: #86efac; }
 .chip.bad{ border-color: rgba(255,107,107,.40); background: rgba(255,107,107,.15); color: #fca5a5; }
+
