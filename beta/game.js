@@ -940,43 +940,63 @@ function startCareerFromCreator(){
   function wireUI(s){
     // action buttons
     $$('#careerCard button[data-act]').forEach(b => {
-      b.onclick = () => doAction(s, b.dataset.act, b.dataset.h);
+      b.onclick = () => {
+        const currentState = loadState();
+        doAction(currentState, b.dataset.act, b.dataset.h);
+      };
     });
     $('#btnAdvance').onclick = () => {
-      if(!s.player) return openCreatePlayer(s);
+      const currentState = loadState();
+      if(!currentState.player) return openCreatePlayer(currentState);
       // advance without playing game: new week
-      startNewWeek(s);
+      startNewWeek(currentState);
       // advance schedule but keep game for week
-      if(!s.career.inPost){
-        if(s.career.week < s.career.maxWeeks) s.career.week += 1;
+      if(!currentState.career.inPost){
+        if(currentState.career.week < currentState.career.maxWeeks) currentState.career.week += 1;
         else {
           // season end check
-          const qualifies = s.career.recordW >= 8;
+          const qualifies = currentState.career.recordW >= 8;
           if(qualifies){
-            s.career.inPost = true; s.career.postWeek = 1;
-            logPush(s, 'Playoffs', 'You qualified for the postseason! Up to 3 games.');
-          } else endOfSeason(s);
+            currentState.career.inPost = true; currentState.career.postWeek = 1;
+            logPush(currentState, 'Playoffs', 'You qualified for the postseason! Up to 3 games.');
+          } else endOfSeason(currentState);
         }
       } else {
-        if(s.career.postWeek < 3) s.career.postWeek += 1;
-        else endOfSeason(s);
+        if(currentState.career.postWeek < 3) currentState.career.postWeek += 1;
+        else endOfSeason(currentState);
       }
-      save(s);
-      render(s);
+      save(currentState);
+      render(currentState);
     };
 
     $('#btnPlayGame').onclick = () => {
-      if(!s.player) return openCreatePlayer(s);
-      simulateGame(s);
-      save(s);
-      render(s);
+      const currentState = loadState();
+      if(!currentState.player) return openCreatePlayer(currentState);
+      simulateGame(currentState);
+      save(currentState);
+      render(currentState);
     };
 
-    $('#btnSkills').onclick = () => s.player ? openSkills(s) : openCreatePlayer(s);
-    $('#btnJob').onclick = () => s.player ? openJobs(s) : openCreatePlayer(s);
-    $('#btnStore').onclick = () => s.player ? openStore(s) : openCreatePlayer(s);
-    $('#btnInv').onclick = () => s.player ? openInventory(s) : openCreatePlayer(s);
-    $('#btnLog').onclick = () => openLogAll(s);
+    $('#btnSkills').onclick = () => {
+      const currentState = loadState();
+      return currentState.player ? openSkills(currentState) : openCreatePlayer(currentState);
+    };
+    $('#btnJob').onclick = () => {
+      const currentState = loadState();
+      return currentState.player ? openJobs(currentState) : openCreatePlayer(currentState);
+    };
+    $('#btnStore').onclick = () => {
+      const currentState = loadState();
+      return currentState.player ? openStore(currentState) : openCreatePlayer(currentState);
+    };
+    $('#btnInv').onclick = () => {
+      const currentState = loadState();
+      return currentState.player ? openInventory(currentState) : openCreatePlayer(currentState);
+    };
+    $('#btnLog').onclick = () => {
+      const currentState = loadState();
+      openLogAll(currentState);
+    };
 
     $('#btnReset').onclick = () => {
       if(confirm('Reset your save?')){
@@ -988,7 +1008,8 @@ function startCareerFromCreator(){
     };
 
     $('#btnExport').onclick = () => {
-      const blob = new Blob([JSON.stringify(s, null, 2)], {type:'application/json'});
+      const currentState = loadState();
+      const blob = new Blob([JSON.stringify(currentState, null, 2)], {type:'application/json'});
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
