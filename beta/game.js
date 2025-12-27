@@ -234,6 +234,15 @@ function getStylesForPosition(pos){
     });
   }
 
+  // Some UI buttons/flows call closeModal() directly (inline onclick handlers).
+  // A previous refactor removed this helper which caused "closeModal is not defined".
+  function closeModal(){
+    const dlg = $('#modal');
+    if(dlg && dlg.open){
+      try { dlg.close(); } catch(e) { /* ignore */ }
+    }
+  }
+
   function derivedStats(s){
     const base = {...s.statsBase};
     // apply equipped bonuses
