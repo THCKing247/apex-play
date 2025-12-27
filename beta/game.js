@@ -491,7 +491,7 @@ function startCareerFromCreator(){
   logPush(st, "Career Started", `${name} begins at ${hs} as a ${pos} (${style}).`);
   saveState(st);
   closeModal();
-  render();
+  render(st);
 }
 
 
