@@ -31,8 +31,19 @@ function makeInvItem(def){
   };
 }
 
-const SAVE_KEY = 'gcs_save_v101';
+  const SAVE_KEY = 'gcs_save_v101';
   const $ = (sel, root=document) => root.querySelector(sel);
+
+  // Basic HTML escaping for safe innerHTML rendering in modals
+  function escapeHtml(input){
+    const s = String(input ?? '');
+    return s
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;')
+      .replace(/'/g,'&#39;');
+  }
 
   const app = $('#app');
   const verPill = $('#verPill');
