@@ -12,7 +12,7 @@
   }
 
 
-  const VERSION = 'v1.1.6';
+  const VERSION = 'v1.1.7';
 
   const LS_KEY = 'gcs_save_v112';
 
@@ -1038,19 +1038,32 @@ function startCareerFromCreator(){
 
 
   // expose functions needed by inline onclick handlers (GitHub Pages-safe)
+  // --- Global wrappers/aliases for inline handlers (keeps older HTML strings working) ---
+  function exportSave(){ const b = document.getElementById('btnExport'); if(b) b.click(); }
+  function importSave(){ const f = document.getElementById('importFile'); if(f) f.click(); }
+  function importSaveFromFile(){ importSave(); }
+  function resetAll(){ const b = document.getElementById('btnReset'); if(b) b.click(); }
+  function openSkillsModal(){ return openSkills(); }
+  function openStoreModal(){ return openStore(); }
+  function openInventoryModal(){ return openInventory(); }
+  function openJobModal(){ return openJobs(); }
+
   Object.assign(window, {
+    // Career / UI
     openCreatePlayer,
     startCareerFromCreator,
+    setModal,
+    closeModal,
+    // Modals
     openSkillsModal,
+    openJobModal,
     openStoreModal,
     openInventoryModal,
-    openJobModal,
+    // Save utilities
     exportSave,
+    importSave,
     importSaveFromFile,
     resetAll,
-    playGame,
-    advanceWeek,
-    doAction
   });
 
 
