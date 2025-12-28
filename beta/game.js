@@ -1,9 +1,9 @@
-/* Gridiron Career Sim — v1.3.9 */
+/* Gridiron Career Sim — v1.4.0 */
 (() => {
   'use strict';
 
-  const VERSION = 'v1.3.9';
-  const LS_KEY = 'gcs_save_v139';
+  const VERSION = 'v1.4.0';
+  const LS_KEY = 'gcs_save_v140';
   const MAX_ENERGY = 100;
   const MAX_HOURS = 25;
 
@@ -225,83 +225,184 @@
         height: "6'0\"",
         weight: "200 lbs",
         hometown: "Unknown",
-        jerseyNumber: "00"
+        jerseyNumber: "00",
+        avatar: {
+          skinTone: 3,
+          hairStyle: 1,
+          hairColor: 2,
+          eyeColor: 1,
+          facialHair: 0
+        }
       };
     }
 
   const d = window.__draftPlayer;
   const styles = getStylesForPosition(d.position);
+    if(!d.avatar) {
+      d.avatar = { skinTone: 3, hairStyle: 1, hairColor: 2, eyeColor: 1, facialHair: 0 };
+    }
 
     const bodyHTML = `
-      <div class="muted small">Enter your player details to start a 4-year high school career (12 regular season games + up to 3 postseason games).</div>
-      <div style="margin-top:16px;">
-        <label style="display:block; margin-bottom:6px; font-weight:600;">Name</label>
-        <div style="display:flex; gap:8px;">
-          <input type="text" id="cp_name" value="${d.name}" style="flex:1;" />
-          <button class="btn small" onclick="randomizeName()">Random</button>
+      <div style="display:grid; grid-template-columns: 1fr 280px; gap:24px;">
+        <div>
+          <div class="stats-tabs" style="margin-bottom:20px;">
+            <button class="stats-tab active" data-tab="basic">Basic Info</button>
+            <button class="stats-tab" data-tab="physical">Physical</button>
+            <button class="stats-tab" data-tab="avatar">Avatar</button>
+            <button class="stats-tab" data-tab="style">Play Style</button>
           </div>
+          
+          <div id="tab-basic" class="tab-content active">
+            <div style="display:grid; gap:16px;">
+              <div>
+                <label style="display:block; margin-bottom:8px; font-weight:600; color:var(--text-warm);">Player Name</label>
+                <div style="display:flex; gap:8px;">
+                  <input type="text" id="cp_name" value="${d.name}" placeholder="Enter name" style="flex:1; padding:10px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15); border-radius:8px; color:var(--text-warm);" />
+                  <button class="btn small" onclick="randomizeName()">🎲 Random</button>
           </div>
-      <div style="margin-top:12px;">
-        <label style="display:block; margin-bottom:6px; font-weight:600;">High School</label>
-        <div style="display:flex; gap:8px;">
-          <input type="text" id="cp_school" value="${d.highSchool}" style="flex:1;" />
-          <button class="btn small" onclick="randomizeSchool()">Random</button>
         </div>
-        </div>
-      <div style="margin-top:12px;">
-        <label style="display:block; margin-bottom:6px; font-weight:600;">Position</label>
-        <div class="select-wrapper">
-          <select id="cp_pos" style="width:100%;">
-            ${POSITIONS.map(p => `<option value="${p}" ${p === d.position ? 'selected' : ''}>${p}</option>`).join('')}
-          </select>
-        </div>
-          </div>
-      <div style="margin-top:12px;">
-        <label style="display:block; margin-bottom:6px; font-weight:600;">Height</label>
-        <div style="display:flex; gap:8px;">
-          <input type="text" id="cp_height" value="${d.height}" placeholder="6'0\"" style="flex:1;" />
-          <button class="btn small" onclick="randomizeHeight()">Random</button>
-        </div>
-      </div>
-      <div style="margin-top:12px;">
-        <label style="display:block; margin-bottom:6px; font-weight:600;">Weight</label>
-        <div style="display:flex; gap:8px;">
-          <input type="text" id="cp_weight" value="${d.weight}" placeholder="200 lbs" style="flex:1;" />
-          <button class="btn small" onclick="randomizeWeight()">Random</button>
-        </div>
-      </div>
-      <div style="margin-top:12px;">
-        <label style="display:block; margin-bottom:6px; font-weight:600;">Hometown</label>
-        <div style="display:flex; gap:8px;">
-          <input type="text" id="cp_hometown" value="${d.hometown}" placeholder="City, State" style="flex:1;" />
-          <button class="btn small" onclick="randomizeHometown()">Random</button>
-        </div>
-      </div>
-      <div style="margin-top:12px;">
-        <label style="display:block; margin-bottom:6px; font-weight:600;">Jersey Number</label>
-        <div style="display:flex; gap:8px;">
-          <input type="text" id="cp_jersey" value="${d.jerseyNumber}" placeholder="00" style="flex:1;" />
-          <button class="btn small" onclick="randomizeJersey()">Random</button>
-        </div>
-      </div>
-      <div style="margin-top:16px;">
-        <label style="display:block; margin-bottom:8px; font-weight:600;">Play Style</label>
-        <div class="radioCards">
-          ${styles.map((st, idx) => `
-            <label class="radioCard ${st.id === d.style ? 'active' : ''}">
-              <input type="radio" name="pstyle" value="${st.id}" ${st.id === d.style ? 'checked' : ''} />
-              <div class="radioDesc">
-                <div class="r-title">${st.name}</div>
-                <div class="muted small">${st.desc}</div>
-                <div class="radioMods">
-                  ${Object.keys(st.mods).map(k => {
-                    const v = st.mods[k];
-                    return `<span class="chip ${v > 0 ? 'good' : ''}">${k}: ${v > 0 ? '+' : ''}${v}</span>`;
-                  }).join('')}
+              <div>
+                <label style="display:block; margin-bottom:8px; font-weight:600; color:var(--text-warm);">High School</label>
+                <div style="display:flex; gap:8px;">
+                  <input type="text" id="cp_school" value="${d.highSchool}" placeholder="School name" style="flex:1; padding:10px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15); border-radius:8px; color:var(--text-warm);" />
+                  <button class="btn small" onclick="randomizeSchool()">🎲 Random</button>
                 </div>
               </div>
-            </label>
-          `).join('')}
+              <div>
+                <label style="display:block; margin-bottom:8px; font-weight:600; color:var(--text-warm);">Position</label>
+                <div class="select-wrapper">
+                  <select id="cp_pos" style="width:100%; padding:10px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15); border-radius:8px; color:var(--text-warm);">
+                    ${POSITIONS.map(p => `<option value="${p}" ${p === d.position ? 'selected' : ''}>${p}</option>`).join('')}
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div id="tab-physical" class="tab-content" style="display:none;">
+            <div style="display:grid; gap:16px;">
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                <div>
+                  <label style="display:block; margin-bottom:8px; font-weight:600; color:var(--text-warm);">Height</label>
+                  <div style="display:flex; gap:8px;">
+                    <input type="text" id="cp_height" value="${d.height}" placeholder="6'0\"" style="flex:1; padding:10px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15); border-radius:8px; color:var(--text-warm);" />
+                    <button class="btn small" onclick="randomizeHeight()">🎲</button>
+                  </div>
+                </div>
+                <div>
+                  <label style="display:block; margin-bottom:8px; font-weight:600; color:var(--text-warm);">Weight</label>
+                  <div style="display:flex; gap:8px;">
+                    <input type="text" id="cp_weight" value="${d.weight}" placeholder="200 lbs" style="flex:1; padding:10px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15); border-radius:8px; color:var(--text-warm);" />
+                    <button class="btn small" onclick="randomizeWeight()">🎲</button>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label style="display:block; margin-bottom:8px; font-weight:600; color:var(--text-warm);">Hometown</label>
+                <div style="display:flex; gap:8px;">
+                  <input type="text" id="cp_hometown" value="${d.hometown}" placeholder="City, State" style="flex:1; padding:10px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15); border-radius:8px; color:var(--text-warm);" />
+                  <button class="btn small" onclick="randomizeHometown()">🎲 Random</button>
+                </div>
+              </div>
+              <div>
+                <label style="display:block; margin-bottom:8px; font-weight:600; color:var(--text-warm);">Jersey Number</label>
+                <div style="display:flex; gap:8px;">
+                  <input type="text" id="cp_jersey" value="${d.jerseyNumber}" placeholder="00" style="flex:1; padding:10px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15); border-radius:8px; color:var(--text-warm);" />
+                  <button class="btn small" onclick="randomizeJersey()">🎲 Random</button>
+                </div>
+              </div>
+        </div>
+      </div>
+
+          <div id="tab-avatar" class="tab-content" style="display:none;">
+            <div style="display:grid; gap:20px;">
+        <div>
+                <label style="display:block; margin-bottom:10px; font-weight:600; color:var(--text-warm);">Skin Tone</label>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                  ${[1,2,3,4,5,6].map(i => `
+                    <button class="avatar-option ${d.avatar.skinTone === i ? 'active' : ''}" data-avatar="skinTone" data-value="${i}" style="width:50px; height:50px; border-radius:50%; border:2px solid ${d.avatar.skinTone === i ? 'var(--accent)' : 'rgba(255,255,255,.2)'}; background:${getSkinColor(i)}; cursor:pointer;"></button>
+                  `).join('')}
+                </div>
+        </div>
+        <div>
+                <label style="display:block; margin-bottom:10px; font-weight:600; color:var(--text-warm);">Hair Style</label>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                  ${[0,1,2,3,4,5].map(i => `
+                    <button class="avatar-option ${d.avatar.hairStyle === i ? 'active' : ''}" data-avatar="hairStyle" data-value="${i}" style="padding:8px 12px; border-radius:8px; border:2px solid ${d.avatar.hairStyle === i ? 'var(--accent)' : 'rgba(255,255,255,.2)'}; background:${d.avatar.hairStyle === i ? 'rgba(124,92,255,.15)' : 'rgba(255,255,255,.05)'}; cursor:pointer; font-size:12px;">${getHairStyleName(i)}</button>
+                  `).join('')}
+                </div>
+              </div>
+              <div>
+                <label style="display:block; margin-bottom:10px; font-weight:600; color:var(--text-warm);">Hair Color</label>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                  ${[1,2,3,4,5,6].map(i => `
+                    <button class="avatar-option ${d.avatar.hairColor === i ? 'active' : ''}" data-avatar="hairColor" data-value="${i}" style="width:40px; height:40px; border-radius:8px; border:2px solid ${d.avatar.hairColor === i ? 'var(--accent)' : 'rgba(255,255,255,.2)'}; background:${getHairColor(i)}; cursor:pointer;"></button>
+                  `).join('')}
+                </div>
+              </div>
+              <div>
+                <label style="display:block; margin-bottom:10px; font-weight:600; color:var(--text-warm);">Eye Color</label>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                  ${[1,2,3,4,5].map(i => `
+                    <button class="avatar-option ${d.avatar.eyeColor === i ? 'active' : ''}" data-avatar="eyeColor" data-value="${i}" style="width:40px; height:40px; border-radius:50%; border:2px solid ${d.avatar.eyeColor === i ? 'var(--accent)' : 'rgba(255,255,255,.2)'}; background:${getEyeColor(i)}; cursor:pointer;"></button>
+                  `).join('')}
+                </div>
+              </div>
+              <div>
+                <label style="display:block; margin-bottom:10px; font-weight:600; color:var(--text-warm);">Facial Hair</label>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                  ${[0,1,2,3,4].map(i => `
+                    <button class="avatar-option ${d.avatar.facialHair === i ? 'active' : ''}" data-avatar="facialHair" data-value="${i}" style="padding:8px 12px; border-radius:8px; border:2px solid ${d.avatar.facialHair === i ? 'var(--accent)' : 'rgba(255,255,255,.2)'}; background:${d.avatar.facialHair === i ? 'rgba(124,92,255,.15)' : 'rgba(255,255,255,.05)'}; cursor:pointer; font-size:12px;">${getFacialHairName(i)}</button>
+                  `).join('')}
+                </div>
+              </div>
+              <div style="margin-top:8px;">
+                <button class="btn small" onclick="randomizeAvatar()" style="width:100%;">🎲 Randomize Avatar</button>
+          </div>
+        </div>
+      </div>
+
+          <div id="tab-style" class="tab-content" style="display:none;">
+            <div>
+              <label style="display:block; margin-bottom:12px; font-weight:600; color:var(--text-warm);">Choose Your Play Style</label>
+              <div class="radioCards">
+                ${styles.map((st, idx) => `
+                  <label class="radioCard ${st.id === d.style ? 'active' : ''}">
+                    <input type="radio" name="pstyle" value="${st.id}" ${st.id === d.style ? 'checked' : ''} />
+                    <div class="radioDesc">
+                      <div class="r-title">${st.name}</div>
+                      <div class="muted small">${st.desc}</div>
+                      <div class="radioMods">
+                        ${Object.keys(st.mods).map(k => {
+                          const v = st.mods[k];
+                          return `<span class="chip ${v > 0 ? 'good' : ''}">${k}: ${v > 0 ? '+' : ''}${v}</span>`;
+                        }).join('')}
+                      </div>
+                    </div>
+                  </label>
+                `).join('')}
+              </div>
+            </div>
+        </div>
+      </div>
+
+        <div style="background:rgba(255,255,255,.05); border-radius:12px; padding:20px; border:1px solid rgba(255,255,255,.1);">
+          <div style="text-align:center; margin-bottom:16px; font-weight:600; color:var(--text-warm);">Player Preview</div>
+          <div id="avatar-preview" style="width:200px; height:200px; margin:0 auto; background:rgba(255,255,255,.08); border-radius:12px; display:flex; align-items:center; justify-content:center; border:2px solid rgba(255,255,255,.15);">
+            ${renderAvatarPreview(d.avatar)}
+          </div>
+          <div style="margin-top:16px; padding-top:16px; border-top:1px solid rgba(255,255,255,.1);">
+            <div style="font-size:12px; color:var(--muted); margin-bottom:4px;">Name</div>
+            <div style="font-weight:600; color:var(--text-warm);" id="preview-name">${d.name}</div>
+          </div>
+          <div style="margin-top:12px;">
+            <div style="font-size:12px; color:var(--muted); margin-bottom:4px;">Position</div>
+            <div style="font-weight:600; color:var(--text-warm);" id="preview-pos">${d.position}</div>
+          </div>
+          <div style="margin-top:12px;">
+            <div style="font-size:12px; color:var(--muted); margin-bottom:4px;">Jersey #</div>
+            <div style="font-weight:600; color:var(--text-warm);" id="preview-jersey">#${d.jerseyNumber}</div>
+          </div>
         </div>
     </div>
   `;
@@ -312,13 +413,62 @@
 
     openModal('Create Your Player', bodyHTML, footHTML);
 
-    $('#cp_name').oninput = (e) => { if(window.__draftPlayer) window.__draftPlayer.name = e.target.value; };
+    // Tab switching
+    $$('.stats-tab[data-tab]').forEach(tab => {
+      tab.onclick = () => {
+        $$('.stats-tab').forEach(t => t.classList.remove('active'));
+        $$('.tab-content').forEach(c => c.style.display = 'none');
+        tab.classList.add('active');
+        $(`#tab-${tab.getAttribute('data-tab')}`).style.display = 'block';
+      };
+    });
+
+    // Input handlers
+    $('#cp_name').oninput = (e) => { 
+      if(window.__draftPlayer) {
+        window.__draftPlayer.name = e.target.value;
+        $('#preview-name').textContent = e.target.value || 'Player Name';
+      }
+    };
     $('#cp_school').oninput = (e) => { if(window.__draftPlayer) window.__draftPlayer.highSchool = e.target.value; };
-    $('#cp_pos').onchange = (e) => { handlePositionChange(e.target.value); };
+    $('#cp_pos').onchange = (e) => { 
+      handlePositionChange(e.target.value);
+      $('#preview-pos').textContent = e.target.value;
+    };
     $('#cp_height').oninput = (e) => { if(window.__draftPlayer) window.__draftPlayer.height = e.target.value; };
     $('#cp_weight').oninput = (e) => { if(window.__draftPlayer) window.__draftPlayer.weight = e.target.value; };
     $('#cp_hometown').oninput = (e) => { if(window.__draftPlayer) window.__draftPlayer.hometown = e.target.value; };
-    $('#cp_jersey').oninput = (e) => { if(window.__draftPlayer) window.__draftPlayer.jerseyNumber = e.target.value; };
+    $('#cp_jersey').oninput = (e) => { 
+      if(window.__draftPlayer) {
+        window.__draftPlayer.jerseyNumber = e.target.value;
+        $('#preview-jersey').textContent = '#' + (e.target.value || '00');
+      }
+    };
+    
+    // Avatar option handlers
+    $$('.avatar-option[data-avatar]').forEach(btn => {
+      btn.onclick = () => {
+        const type = btn.getAttribute('data-avatar');
+        const value = parseInt(btn.getAttribute('data-value'));
+        if(window.__draftPlayer && window.__draftPlayer.avatar) {
+          window.__draftPlayer.avatar[type] = value;
+          updateAvatarPreview();
+          // Update active states
+          $$(`.avatar-option[data-avatar="${type}"]`).forEach(b => {
+            b.classList.remove('active');
+            b.style.borderColor = 'rgba(255,255,255,.2)';
+            if(b.getAttribute('data-avatar') === 'hairStyle' || b.getAttribute('data-avatar') === 'facialHair') {
+              b.style.background = 'rgba(255,255,255,.05)';
+            }
+          });
+          btn.classList.add('active');
+          btn.style.borderColor = 'var(--accent)';
+          if(type === 'hairStyle' || type === 'facialHair') {
+            btn.style.background = 'rgba(124,92,255,.15)';
+          }
+        }
+      };
+    });
     
     $$('input[name="pstyle"]').forEach(r => {
       r.onchange = (e) => { handleStyleChange(e.target.value); };
@@ -333,14 +483,91 @@
       const weight = $('#cp_weight').value.trim();
       const hometown = $('#cp_hometown').value.trim();
       const jerseyNumber = $('#cp_jersey').value.trim();
+      const avatar = window.__draftPlayer?.avatar || { skinTone: 3, hairStyle: 1, hairColor: 2, eyeColor: 1, facialHair: 0 };
 
       if(!name || !hs) {
         alert('Please fill in name and high school.');
-      return;
-    }
+        return;
+      }
 
-      startCareerFromCreator({ name, pos, style, hs, height, weight, hometown, jerseyNumber });
+      startCareerFromCreator({ name, pos, style, hs, height, weight, hometown, jerseyNumber, avatar });
     };
+  }
+
+  function getSkinColor(i) {
+    const colors = ['#fdbcb4', '#f8d5c4', '#e0ac69', '#c68642', '#8d5524', '#654321'];
+    return colors[i - 1] || colors[2];
+  }
+
+  function getHairColor(i) {
+    const colors = ['#1a1a1a', '#4a3728', '#8b4513', '#d2691e', '#daa520', '#f5deb3'];
+    return colors[i - 1] || colors[1];
+  }
+
+  function getEyeColor(i) {
+    const colors = ['#1a1a1a', '#4a4a4a', '#8b4513', '#228b22', '#4169e1'];
+    return colors[i - 1] || colors[0];
+  }
+
+  function getHairStyleName(i) {
+    const names = ['Bald', 'Short', 'Medium', 'Long', 'Curly', 'Fade'];
+    return names[i] || 'Short';
+  }
+
+  function getFacialHairName(i) {
+    const names = ['None', 'Stubble', 'Goatee', 'Beard', 'Mustache'];
+    return names[i] || 'None';
+  }
+
+  function renderAvatarPreview(avatar) {
+    if(!avatar) avatar = { skinTone: 3, hairStyle: 1, hairColor: 2, eyeColor: 1, facialHair: 0 };
+    const skin = getSkinColor(avatar.skinTone);
+    const hairColor = getHairColor(avatar.hairColor);
+    const eyeColor = getEyeColor(avatar.eyeColor);
+    
+    // Simple SVG-based avatar
+    return `
+      <svg width="180" height="180" viewBox="0 0 100 100" style="overflow:visible;">
+        <!-- Head -->
+        <circle cx="50" cy="45" r="20" fill="${skin}" stroke="rgba(255,255,255,.2)" stroke-width="1"/>
+        <!-- Hair -->
+        ${avatar.hairStyle > 0 ? `
+          <path d="M 30 35 Q 30 25, 50 25 Q 70 25, 70 35 Q 70 30, 50 30 Q 30 30, 30 35" fill="${hairColor}"/>
+          ${avatar.hairStyle >= 3 ? `<path d="M 35 30 Q 50 28, 65 30" fill="${hairColor}" stroke="${hairColor}" stroke-width="2"/>` : ''}
+        ` : ''}
+        <!-- Eyes -->
+        <circle cx="43" cy="42" r="3" fill="${eyeColor}"/>
+        <circle cx="57" cy="42" r="3" fill="${eyeColor}"/>
+        <!-- Nose -->
+        <path d="M 50 45 L 48 50 L 52 50 Z" fill="none" stroke="${skin}" stroke-width="1" opacity="0.5"/>
+        <!-- Mouth -->
+        <path d="M 45 55 Q 50 58, 55 55" fill="none" stroke="rgba(0,0,0,.3)" stroke-width="1.5" stroke-linecap="round"/>
+        <!-- Facial Hair -->
+        ${avatar.facialHair > 0 ? `
+          <path d="M 40 58 Q 50 60, 60 58 Q 58 65, 50 65 Q 42 65, 40 58" fill="${hairColor}" opacity="0.7"/>
+        ` : ''}
+      </svg>
+    `;
+  }
+
+  function updateAvatarPreview() {
+    if(window.__draftPlayer && window.__draftPlayer.avatar) {
+      const preview = $('#avatar-preview');
+      if(preview) {
+        preview.innerHTML = renderAvatarPreview(window.__draftPlayer.avatar);
+      }
+    }
+  }
+
+  function randomizeAvatar() {
+    if(!window.__draftPlayer) return;
+    if(!window.__draftPlayer.avatar) window.__draftPlayer.avatar = {};
+    window.__draftPlayer.avatar.skinTone = rint(1, 6);
+    window.__draftPlayer.avatar.hairStyle = rint(0, 5);
+    window.__draftPlayer.avatar.hairColor = rint(1, 6);
+    window.__draftPlayer.avatar.eyeColor = rint(1, 5);
+    window.__draftPlayer.avatar.facialHair = rint(0, 4);
+    openCreatePlayer(loadState());
   }
 
   function getStylesForPosition(pos) {
@@ -448,6 +675,7 @@
       weight: d.weight || "200 lbs",
       hometown: d.hometown || "Unknown",
       jerseyNumber: d.jerseyNumber || "00",
+      avatar: d.avatar || { skinTone: 3, hairStyle: 1, hairColor: 2, eyeColor: 1, facialHair: 0 },
       ...baseStats
     };
     
@@ -1306,7 +1534,7 @@
               <td style="text-align:right;">${rec.stats.passingTDs || 0}</td>
               <td style="text-align:right;">${rec.stats.completions || 0}</td>
               <td style="text-align:right;">${rec.stats.attempts || 0}</td>
-            </tr>
+      </tr>
           `;
         });
         return `<table class="table"><thead><tr>${headers}</tr></thead><tbody>${rows || '<tr><td colspan="6" class="muted">No records available</td></tr>'}</tbody></table>`;
@@ -1478,7 +1706,7 @@
         ${STORE_ITEMS.map(it => {
           const owned = (s.inventory.owned || []).filter(id => id === it.id).length;
           const canAfford = s.money >= it.price;
-          return `
+      return `
             <div style="padding:12px; background:rgba(255,255,255,.05); border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
               <div>
                 <div style="font-weight:600;">${it.name}</div>
@@ -1493,7 +1721,7 @@
     `;
     
     openModal('Store', bodyHTML, '<button class="btn" id="closeStore">Close</button>');
-    
+
     $$('button[data-buy]').forEach(btn => {
       btn.onclick = () => {
         const id = btn.getAttribute('data-buy');
@@ -1551,7 +1779,7 @@
           <div style="display:grid; gap:8px;">
             ${ownedItems.map(it => {
               const equipped = Object.values(eq).includes(it.id);
-              return `
+      return `
                 <div style="padding:12px; background:rgba(255,255,255,.05); border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
                   <div>
                     <div style="font-weight:600;">${it.name}</div>
@@ -1724,10 +1952,10 @@
           s.statsBase[cheatType] = clamp(value, 0, 99);
         }
         
-        save(s);
+      save(s);
         openCheatPanel(s);
-        render(s);
-      };
+      render(s);
+    };
     });
     
     $$('button[data-quick]').forEach(btn => {
@@ -1813,231 +2041,3 @@
       s.player.hometown || ''
     ].filter(Boolean).join(' • ');
     $('#careerSub').textContent = playerInfo;
-    $('#seasonTag').textContent = `Week ${s.career.week}/${s.career.maxWeeks}`;
-    $('#gameWeekTag').textContent = s.career.inPost ? `Postseason G${s.career.postWeek}/3` : 'Regular Season';
-
-    $('#money').textContent = fmtMoney(s.money);
-    $('#ovr').textContent = String(ovr);
-    $('#level').textContent = String(s.level);
-    $('#xp').textContent = `${s.xp}/${xpNeeded(s.level)}`;
-    $('#sp').textContent = String(s.skillPoints);
-
-    const job = JOBS.find(j=>j.id===s.career.jobId) || JOBS[0];
-    $('#jobName').textContent = job.name;
-    $('#jobMeta').textContent = `Auto: ${job.hours}h/week • ${fmtMoney(job.pay)}/week`;
-
-    const energyP = (s.energy / MAX_ENERGY) * 100;
-    const hoursP = (s.hours / MAX_HOURS) * 100;
-    const xpP = (s.xp / xpNeeded(s.level)) * 100;
-    setBars(energyP, hoursP, xpP);
-
-    $('#trainCostE').textContent = `-${Math.round(12 * (1 + s.level * 0.1))}/h`;
-    $('#trainGainX').textContent = `+${Math.round(28 * (1 + s.level * 0.15))}/h`;
-    $('#restGainE').textContent = `+${Math.round(18 * (1 + s.level * 0.05))}/h`;
-    $('#restGainX').textContent = `+${Math.round(6 * (1 + s.level * 0.1))}/h`;
-    $('#studyCostE').textContent = `-${Math.round(8 * (1 + s.level * 0.1))}/h`;
-    $('#studyGainX').textContent = `+${Math.round(18 * (1 + s.level * 0.1))}/h`;
-
-    renderLog(s);
-  }
-
-  function setBars(energyP, hoursP, xpP){
-    $('#energyFill').style.width = `${clamp(energyP, 0, 100)}%`;
-    $('#energyTxt').textContent = `${Math.round(energyP)}/100`;
-    $('#hoursFill').style.width = `${clamp(hoursP, 0, 100)}%`;
-    $('#hoursTxt').textContent = `${Math.round(hoursP)}/25`;
-    $('#xpFill').style.width = `${clamp(xpP, 0, 100)}%`;
-    $('#xpTxt').textContent = `${Math.round(xpP)}%`;
-  }
-
-  function wireUI(s){
-    $$('#careerCard button[data-act]').forEach(btn => {
-      btn.onclick = () => {
-        const currentState = loadState();
-        const act = btn.getAttribute('data-act');
-        const h = parseInt(btn.getAttribute('data-h'));
-        if(currentState.hours < h) {
-          alert('Not enough hours!');
-          return;
-        }
-        if(act === 'train') {
-          const costE = Math.round(12 * (1 + currentState.level * 0.1)) * h;
-          if(currentState.energy < costE) {
-            alert('Not enough energy!');
-            return;
-          }
-          currentState.energy = clamp(currentState.energy - costE, 0, MAX_ENERGY);
-          currentState.hours = clamp(currentState.hours - h, 0, MAX_HOURS);
-          const gainX = Math.round(28 * (1 + currentState.level * 0.15)) * h;
-          currentState.xp += gainX;
-          logPush(currentState, 'Trained', `Trained for ${h} hour${h > 1 ? 's' : ''}, gained ${gainX} XP.`);
-        } else if(act === 'rest') {
-          currentState.hours = clamp(currentState.hours - h, 0, MAX_HOURS);
-          const gainE = Math.round(18 * (1 + currentState.level * 0.05)) * h;
-          currentState.energy = clamp(currentState.energy + gainE, 0, MAX_ENERGY);
-          const gainX = Math.round(6 * (1 + currentState.level * 0.1)) * h;
-          currentState.xp += gainX;
-          logPush(currentState, 'Rested', `Rested for ${h} hour${h > 1 ? 's' : ''}, recovered energy.`);
-        } else if(act === 'study') {
-          const costE = Math.round(8 * (1 + currentState.level * 0.1)) * h;
-          if(currentState.energy < costE) {
-            alert('Not enough energy!');
-            return;
-          }
-          currentState.energy = clamp(currentState.energy - costE, 0, MAX_ENERGY);
-          currentState.hours = clamp(currentState.hours - h, 0, MAX_HOURS);
-          const gainX = Math.round(18 * (1 + currentState.level * 0.1)) * h;
-          currentState.xp += gainX;
-          currentState.prep = clamp(currentState.prep + h * 5, 0, 60);
-          logPush(currentState, 'Studied', `Studied playbook for ${h} hour${h > 1 ? 's' : ''}, gained ${gainX} XP and prep.`);
-        }
-        while(currentState.xp >= xpNeeded(currentState.level)) {
-          currentState.xp -= xpNeeded(currentState.level);
-          currentState.level += 1;
-          currentState.skillPoints += 1;
-          logPush(currentState, 'Level Up', `Reached level ${currentState.level}!`);
-        }
-        save(currentState);
-        render(currentState);
-      };
-    });
-
-    $('#btnAdvance').onclick = () => {
-      const currentState = loadState();
-      startNewWeek(currentState);
-      save(currentState);
-      render(currentState);
-    };
-
-    $('#btnPlayGame').onclick = () => {
-      const currentState = loadState();
-      simulateGame(currentState);
-    };
-
-    $('#btnSkills').onclick = () => {
-      const currentState = loadState();
-      return currentState.player ? openSkills(currentState) : openCreatePlayer(currentState);
-    };
-
-    $('#btnJob').onclick = () => {
-      const currentState = loadState();
-      const bodyHTML = `
-        <div class="muted small">Choose a job. Hours and pay are automatically applied each week.</div>
-        <div style="margin-top:16px; display:grid; gap:8px;">
-          ${JOBS.map(j => `
-            <label style="padding:12px; background:rgba(255,255,255,.05); border-radius:8px; display:flex; justify-content:space-between; align-items:center; cursor:pointer;">
-              <div>
-                <div style="font-weight:600;">${j.name}</div>
-                <div class="muted small">${j.hours}h/week • ${fmtMoney(j.pay)}/week</div>
-              </div>
-              <input type="radio" name="job" value="${j.id}" ${currentState.career.jobId === j.id ? 'checked' : ''} />
-            </label>
-          `).join('')}
-        </div>
-      `;
-      openModal('Change Job', bodyHTML, '<button class="btn primary" id="saveJob">Save</button>');
-      $('#saveJob').onclick = () => {
-        const selected = $$('input[name="job"]:checked')[0];
-        if(selected) {
-          currentState.career.jobId = selected.value;
-          save(currentState);
-          closeModal();
-          render(currentState);
-        }
-      };
-    };
-
-    $('#btnStore').onclick = () => {
-      const currentState = loadState();
-      return currentState.player ? openStore(currentState) : openCreatePlayer(currentState);
-    };
-
-    $('#btnInv').onclick = () => {
-      const currentState = loadState();
-      return currentState.player ? openInventory(currentState) : openCreatePlayer(currentState);
-    };
-
-    $('#btnStats').onclick = () => {
-      const currentState = loadState();
-      return currentState.player ? openStats(currentState) : openCreatePlayer(currentState);
-    };
-
-    $('#btnRecords').onclick = () => {
-      const currentState = loadState();
-      return currentState.player ? openRecords(currentState) : openCreatePlayer(currentState);
-    };
-
-    $('#btnLog').onclick = () => {
-      const currentState = loadState();
-      openLogAll(currentState);
-    };
-
-    $('#btnCheat').onclick = () => {
-      const currentState = loadState();
-      if(!currentState.player) {
-        alert('Create a player first!');
-        return;
-      }
-      openCheatPanel(currentState);
-    };
-
-    $('#btnReset').onclick = () => {
-      if(confirm('Reset your save?')){
-        localStorage.removeItem(LS_KEY);
-        const ns = defaultState();
-        save(ns);
-        location.reload();
-      }
-    };
-
-    $('#btnExport').onclick = () => {
-      const currentState = loadState();
-      const blob = new Blob([JSON.stringify(currentState, null, 2)], {type:'application/json'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'gridiron-save-v139.json';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    };
-
-    $('#fileImport').onchange = async (ev) => {
-      const f = ev.target.files && ev.target.files[0];
-      if(!f) return;
-      try{
-        const txt = await f.text();
-        const obj = JSON.parse(txt);
-        localStorage.setItem(LS_KEY, JSON.stringify(obj));
-        location.reload();
-      }catch(e){
-        alert('Import failed: invalid JSON.');
-      }finally{
-        ev.target.value = '';
-      }
-    };
-
-    $('#modalClose').onclick = () => closeModal();
-  }
-
-  // Expose functions to window
-  Object.assign(window, {
-    getStylesForPosition,
-    handlePositionChange,
-    handleStyleChange,
-    randomizeName,
-    randomizeSchool,
-    randomizeHeight,
-    randomizeWeight,
-    randomizeHometown,
-    randomizeJersey,
-    openStats,
-    openRecords
-  });
-
-  // Initialize
-  const state = load();
-  wireUI(state);
-  render(state);
-})();
