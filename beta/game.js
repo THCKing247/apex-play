@@ -1,4 +1,4 @@
-/* Gridiron Career Sim — v1.3.6 */
+/* Gridiron Career Sim — v1.3.8 */
 (() => {
   'use strict';
 
@@ -12,9 +12,9 @@
   }
 
 
-  const VERSION = 'v1.3.6';
+  const VERSION = 'v1.3.8';
 
-  const LS_KEY = 'gcs_save_v136';
+  const LS_KEY = 'gcs_save_v138';
 
   const MAX_ENERGY = 100;
   const WEEK_HOURS = 25;
@@ -1132,7 +1132,11 @@ function startCareerFromCreator(){
         stats[key] = Math.max(0, baseVal + (Math.random() * variance * 2 - variance));
       });
       
-      npcs.push({ name, stats });
+      // Random school year (1-4)
+      const year = rint(1, 4);
+      const schoolYear = getSchoolYear(year);
+      
+      npcs.push({ name, stats, year, schoolYear });
     }
     
     // Sort by primary stat for the position
@@ -1147,6 +1151,7 @@ function startCareerFromCreator(){
   function openStats(s){
     const gs = s.gameStats || { gamesPlayed: 0, passingYards: 0, passingTDs: 0, interceptions: 0, completions: 0, attempts: 0, rushingYards: 0, rushingTDs: 0, carries: 0, receptions: 0, receivingYards: 0, receivingTDs: 0, tackles: 0, sacks: 0, defInterceptions: 0, forcedFumbles: 0, fumbleRecoveries: 0, defTDs: 0, fumbles: 0, gameLog: [], seasonStats: {} };
     const pos = s.player.position;
+    const playerSchoolYear = getSchoolYear(s.career.year);
     
     // Get latest game stats
     const latestGame = gs.gameLog && gs.gameLog.length > 0 ? gs.gameLog[gs.gameLog.length - 1] : null;
@@ -1170,7 +1175,7 @@ function startCareerFromCreator(){
       
       const playerRow = `
         <tr style="background:rgba(124,92,255,.12); border:1px solid rgba(124,92,255,.30);">
-          <td><b>${s.player.name}</b> <span class="pill2" style="font-size:11px; margin-left:6px;">You</span></td>
+          <td><b>${s.player.name}</b> <span class="pill2" style="font-size:11px; margin-left:6px;">You</span> <span class="muted" style="font-size:11px;">(${playerSchoolYear})</span></td>
           <td style="text-align:right; font-weight:700;">${(stats.passingYards / playerPerGame).toFixed(1)}</td>
           <td style="text-align:right; font-weight:700;">${(stats.passingTDs / playerPerGame).toFixed(1)}</td>
           <td style="text-align:right; font-weight:700;">${Math.round(stats.completions / playerPerGame)}</td>
@@ -1189,7 +1194,7 @@ function startCareerFromCreator(){
         const npcCompPct = attempts > 0 ? ((completions / attempts) * 100).toFixed(1) : '0.0';
         return `
           <tr>
-            <td>${npc.name}</td>
+            <td>${npc.name} <span class="muted" style="font-size:11px;">(${npc.schoolYear})</span></td>
             <td style="text-align:right;">${passingYards.toFixed(1)}</td>
             <td style="text-align:right;">${passingTDs.toFixed(1)}</td>
             <td style="text-align:right;">${Math.round(completions)}</td>
@@ -1210,7 +1215,7 @@ function startCareerFromCreator(){
       
       const playerRow = `
         <tr style="background:rgba(124,92,255,.12); border:1px solid rgba(124,92,255,.30);">
-          <td><b>${s.player.name}</b> <span class="pill2" style="font-size:11px; margin-left:6px;">You</span></td>
+          <td><b>${s.player.name}</b> <span class="pill2" style="font-size:11px; margin-left:6px;">You</span> <span class="muted" style="font-size:11px;">(${playerSchoolYear})</span></td>
           <td style="text-align:right; font-weight:700;">${(stats.rushingYards / playerPerGame).toFixed(1)}</td>
           <td style="text-align:right; font-weight:700;">${(stats.rushingTDs / playerPerGame).toFixed(1)}</td>
           <td style="text-align:right; font-weight:700;">${(stats.carries / playerPerGame).toFixed(1)}</td>
@@ -1225,7 +1230,7 @@ function startCareerFromCreator(){
         const npcYPC = carries > 0 ? (rushingYards / carries).toFixed(1) : '0.0';
         return `
           <tr>
-            <td>${npc.name}</td>
+            <td>${npc.name} <span class="muted" style="font-size:11px;">(${npc.schoolYear})</span></td>
             <td style="text-align:right;">${rushingYards.toFixed(1)}</td>
             <td style="text-align:right;">${rushingTDs.toFixed(1)}</td>
             <td style="text-align:right;">${carries.toFixed(1)}</td>
@@ -1244,7 +1249,7 @@ function startCareerFromCreator(){
       
       const playerRow = `
         <tr style="background:rgba(124,92,255,.12); border:1px solid rgba(124,92,255,.30);">
-          <td><b>${s.player.name}</b> <span class="pill2" style="font-size:11px; margin-left:6px;">You</span></td>
+          <td><b>${s.player.name}</b> <span class="pill2" style="font-size:11px; margin-left:6px;">You</span> <span class="muted" style="font-size:11px;">(${playerSchoolYear})</span></td>
           <td style="text-align:right; font-weight:700;">${(stats.receptions / playerPerGame).toFixed(1)}</td>
           <td style="text-align:right; font-weight:700;">${(stats.receivingYards / playerPerGame).toFixed(1)}</td>
           <td style="text-align:right; font-weight:700;">${(stats.receivingTDs / playerPerGame).toFixed(1)}</td>
@@ -1259,7 +1264,7 @@ function startCareerFromCreator(){
         const npcYPR = receptions > 0 ? (receivingYards / receptions).toFixed(1) : '0.0';
         return `
           <tr>
-            <td>${npc.name}</td>
+            <td>${npc.name} <span class="muted" style="font-size:11px;">(${npc.schoolYear})</span></td>
             <td style="text-align:right;">${receptions.toFixed(1)}</td>
             <td style="text-align:right;">${receivingYards.toFixed(1)}</td>
             <td style="text-align:right;">${receivingTDs.toFixed(1)}</td>
@@ -1277,7 +1282,7 @@ function startCareerFromCreator(){
       
       const playerRow = `
         <tr style="background:rgba(124,92,255,.12); border:1px solid rgba(124,92,255,.30);">
-          <td><b>${s.player.name}</b> <span class="pill2" style="font-size:11px; margin-left:6px;">You</span></td>
+          <td><b>${s.player.name}</b> <span class="pill2" style="font-size:11px; margin-left:6px;">You</span> <span class="muted" style="font-size:11px;">(${playerSchoolYear})</span></td>
           ${pos === 'QB' ? `<td style="text-align:right; font-weight:700;">${(stats.interceptions / playerPerGame).toFixed(1)}</td>` : ''}
           <td style="text-align:right; font-weight:700;">${((stats.fumbles || 0) / playerPerGame).toFixed(1)}</td>
         </tr>
@@ -1288,7 +1293,7 @@ function startCareerFromCreator(){
         const interceptions = npc.stats.interceptions || 0;
         return `
           <tr>
-            <td>${npc.name}</td>
+            <td>${npc.name} <span class="muted" style="font-size:11px;">(${npc.schoolYear})</span></td>
             ${pos === 'QB' ? `<td style="text-align:right;">${interceptions.toFixed(1)}</td>` : ''}
             <td style="text-align:right;">${fumbles.toFixed(1)}</td>
           </tr>
@@ -1304,7 +1309,7 @@ function startCareerFromCreator(){
       
       const playerRow = `
         <tr style="background:rgba(124,92,255,.12); border:1px solid rgba(124,92,255,.30);">
-          <td><b>${s.player.name}</b> <span class="pill2" style="font-size:11px; margin-left:6px;">You</span></td>
+          <td><b>${s.player.name}</b> <span class="pill2" style="font-size:11px; margin-left:6px;">You</span> <span class="muted" style="font-size:11px;">(${playerSchoolYear})</span></td>
           <td style="text-align:right; font-weight:700;">${(stats.tackles / playerPerGame).toFixed(1)}</td>
           <td style="text-align:right; font-weight:700;">${(stats.sacks / playerPerGame).toFixed(1)}</td>
           <td style="text-align:right; font-weight:700;">${(stats.defInterceptions / playerPerGame).toFixed(1)}</td>
@@ -1323,7 +1328,7 @@ function startCareerFromCreator(){
         const defTDs = npc.stats.defTDs || 0;
         return `
           <tr>
-            <td>${npc.name}</td>
+            <td>${npc.name} <span class="muted" style="font-size:11px;">(${npc.schoolYear})</span></td>
             <td style="text-align:right;">${tackles.toFixed(1)}</td>
             <td style="text-align:right;">${sacks.toFixed(1)}</td>
             <td style="text-align:right;">${defInterceptions.toFixed(1)}</td>
@@ -1696,7 +1701,7 @@ function startCareerFromCreator(){
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'gridiron-save-v136.json';
+      a.download = 'gridiron-save-v138.json';
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -1717,6 +1722,11 @@ function startCareerFromCreator(){
         ev.target.value = '';
       }
     };
+  }
+
+  function getSchoolYear(year){
+    const yearMap = { 1: 'Freshman', 2: 'Sophomore', 3: 'Junior', 4: 'Senior' };
+    return yearMap[year] || `Year ${year}`;
   }
 
   function render(s){
@@ -1744,12 +1754,14 @@ function startCareerFromCreator(){
 
     const stats = derivedStats(s);
     const ovr = calcOVR(stats);
+    const schoolYear = getSchoolYear(s.career.year);
 
-    $('#careerTitle').textContent = `${s.player.name} — High School Year ${s.career.year}`;
+    $('#careerTitle').textContent = `${s.player.name} — ${schoolYear}`;
     const styleList = getStylesForPosition(s.player.position);
     const styleName = styleList.find(x=>x.id===s.player.archetype)?.name || s.player.archetype;
     const playerInfo = [
       s.player.highSchool,
+      schoolYear,
       s.player.position,
       styleName,
       s.player.jerseyNumber ? `#${s.player.jerseyNumber}` : '',
