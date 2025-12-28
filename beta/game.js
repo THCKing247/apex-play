@@ -1,4 +1,4 @@
-/* Gridiron Career Sim — v1.3.4 */
+/* Gridiron Career Sim — v1.3.6 */
 (() => {
   'use strict';
 
@@ -12,9 +12,9 @@
   }
 
 
-  const VERSION = 'v1.3.4';
+  const VERSION = 'v1.3.6';
 
-  const LS_KEY = 'gcs_save_v134';
+  const LS_KEY = 'gcs_save_v136';
 
   const MAX_ENERGY = 100;
   const WEEK_HOURS = 25;
@@ -202,6 +202,7 @@ function getStylesForPosition(pos){
         forcedFumbles: 0,
         fumbleRecoveries: 0,
         defTDs: 0,
+        fumbles: 0,
         // Per-game tracking
         gameLog: [],
         // Per-season tracking
@@ -731,6 +732,7 @@ function startCareerFromCreator(){
       rushingYards: 0, rushingTDs: 0, carries: 0,
       receptions: 0, receivingYards: 0, receivingTDs: 0,
       tackles: 0, sacks: 0, defInterceptions: 0, forcedFumbles: 0, fumbleRecoveries: 0, defTDs: 0,
+      fumbles: 0,
     };
     
     gs.gamesPlayed += 1;
@@ -753,6 +755,8 @@ function startCareerFromCreator(){
       gameStats.carries = rint(3 + Math.random() * 5);
       gameStats.rushingYards = rushYds;
       gameStats.rushingTDs = rushTDs;
+      const fumbles = Math.random() < 0.12 ? rint(1 + Math.random() * 1.5) : 0;
+      gameStats.fumbles = fumbles;
       
       gs.attempts += att;
       gs.completions += comp;
@@ -762,6 +766,7 @@ function startCareerFromCreator(){
       gs.carries += gameStats.carries;
       gs.rushingYards += rushYds;
       gs.rushingTDs += rushTDs;
+      gs.fumbles += fumbles;
     } else if(pos === 'RB'){
       const carries = rint(15 + stats.stamina * 0.2 + Math.random() * 10);
       const ypc = 3 + stats.speed * 0.08 + stats.strength * 0.05 + (perfFactor - 1) * 2;
@@ -777,6 +782,8 @@ function startCareerFromCreator(){
       gameStats.receptions = rec;
       gameStats.receivingYards = recYds;
       gameStats.receivingTDs = recTDs;
+      const fumbles = Math.random() < 0.15 ? rint(1 + Math.random() * 1.5) : 0;
+      gameStats.fumbles = fumbles;
       
       gs.carries += carries;
       gs.rushingYards += yards;
@@ -784,6 +791,7 @@ function startCareerFromCreator(){
       gs.receptions += rec;
       gs.receivingYards += recYds;
       gs.receivingTDs += recTDs;
+      gs.fumbles += fumbles;
     } else if(pos === 'WR' || pos === 'TE'){
       const targets = rint(6 + stats.accuracy * 0.15 + Math.random() * 6);
       const catchRate = clamp(stats.accuracy / 100 + (perfFactor - 1) * 0.15, 0.5, 0.9);
@@ -808,6 +816,9 @@ function startCareerFromCreator(){
         gs.carries += gameStats.carries;
         gs.rushingYards += rushYds;
       }
+      const fumbles = Math.random() < 0.08 ? rint(1 + Math.random() * 1.5) : 0;
+      gameStats.fumbles = fumbles;
+      gs.fumbles += fumbles;
     } else {
       // Defense positions (LB, CB, S, DL)
       const baseTackles = pos === 'DL' ? 4 : pos === 'LB' ? 8 : 3;
@@ -846,7 +857,8 @@ function startCareerFromCreator(){
         passingYards: 0, passingTDs: 0, interceptions: 0, completions: 0, attempts: 0,
         rushingYards: 0, rushingTDs: 0, carries: 0,
         receptions: 0, receivingYards: 0, receivingTDs: 0,
-        tackles: 0, sacks: 0, defInterceptions: 0, forcedFumbles: 0, fumbleRecoveries: 0, defTDs: 0
+        tackles: 0, sacks: 0, defInterceptions: 0, forcedFumbles: 0, fumbleRecoveries: 0, defTDs: 0,
+        fumbles: 0
       };
     }
     const season = gs.seasonStats[seasonKey];
@@ -1096,10 +1108,10 @@ function startCareerFromCreator(){
     const lastNames = ["Anderson", "Brooks", "Carter", "Davis", "Evans", "Foster", "Gray", "Harris", "Jackson", "Kelly", "Lewis", "Martinez", "Nelson", "Parker", "Reed", "Smith", "Taylor", "Walker", "White", "Young"];
     
     const baseStats = {
-      QB: { passingYards: 180, passingTDs: 1.2, interceptions: 0.8, completions: 14, attempts: 24, rushingYards: 25, rushingTDs: 0.2 },
-      RB: { rushingYards: 85, rushingTDs: 0.8, carries: 18, receptions: 2.5, receivingYards: 20, receivingTDs: 0.1 },
-      WR: { receptions: 4.5, receivingYards: 65, receivingTDs: 0.5, rushingYards: 5 },
-      TE: { receptions: 3.2, receivingYards: 45, receivingTDs: 0.4 },
+      QB: { passingYards: 180, passingTDs: 1.2, interceptions: 0.8, completions: 14, attempts: 24, rushingYards: 25, rushingTDs: 0.2, fumbles: 0.12 },
+      RB: { rushingYards: 85, rushingTDs: 0.8, carries: 18, receptions: 2.5, receivingYards: 20, receivingTDs: 0.1, fumbles: 0.15 },
+      WR: { receptions: 4.5, receivingYards: 65, receivingTDs: 0.5, rushingYards: 5, fumbles: 0.08 },
+      TE: { receptions: 3.2, receivingYards: 45, receivingTDs: 0.4, fumbles: 0.08 },
       LB: { tackles: 7.5, sacks: 0.4, defInterceptions: 0.2, forcedFumbles: 0.15, fumbleRecoveries: 0.2, defTDs: 0.05 },
       CB: { tackles: 4.2, sacks: 0.1, defInterceptions: 0.3, forcedFumbles: 0.1, fumbleRecoveries: 0.15, defTDs: 0.08 },
       S: { tackles: 5.8, sacks: 0.15, defInterceptions: 0.35, forcedFumbles: 0.12, fumbleRecoveries: 0.18, defTDs: 0.1 },
@@ -1133,7 +1145,7 @@ function startCareerFromCreator(){
   }
 
   function openStats(s){
-    const gs = s.gameStats || { gamesPlayed: 0, passingYards: 0, passingTDs: 0, interceptions: 0, completions: 0, attempts: 0, rushingYards: 0, rushingTDs: 0, carries: 0, receptions: 0, receivingYards: 0, receivingTDs: 0, tackles: 0, sacks: 0, defInterceptions: 0, forcedFumbles: 0, fumbleRecoveries: 0, defTDs: 0, gameLog: [], seasonStats: {} };
+    const gs = s.gameStats || { gamesPlayed: 0, passingYards: 0, passingTDs: 0, interceptions: 0, completions: 0, attempts: 0, rushingYards: 0, rushingTDs: 0, carries: 0, receptions: 0, receivingYards: 0, receivingTDs: 0, tackles: 0, sacks: 0, defInterceptions: 0, forcedFumbles: 0, fumbleRecoveries: 0, defTDs: 0, fumbles: 0, gameLog: [], seasonStats: {} };
     const pos = s.player.position;
     
     // Get latest game stats
@@ -1161,8 +1173,8 @@ function startCareerFromCreator(){
           <td><b>${s.player.name}</b> <span class="pill2" style="font-size:11px; margin-left:6px;">You</span></td>
           <td style="text-align:right; font-weight:700;">${(stats.passingYards / playerPerGame).toFixed(1)}</td>
           <td style="text-align:right; font-weight:700;">${(stats.passingTDs / playerPerGame).toFixed(1)}</td>
-          <td style="text-align:right; font-weight:700;">${(stats.completions / playerPerGame).toFixed(1)}</td>
-          <td style="text-align:right; font-weight:700;">${(stats.attempts / playerPerGame).toFixed(1)}</td>
+          <td style="text-align:right; font-weight:700;">${Math.round(stats.completions / playerPerGame)}</td>
+          <td style="text-align:right; font-weight:700;">${Math.round(stats.attempts / playerPerGame)}</td>
           <td style="text-align:right; font-weight:700;">${compPct}%</td>
           <td style="text-align:right; font-weight:700;">${(stats.interceptions / playerPerGame).toFixed(1)}</td>
         </tr>
@@ -1180,8 +1192,8 @@ function startCareerFromCreator(){
             <td>${npc.name}</td>
             <td style="text-align:right;">${passingYards.toFixed(1)}</td>
             <td style="text-align:right;">${passingTDs.toFixed(1)}</td>
-            <td style="text-align:right;">${completions.toFixed(1)}</td>
-            <td style="text-align:right;">${attempts.toFixed(1)}</td>
+            <td style="text-align:right;">${Math.round(completions)}</td>
+            <td style="text-align:right;">${Math.round(attempts)}</td>
             <td style="text-align:right;">${npcCompPct}%</td>
             <td style="text-align:right;">${interceptions.toFixed(1)}</td>
           </tr>
@@ -1252,6 +1264,33 @@ function startCareerFromCreator(){
             <td style="text-align:right;">${receivingYards.toFixed(1)}</td>
             <td style="text-align:right;">${receivingTDs.toFixed(1)}</td>
             <td style="text-align:right;">${npcYPR}</td>
+          </tr>
+        `;
+      }).join('');
+      
+      return playerRow + npcRows;
+    };
+    
+    const buildOffensiveDefenseStats = (stats, games, npcs) => {
+      if(pos === 'LB' || pos === 'CB' || pos === 'S' || pos === 'DL') return '';
+      const playerPerGame = games > 0 ? games : 1;
+      
+      const playerRow = `
+        <tr style="background:rgba(124,92,255,.12); border:1px solid rgba(124,92,255,.30);">
+          <td><b>${s.player.name}</b> <span class="pill2" style="font-size:11px; margin-left:6px;">You</span></td>
+          ${pos === 'QB' ? `<td style="text-align:right; font-weight:700;">${(stats.interceptions / playerPerGame).toFixed(1)}</td>` : ''}
+          <td style="text-align:right; font-weight:700;">${((stats.fumbles || 0) / playerPerGame).toFixed(1)}</td>
+        </tr>
+      `;
+      
+      const npcRows = npcs.map(npc => {
+        const fumbles = npc.stats.fumbles || 0;
+        const interceptions = npc.stats.interceptions || 0;
+        return `
+          <tr>
+            <td>${npc.name}</td>
+            ${pos === 'QB' ? `<td style="text-align:right;">${interceptions.toFixed(1)}</td>` : ''}
+            <td style="text-align:right;">${fumbles.toFixed(1)}</td>
           </tr>
         `;
       }).join('');
@@ -1331,6 +1370,12 @@ function startCareerFromCreator(){
             name: 'Rushing', 
             content: buildRushingStats(stats, games, npcPlayers),
             headers: '<th>Player</th><th style="text-align:right;">Rush Yds/G</th><th style="text-align:right;">TDs/G</th><th style="text-align:right;">Carries/G</th><th style="text-align:right;">YPC</th>'
+          },
+          { 
+            id: 'defense', 
+            name: 'Defense', 
+            content: buildOffensiveDefenseStats(stats, games, npcPlayers),
+            headers: '<th>Player</th><th style="text-align:right;">INT/G</th><th style="text-align:right;">Fumbles/G</th>'
           }
         ];
       } else if(pos === 'RB') {
@@ -1346,6 +1391,12 @@ function startCareerFromCreator(){
             name: 'Receiving', 
             content: buildReceivingStats(stats, games, npcPlayers),
             headers: '<th>Player</th><th style="text-align:right;">Rec/G</th><th style="text-align:right;">Rec Yds/G</th><th style="text-align:right;">TDs/G</th><th style="text-align:right;">YPR</th>'
+          },
+          { 
+            id: 'defense', 
+            name: 'Defense', 
+            content: buildOffensiveDefenseStats(stats, games, npcPlayers),
+            headers: '<th>Player</th><th style="text-align:right;">Fumbles/G</th>'
           }
         ];
       } else if(pos === 'WR' || pos === 'TE') {
@@ -1361,6 +1412,12 @@ function startCareerFromCreator(){
             name: 'Rushing', 
             content: buildRushingStats(stats, games, npcPlayers),
             headers: '<th>Player</th><th style="text-align:right;">Rush Yds/G</th><th style="text-align:right;">TDs/G</th><th style="text-align:right;">Carries/G</th><th style="text-align:right;">YPC</th>'
+          },
+          { 
+            id: 'defense', 
+            name: 'Defense', 
+            content: buildOffensiveDefenseStats(stats, games, npcPlayers),
+            headers: '<th>Player</th><th style="text-align:right;">Fumbles/G</th>'
           }
         ];
       } else {
@@ -1639,7 +1696,7 @@ function startCareerFromCreator(){
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'gridiron-save-v134.json';
+      a.download = 'gridiron-save-v136.json';
       document.body.appendChild(a);
       a.click();
       a.remove();
