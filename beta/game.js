@@ -259,8 +259,8 @@
                 <div style="display:flex; gap:8px;">
                   <input type="text" id="cp_name" value="${d.name}" placeholder="Enter name" style="flex:1; padding:10px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15); border-radius:8px; color:var(--text-warm);" />
                   <button class="btn small" onclick="randomizeName()">🎲 Random</button>
-          </div>
-        </div>
+                </div>
+              </div>
               <div>
                 <label style="display:block; margin-bottom:8px; font-weight:600; color:var(--text-warm);">High School</label>
                 <div style="display:flex; gap:8px;">
@@ -311,20 +311,20 @@
                   <button class="btn small" onclick="randomizeJersey()">🎲 Random</button>
                 </div>
               </div>
-        </div>
-      </div>
+            </div>
+          </div>
 
           <div id="tab-avatar" class="tab-content" style="display:none;">
             <div style="display:grid; gap:20px;">
-        <div>
+              <div>
                 <label style="display:block; margin-bottom:10px; font-weight:600; color:var(--text-warm);">Skin Tone</label>
                 <div style="display:flex; gap:8px; flex-wrap:wrap;">
                   ${[1,2,3,4,5,6].map(i => `
                     <button class="avatar-option ${d.avatar.skinTone === i ? 'active' : ''}" data-avatar="skinTone" data-value="${i}" style="width:50px; height:50px; border-radius:50%; border:2px solid ${d.avatar.skinTone === i ? 'var(--accent)' : 'rgba(255,255,255,.2)'}; background:${getSkinColor(i)}; cursor:pointer;"></button>
                   `).join('')}
                 </div>
-        </div>
-        <div>
+              </div>
+              <div>
                 <label style="display:block; margin-bottom:10px; font-weight:600; color:var(--text-warm);">Hair Style</label>
                 <div style="display:flex; gap:8px; flex-wrap:wrap;">
                   ${[0,1,2,3,4,5].map(i => `
@@ -358,9 +358,9 @@
               </div>
               <div style="margin-top:8px;">
                 <button class="btn small" onclick="randomizeAvatar()" style="width:100%;">🎲 Randomize Avatar</button>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
           <div id="tab-style" class="tab-content" style="display:none;">
             <div>
@@ -383,8 +383,8 @@
                 `).join('')}
               </div>
             </div>
+          </div>
         </div>
-      </div>
 
         <div style="background:rgba(255,255,255,.05); border-radius:12px; padding:20px; border:1px solid rgba(255,255,255,.1);">
           <div style="text-align:center; margin-bottom:16px; font-weight:600; color:var(--text-warm);">Player Preview</div>
@@ -2041,3 +2041,239 @@
       s.player.hometown || ''
     ].filter(Boolean).join(' • ');
     $('#careerSub').textContent = playerInfo;
+    $('#seasonTag').textContent = `Week ${s.career.week}/${s.career.maxWeeks}`;
+    $('#gameWeekTag').textContent = s.career.inPost ? `Postseason G${s.career.postWeek}/3` : 'Regular Season';
+
+    $('#money').textContent = fmtMoney(s.money);
+    $('#ovr').textContent = String(ovr);
+    $('#level').textContent = String(s.level);
+    $('#xp').textContent = `${s.xp}/${xpNeeded(s.level)}`;
+    $('#sp').textContent = String(s.skillPoints);
+
+    const job = JOBS.find(j=>j.id===s.career.jobId) || JOBS[0];
+    $('#jobName').textContent = job.name;
+    $('#jobMeta').textContent = `Auto: ${job.hours}h/week • ${fmtMoney(job.pay)}/week`;
+
+    const energyP = (s.energy / MAX_ENERGY) * 100;
+    const hoursP = (s.hours / MAX_HOURS) * 100;
+    const xpP = (s.xp / xpNeeded(s.level)) * 100;
+    setBars(energyP, hoursP, xpP);
+
+    $('#trainCostE').textContent = `-${Math.round(12 * (1 + s.level * 0.1))}/h`;
+    $('#trainGainX').textContent = `+${Math.round(28 * (1 + s.level * 0.15))}/h`;
+    $('#restGainE').textContent = `+${Math.round(18 * (1 + s.level * 0.05))}/h`;
+    $('#restGainX').textContent = `+${Math.round(6 * (1 + s.level * 0.1))}/h`;
+    $('#studyCostE').textContent = `-${Math.round(8 * (1 + s.level * 0.1))}/h`;
+    $('#studyGainX').textContent = `+${Math.round(18 * (1 + s.level * 0.1))}/h`;
+
+    renderLog(s);
+  }
+
+  function setBars(energyP, hoursP, xpP){
+    $('#energyFill').style.width = `${clamp(energyP, 0, 100)}%`;
+    $('#energyTxt').textContent = `${Math.round(energyP)}/100`;
+    $('#hoursFill').style.width = `${clamp(hoursP, 0, 100)}%`;
+    $('#hoursTxt').textContent = `${Math.round(hoursP)}/25`;
+    $('#xpFill').style.width = `${clamp(xpP, 0, 100)}%`;
+    $('#xpTxt').textContent = `${Math.round(xpP)}%`;
+  }
+
+  function wireUI(s){
+    $$('#careerCard button[data-act]').forEach(btn => {
+      btn.onclick = () => {
+        const currentState = loadState();
+        const act = btn.getAttribute('data-act');
+        const h = parseInt(btn.getAttribute('data-h'));
+        if(currentState.hours < h) {
+          alert('Not enough hours!');
+          return;
+        }
+        if(act === 'train') {
+          const costE = Math.round(12 * (1 + currentState.level * 0.1)) * h;
+          if(currentState.energy < costE) {
+            alert('Not enough energy!');
+            return;
+          }
+          currentState.energy = clamp(currentState.energy - costE, 0, MAX_ENERGY);
+          currentState.hours = clamp(currentState.hours - h, 0, MAX_HOURS);
+          const gainX = Math.round(28 * (1 + currentState.level * 0.15)) * h;
+          currentState.xp += gainX;
+          logPush(currentState, 'Trained', `Trained for ${h} hour${h > 1 ? 's' : ''}, gained ${gainX} XP.`);
+        } else if(act === 'rest') {
+          currentState.hours = clamp(currentState.hours - h, 0, MAX_HOURS);
+          const gainE = Math.round(18 * (1 + currentState.level * 0.05)) * h;
+          currentState.energy = clamp(currentState.energy + gainE, 0, MAX_ENERGY);
+          const gainX = Math.round(6 * (1 + currentState.level * 0.1)) * h;
+          currentState.xp += gainX;
+          logPush(currentState, 'Rested', `Rested for ${h} hour${h > 1 ? 's' : ''}, recovered energy.`);
+        } else if(act === 'study') {
+          const costE = Math.round(8 * (1 + currentState.level * 0.1)) * h;
+          if(currentState.energy < costE) {
+            alert('Not enough energy!');
+            return;
+          }
+          currentState.energy = clamp(currentState.energy - costE, 0, MAX_ENERGY);
+          currentState.hours = clamp(currentState.hours - h, 0, MAX_HOURS);
+          const gainX = Math.round(18 * (1 + currentState.level * 0.1)) * h;
+          currentState.xp += gainX;
+          currentState.prep = clamp(currentState.prep + h * 5, 0, 60);
+          logPush(currentState, 'Studied', `Studied playbook for ${h} hour${h > 1 ? 's' : ''}, gained ${gainX} XP and prep.`);
+        }
+        while(currentState.xp >= xpNeeded(currentState.level)) {
+          currentState.xp -= xpNeeded(currentState.level);
+          currentState.level += 1;
+          currentState.skillPoints += 1;
+          logPush(currentState, 'Level Up', `Reached level ${currentState.level}!`);
+        }
+        save(currentState);
+        render(currentState);
+      };
+    });
+
+    $('#btnAdvance').onclick = () => {
+      const currentState = loadState();
+      startNewWeek(currentState);
+      save(currentState);
+      render(currentState);
+    };
+
+    $('#btnPlayGame').onclick = () => {
+      const currentState = loadState();
+      simulateGame(currentState);
+    };
+
+    $('#btnSkills').onclick = () => {
+      const currentState = loadState();
+      return currentState.player ? openSkills(currentState) : openCreatePlayer(currentState);
+    };
+
+    $('#btnJob').onclick = () => {
+      const currentState = loadState();
+      const bodyHTML = `
+        <div class="muted small">Choose a job. Hours and pay are automatically applied each week.</div>
+        <div style="margin-top:16px; display:grid; gap:8px;">
+          ${JOBS.map(j => `
+            <label style="padding:12px; background:rgba(255,255,255,.05); border-radius:8px; display:flex; justify-content:space-between; align-items:center; cursor:pointer;">
+              <div>
+                <div style="font-weight:600;">${j.name}</div>
+                <div class="muted small">${j.hours}h/week • ${fmtMoney(j.pay)}/week</div>
+              </div>
+              <input type="radio" name="job" value="${j.id}" ${currentState.career.jobId === j.id ? 'checked' : ''} />
+            </label>
+          `).join('')}
+        </div>
+      `;
+      openModal('Change Job', bodyHTML, '<button class="btn primary" id="saveJob">Save</button>');
+      $('#saveJob').onclick = () => {
+        const selected = $$('input[name="job"]:checked')[0];
+        if(selected) {
+          currentState.career.jobId = selected.value;
+          save(currentState);
+          closeModal();
+          render(currentState);
+        }
+      };
+    };
+
+    $('#btnStore').onclick = () => {
+      const currentState = loadState();
+      return currentState.player ? openStore(currentState) : openCreatePlayer(currentState);
+    };
+
+    $('#btnInv').onclick = () => {
+      const currentState = loadState();
+      return currentState.player ? openInventory(currentState) : openCreatePlayer(currentState);
+    };
+
+    $('#btnStats').onclick = () => {
+      const currentState = loadState();
+      return currentState.player ? openStats(currentState) : openCreatePlayer(currentState);
+    };
+
+    $('#btnRecords').onclick = () => {
+      const currentState = loadState();
+      return currentState.player ? openRecords(currentState) : openCreatePlayer(currentState);
+    };
+
+    $('#btnLog').onclick = () => {
+      const currentState = loadState();
+      openLogAll(currentState);
+    };
+
+    $('#btnCheat').onclick = () => {
+      const currentState = loadState();
+      if(!currentState.player) {
+        alert('Create a player first!');
+        return;
+      }
+      openCheatPanel(currentState);
+    };
+
+    $('#btnReset').onclick = () => {
+      if(confirm('Reset your save?')){
+        localStorage.removeItem(LS_KEY);
+        const ns = defaultState();
+        save(ns);
+        location.reload();
+      }
+    };
+
+    $('#btnExport').onclick = () => {
+      const currentState = loadState();
+      const blob = new Blob([JSON.stringify(currentState, null, 2)], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'gridiron-save-v140.json';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    };
+
+    $('#fileImport').onchange = async (ev) => {
+      const f = ev.target.files && ev.target.files[0];
+      if(!f) return;
+      try{
+        const txt = await f.text();
+        const obj = JSON.parse(txt);
+        localStorage.setItem(LS_KEY, JSON.stringify(obj));
+        location.reload();
+      }catch(e){
+        alert('Import failed: invalid JSON.');
+      }finally{
+        ev.target.value = '';
+      }
+    };
+
+    $('#modalClose').onclick = () => closeModal();
+  }
+
+  // Expose functions to window
+  Object.assign(window, {
+    getStylesForPosition,
+    handlePositionChange,
+    handleStyleChange,
+    randomizeName,
+    randomizeSchool,
+    randomizeHeight,
+    randomizeWeight,
+    randomizeHometown,
+    randomizeJersey,
+    randomizeAvatar,
+    getSkinColor,
+    getHairColor,
+    getEyeColor,
+    getHairStyleName,
+    getFacialHairName,
+    renderAvatarPreview,
+    updateAvatarPreview,
+    openStats,
+    openRecords
+  });
+
+  // Initialize
+  const state = load();
+  wireUI(state);
+  render(state);
+})();
