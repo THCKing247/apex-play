@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Gridiron Career Sim v1.3.8</title>
+  <title>Gridiron Career Sim v1.3.9</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
@@ -14,11 +14,12 @@
       <div class="brand">
         <div class="logo" aria-hidden="true">🏈</div>
         <div>
-          <div class="title">Gridiron Career Sim <span class="pill" id="ver">v1.3.8</span></div>
+          <div class="title">Gridiron Career Sim <span class="pill" id="ver">v1.3.9</span></div>
           <div class="subtitle">Build your high school legend.</div>
         </div>
       </div>
       <div class="top-actions">
+        <button class="btn" id="btnCheat" style="background:rgba(255,193,7,.2); border-color:rgba(255,193,7,.4);">Cheat</button>
         <button class="btn" id="btnExport">Export Save</button>
         <label class="btn file">
           Import Save<input type="file" id="fileImport" accept="application/json" />
@@ -164,6 +165,7 @@
             <div class="box-h">Manage</div>
             <div class="btncol">
               <button class="btn" id="btnStats">Stats</button>
+              <button class="btn" id="btnRecords">Records</button>
               <button class="btn" id="btnSkills">Open Skills</button>
               <button class="btn" id="btnStore">Store</button>
               <button class="btn" id="btnInv">Inventory</button>
