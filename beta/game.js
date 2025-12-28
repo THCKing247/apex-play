@@ -1,4 +1,4 @@
-/* Gridiron Career Sim — v1.3.1 */
+/* Gridiron Career Sim — v1.3.2 */
 (() => {
   'use strict';
 
@@ -12,9 +12,9 @@
   }
 
 
-  const VERSION = 'v1.3.1';
+  const VERSION = 'v1.3.2';
 
-  const LS_KEY = 'gcs_save_v131';
+  const LS_KEY = 'gcs_save_v132';
 
   const MAX_ENERGY = 100;
   const WEEK_HOURS = 25;
@@ -184,7 +184,7 @@ function getStylesForPosition(pos){
       },
       gameStats: {
         gamesPlayed: 0,
-        // Offensive stats
+        // Career totals
         passingYards: 0,
         passingTDs: 0,
         interceptions: 0,
@@ -196,13 +196,16 @@ function getStylesForPosition(pos){
         receptions: 0,
         receivingYards: 0,
         receivingTDs: 0,
-        // Defensive stats
         tackles: 0,
         sacks: 0,
         defInterceptions: 0,
         forcedFumbles: 0,
         fumbleRecoveries: 0,
         defTDs: 0,
+        // Per-game tracking
+        gameLog: [],
+        // Per-season tracking
+        seasonStats: {},
       },
       inventory: {
         owned: [], // array of item ids (including duplicates for consumables)
@@ -222,6 +225,9 @@ function getStylesForPosition(pos){
       if(!s.inventory) s.inventory = defaultState().inventory;
       if(!s.career) s.career = defaultState().career;
       if(!s.log) s.log = [];
+      if(!s.gameStats) s.gameStats = defaultState().gameStats;
+      if(s.gameStats && !s.gameStats.gameLog) s.gameStats.gameLog = [];
+      if(s.gameStats && !s.gameStats.seasonStats) s.gameStats.seasonStats = {};
       return s;
     }catch(e){
       console.warn('load failed', e);
@@ -711,7 +717,21 @@ function startCareerFromCreator(){
     // Generate game stats based on position and performance
     const pos = s.player.position;
     const perfFactor = energyFactor * (1 + prepBonus * 0.3);
-    const gs = s.gameStats || { gamesPlayed: 0, passingYards: 0, passingTDs: 0, interceptions: 0, completions: 0, attempts: 0, rushingYards: 0, rushingTDs: 0, carries: 0, receptions: 0, receivingYards: 0, receivingTDs: 0, tackles: 0, sacks: 0, defInterceptions: 0, forcedFumbles: 0, fumbleRecoveries: 0, defTDs: 0 };
+    const gs = s.gameStats || { gamesPlayed: 0, passingYards: 0, passingTDs: 0, interceptions: 0, completions: 0, attempts: 0, rushingYards: 0, rushingTDs: 0, carries: 0, receptions: 0, receivingYards: 0, receivingTDs: 0, tackles: 0, sacks: 0, defInterceptions: 0, forcedFumbles: 0, fumbleRecoveries: 0, defTDs: 0, gameLog: [], seasonStats: {} };
+    
+    // Initialize current game stats
+    const gameStats = {
+      week: s.career.week,
+      year: s.career.year,
+      opponent: opp,
+      win: didWin,
+      scoreFor: ptsFor,
+      scoreAgainst: ptsAg,
+      passingYards: 0, passingTDs: 0, interceptions: 0, completions: 0, attempts: 0,
+      rushingYards: 0, rushingTDs: 0, carries: 0,
+      receptions: 0, receivingYards: 0, receivingTDs: 0,
+      tackles: 0, sacks: 0, defInterceptions: 0, forcedFumbles: 0, fumbleRecoveries: 0, defTDs: 0,
+    };
     
     gs.gamesPlayed += 1;
     
@@ -725,12 +745,21 @@ function startCareerFromCreator(){
       const rushYds = rint(stats.speed * 0.5 + Math.random() * 30);
       const rushTDs = Math.random() < 0.15 ? 1 : 0;
       
+      gameStats.attempts = att;
+      gameStats.completions = comp;
+      gameStats.passingYards = yards;
+      gameStats.passingTDs = tds;
+      gameStats.interceptions = ints;
+      gameStats.carries = rint(3 + Math.random() * 5);
+      gameStats.rushingYards = rushYds;
+      gameStats.rushingTDs = rushTDs;
+      
       gs.attempts += att;
       gs.completions += comp;
       gs.passingYards += yards;
       gs.passingTDs += tds;
       gs.interceptions += ints;
-      gs.carries += rint(3 + Math.random() * 5);
+      gs.carries += gameStats.carries;
       gs.rushingYards += rushYds;
       gs.rushingTDs += rushTDs;
     } else if(pos === 'RB'){
@@ -741,6 +770,13 @@ function startCareerFromCreator(){
       const rec = rint(2 + stats.accuracy * 0.05 + Math.random() * 4);
       const recYds = rint(rec * (5 + stats.speed * 0.1 + Math.random() * 5));
       const recTDs = Math.random() < 0.1 ? 1 : 0;
+      
+      gameStats.carries = carries;
+      gameStats.rushingYards = yards;
+      gameStats.rushingTDs = tds;
+      gameStats.receptions = rec;
+      gameStats.receivingYards = recYds;
+      gameStats.receivingTDs = recTDs;
       
       gs.carries += carries;
       gs.rushingYards += yards;
@@ -757,11 +793,19 @@ function startCareerFromCreator(){
       const tds = rint(rec * 0.15 + Math.random() * 1.5);
       const rushYds = pos === 'WR' ? rint(Math.random() * 20) : 0;
       
+      gameStats.receptions = rec;
+      gameStats.receivingYards = yards;
+      gameStats.receivingTDs = tds;
+      if(rushYds > 0) {
+        gameStats.carries = rint(1 + Math.random() * 2);
+        gameStats.rushingYards = rushYds;
+      }
+      
       gs.receptions += rec;
       gs.receivingYards += yards;
       gs.receivingTDs += tds;
       if(rushYds > 0) {
-        gs.carries += rint(1 + Math.random() * 2);
+        gs.carries += gameStats.carries;
         gs.rushingYards += rushYds;
       }
     } else {
@@ -774,6 +818,13 @@ function startCareerFromCreator(){
       const fr = Math.random() < 0.2 ? 1 : 0;
       const defTD = (ints > 0 || fr > 0) && Math.random() < 0.3 ? 1 : 0;
       
+      gameStats.tackles = tackles;
+      gameStats.sacks = sacks;
+      gameStats.defInterceptions = ints;
+      gameStats.forcedFumbles = ff;
+      gameStats.fumbleRecoveries = fr;
+      gameStats.defTDs = defTD;
+      
       gs.tackles += tackles;
       gs.sacks += sacks;
       gs.defInterceptions += ints;
@@ -781,6 +832,30 @@ function startCareerFromCreator(){
       gs.fumbleRecoveries += fr;
       gs.defTDs += defTD;
     }
+    
+    // Add to game log
+    if(!gs.gameLog) gs.gameLog = [];
+    gs.gameLog.push(gameStats);
+    
+    // Update season stats
+    const seasonKey = `Y${s.career.year}`;
+    if(!gs.seasonStats) gs.seasonStats = {};
+    if(!gs.seasonStats[seasonKey]) {
+      gs.seasonStats[seasonKey] = {
+        gamesPlayed: 0,
+        passingYards: 0, passingTDs: 0, interceptions: 0, completions: 0, attempts: 0,
+        rushingYards: 0, rushingTDs: 0, carries: 0,
+        receptions: 0, receivingYards: 0, receivingTDs: 0,
+        tackles: 0, sacks: 0, defInterceptions: 0, forcedFumbles: 0, fumbleRecoveries: 0, defTDs: 0
+      };
+    }
+    const season = gs.seasonStats[seasonKey];
+    season.gamesPlayed += 1;
+    Object.keys(gameStats).forEach(k => {
+      if(typeof gameStats[k] === 'number' && k !== 'week' && k !== 'year' && k !== 'opponent' && k !== 'win' && k !== 'scoreFor' && k !== 'scoreAgainst') {
+        season[k] = (season[k] || 0) + gameStats[k];
+      }
+    });
     
     s.gameStats = gs;
 
@@ -1017,89 +1092,207 @@ function startCareerFromCreator(){
   }
 
   function openStats(s){
-    const gs = s.gameStats || { gamesPlayed: 0, passingYards: 0, passingTDs: 0, interceptions: 0, completions: 0, attempts: 0, rushingYards: 0, rushingTDs: 0, carries: 0, receptions: 0, receivingYards: 0, receivingTDs: 0, tackles: 0, sacks: 0, defInterceptions: 0, forcedFumbles: 0, fumbleRecoveries: 0, defTDs: 0 };
+    const gs = s.gameStats || { gamesPlayed: 0, passingYards: 0, passingTDs: 0, interceptions: 0, completions: 0, attempts: 0, rushingYards: 0, rushingTDs: 0, carries: 0, receptions: 0, receivingYards: 0, receivingTDs: 0, tackles: 0, sacks: 0, defInterceptions: 0, forcedFumbles: 0, fumbleRecoveries: 0, defTDs: 0, gameLog: [], seasonStats: {} };
     const pos = s.player.position;
-    const games = gs.gamesPlayed || 1;
     
-    let statRows = '';
+    // Get latest game stats
+    const latestGame = gs.gameLog && gs.gameLog.length > 0 ? gs.gameLog[gs.gameLog.length - 1] : null;
     
-    if(pos === 'QB'){
-      const compPct = gs.attempts > 0 ? ((gs.completions / gs.attempts) * 100).toFixed(1) : '0.0';
-      const passYdsPerGame = (gs.passingYards / games).toFixed(1);
-      const rushYdsPerGame = (gs.rushingYards / games).toFixed(1);
-      
-      statRows = `
-        <tr><td><b>Games Played</b></td><td style="text-align:right; font-weight:700;">${gs.gamesPlayed}</td><td colspan="2"></td></tr>
-        <tr><td><b>Passing Yards</b></td><td style="text-align:right; font-weight:700;">${gs.passingYards.toLocaleString()}</td><td style="text-align:center; color:var(--muted);">${passYdsPerGame}/game</td><td></td></tr>
-        <tr><td><b>Passing TDs</b></td><td style="text-align:right; font-weight:700;">${gs.passingTDs}</td><td style="text-align:center; color:var(--muted);">${(gs.passingTDs/games).toFixed(1)}/game</td><td></td></tr>
-        <tr><td><b>Completions</b></td><td style="text-align:right; font-weight:700;">${gs.completions}</td><td style="text-align:center; color:var(--muted);">${compPct}%</td><td></td></tr>
-        <tr><td><b>Attempts</b></td><td style="text-align:right; font-weight:700;">${gs.attempts}</td><td style="text-align:center; color:var(--muted);">${(gs.attempts/games).toFixed(1)}/game</td><td></td></tr>
-        <tr><td><b>Interceptions</b></td><td style="text-align:right; font-weight:700;">${gs.interceptions}</td><td style="text-align:center; color:var(--muted);">${(gs.interceptions/games).toFixed(1)}/game</td><td></td></tr>
-        <tr><td><b>Rushing Yards</b></td><td style="text-align:right; font-weight:700;">${gs.rushingYards.toLocaleString()}</td><td style="text-align:center; color:var(--muted);">${rushYdsPerGame}/game</td><td></td></tr>
-        <tr><td><b>Rushing TDs</b></td><td style="text-align:right; font-weight:700;">${gs.rushingTDs}</td><td style="text-align:center; color:var(--muted);">${(gs.rushingTDs/games).toFixed(1)}/game</td><td></td></tr>
+    // Get current season stats
+    const seasonKey = `Y${s.career.year}`;
+    const seasonStats = gs.seasonStats && gs.seasonStats[seasonKey] ? gs.seasonStats[seasonKey] : null;
+    const seasonGames = seasonStats ? seasonStats.gamesPlayed || 1 : 1;
+    
+    // Career totals
+    const careerGames = gs.gamesPlayed || 1;
+    
+    // NPC comparison data (average high school stats)
+    const npcStats = {
+      QB: { passingYards: 180, passingTDs: 1.2, interceptions: 0.8, completions: 14, attempts: 24, rushingYards: 25, rushingTDs: 0.2 },
+      RB: { rushingYards: 85, rushingTDs: 0.8, carries: 18, receptions: 2.5, receivingYards: 20, receivingTDs: 0.1 },
+      WR: { receptions: 4.5, receivingYards: 65, receivingTDs: 0.5, rushingYards: 5 },
+      TE: { receptions: 3.2, receivingYards: 45, receivingTDs: 0.4 },
+      LB: { tackles: 7.5, sacks: 0.4, defInterceptions: 0.2, forcedFumbles: 0.15, fumbleRecoveries: 0.2, defTDs: 0.05 },
+      CB: { tackles: 4.2, sacks: 0.1, defInterceptions: 0.3, forcedFumbles: 0.1, fumbleRecoveries: 0.15, defTDs: 0.08 },
+      S: { tackles: 5.8, sacks: 0.15, defInterceptions: 0.35, forcedFumbles: 0.12, fumbleRecoveries: 0.18, defTDs: 0.1 },
+      DL: { tackles: 5.5, sacks: 0.6, defInterceptions: 0.05, forcedFumbles: 0.2, fumbleRecoveries: 0.15, defTDs: 0.03 }
+    };
+    
+    const npc = npcStats[pos] || {};
+    
+    // Helper to format stat row with comparison
+    const statRow = (label, playerVal, npcVal, format = (v) => v.toLocaleString(), perGame = false) => {
+      const diff = playerVal - (npcVal * (perGame ? 1 : careerGames));
+      const diffText = diff > 0 ? `+${format(diff)}` : diff < 0 ? format(diff) : '±0';
+      const diffClass = diff > (npcVal * 0.1) ? 'good' : diff < -(npcVal * 0.1) ? 'bad' : '';
+      return `
+        <tr>
+          <td><b>${label}</b></td>
+          <td style="text-align:right; font-weight:700;">${format(playerVal)}</td>
+          <td style="text-align:center; color:var(--muted);">${npcVal.toFixed(1)}${perGame ? '/game' : ''}</td>
+          <td style="text-align:center;"><span class="pill2 ${diffClass}">${diffText}</span></td>
+        </tr>
       `;
-    } else if(pos === 'RB'){
-      const ypc = gs.carries > 0 ? (gs.rushingYards / gs.carries).toFixed(1) : '0.0';
-      const rushYdsPerGame = (gs.rushingYards / games).toFixed(1);
-      const recYdsPerGame = (gs.receivingYards / games).toFixed(1);
-      
-      statRows = `
-        <tr><td><b>Games Played</b></td><td style="text-align:right; font-weight:700;">${gs.gamesPlayed}</td><td colspan="2"></td></tr>
-        <tr><td><b>Rushing Yards</b></td><td style="text-align:right; font-weight:700;">${gs.rushingYards.toLocaleString()}</td><td style="text-align:center; color:var(--muted);">${rushYdsPerGame}/game</td><td></td></tr>
-        <tr><td><b>Rushing TDs</b></td><td style="text-align:right; font-weight:700;">${gs.rushingTDs}</td><td style="text-align:center; color:var(--muted);">${(gs.rushingTDs/games).toFixed(1)}/game</td><td></td></tr>
-        <tr><td><b>Carries</b></td><td style="text-align:right; font-weight:700;">${gs.carries}</td><td style="text-align:center; color:var(--muted);">${ypc} YPC</td><td></td></tr>
-        <tr><td><b>Receptions</b></td><td style="text-align:right; font-weight:700;">${gs.receptions}</td><td style="text-align:center; color:var(--muted);">${(gs.receptions/games).toFixed(1)}/game</td><td></td></tr>
-        <tr><td><b>Receiving Yards</b></td><td style="text-align:right; font-weight:700;">${gs.receivingYards.toLocaleString()}</td><td style="text-align:center; color:var(--muted);">${recYdsPerGame}/game</td><td></td></tr>
-        <tr><td><b>Receiving TDs</b></td><td style="text-align:right; font-weight:700;">${gs.receivingTDs}</td><td style="text-align:center; color:var(--muted);">${(gs.receivingTDs/games).toFixed(1)}/game</td><td></td></tr>
+    };
+    
+    // Build stat tables by category
+    const buildPassingStats = (stats, games, npc) => {
+      if(pos !== 'QB') return '';
+      const compPct = stats.attempts > 0 ? ((stats.completions / stats.attempts) * 100).toFixed(1) : '0.0';
+      return `
+        ${statRow('Passing Yards', stats.passingYards, npc.passingYards, v => v.toLocaleString(), true)}
+        ${statRow('Passing TDs', stats.passingTDs, npc.passingTDs, v => v.toString(), true)}
+        ${statRow('Completions', stats.completions, npc.completions, v => v.toString(), true)}
+        ${statRow('Attempts', stats.attempts, npc.attempts, v => v.toString(), true)}
+        <tr><td><b>Completion %</b></td><td style="text-align:right; font-weight:700;">${compPct}%</td><td style="text-align:center; color:var(--muted);">${((npc.completions/npc.attempts)*100).toFixed(1)}%</td><td></td></tr>
+        ${statRow('Interceptions', stats.interceptions, npc.interceptions, v => v.toString(), true)}
       `;
-    } else if(pos === 'WR' || pos === 'TE'){
-      const ypr = gs.receptions > 0 ? (gs.receivingYards / gs.receptions).toFixed(1) : '0.0';
-      const recYdsPerGame = (gs.receivingYards / games).toFixed(1);
-      
-      statRows = `
-        <tr><td><b>Games Played</b></td><td style="text-align:right; font-weight:700;">${gs.gamesPlayed}</td><td colspan="2"></td></tr>
-        <tr><td><b>Receptions</b></td><td style="text-align:right; font-weight:700;">${gs.receptions}</td><td style="text-align:center; color:var(--muted);">${(gs.receptions/games).toFixed(1)}/game</td><td></td></tr>
-        <tr><td><b>Receiving Yards</b></td><td style="text-align:right; font-weight:700;">${gs.receivingYards.toLocaleString()}</td><td style="text-align:center; color:var(--muted);">${recYdsPerGame}/game</td><td></td></tr>
-        <tr><td><b>Receiving TDs</b></td><td style="text-align:right; font-weight:700;">${gs.receivingTDs}</td><td style="text-align:center; color:var(--muted);">${(gs.receivingTDs/games).toFixed(1)}/game</td><td></td></tr>
-        <tr><td><b>Yards Per Reception</b></td><td style="text-align:right; font-weight:700;">${ypr}</td><td colspan="2"></td></tr>
-        ${gs.rushingYards > 0 ? `<tr><td><b>Rushing Yards</b></td><td style="text-align:right; font-weight:700;">${gs.rushingYards.toLocaleString()}</td><td style="text-align:center; color:var(--muted);">${(gs.rushingYards/games).toFixed(1)}/game</td><td></td></tr>` : ''}
+    };
+    
+    const buildRushingStats = (stats, games, npc) => {
+      if(pos === 'CB' || pos === 'S' || pos === 'DL' || pos === 'LB') return '';
+      const ypc = stats.carries > 0 ? (stats.rushingYards / stats.carries).toFixed(1) : '0.0';
+      return `
+        ${statRow('Rushing Yards', stats.rushingYards, npc.rushingYards || 0, v => v.toLocaleString(), true)}
+        ${statRow('Rushing TDs', stats.rushingTDs, npc.rushingTDs || 0, v => v.toString(), true)}
+        ${statRow('Carries', stats.carries, npc.carries || 0, v => v.toString(), true)}
+        <tr><td><b>Yards Per Carry</b></td><td style="text-align:right; font-weight:700;">${ypc}</td><td style="text-align:center; color:var(--muted);">${npc.carries ? (npc.rushingYards / npc.carries).toFixed(1) : '0.0'}</td><td></td></tr>
       `;
-    } else {
-      // Defense
-      const tacklesPerGame = (gs.tackles / games).toFixed(1);
-      
-      statRows = `
-        <tr><td><b>Games Played</b></td><td style="text-align:right; font-weight:700;">${gs.gamesPlayed}</td><td colspan="2"></td></tr>
-        <tr><td><b>Tackles</b></td><td style="text-align:right; font-weight:700;">${gs.tackles}</td><td style="text-align:center; color:var(--muted);">${tacklesPerGame}/game</td><td></td></tr>
-        <tr><td><b>Sacks</b></td><td style="text-align:right; font-weight:700;">${gs.sacks}</td><td style="text-align:center; color:var(--muted);">${(gs.sacks/games).toFixed(1)}/game</td><td></td></tr>
-        <tr><td><b>Interceptions</b></td><td style="text-align:right; font-weight:700;">${gs.defInterceptions}</td><td style="text-align:center; color:var(--muted);">${(gs.defInterceptions/games).toFixed(1)}/game</td><td></td></tr>
-        <tr><td><b>Forced Fumbles</b></td><td style="text-align:right; font-weight:700;">${gs.forcedFumbles}</td><td style="text-align:center; color:var(--muted);">${(gs.forcedFumbles/games).toFixed(1)}/game</td><td></td></tr>
-        <tr><td><b>Fumble Recoveries</b></td><td style="text-align:right; font-weight:700;">${gs.fumbleRecoveries}</td><td style="text-align:center; color:var(--muted);">${(gs.fumbleRecoveries/games).toFixed(1)}/game</td><td></td></tr>
-        <tr><td><b>Defensive TDs</b></td><td style="text-align:right; font-weight:700;">${gs.defTDs}</td><td style="text-align:center; color:var(--muted);">${(gs.defTDs/games).toFixed(1)}/game</td><td></td></tr>
+    };
+    
+    const buildReceivingStats = (stats, games, npc) => {
+      if(pos === 'QB' || pos === 'DL') return '';
+      const ypr = stats.receptions > 0 ? (stats.receivingYards / stats.receptions).toFixed(1) : '0.0';
+      return `
+        ${statRow('Receptions', stats.receptions, npc.receptions || 0, v => v.toString(), true)}
+        ${statRow('Receiving Yards', stats.receivingYards, npc.receivingYards || 0, v => v.toLocaleString(), true)}
+        ${statRow('Receiving TDs', stats.receivingTDs, npc.receivingTDs || 0, v => v.toString(), true)}
+        <tr><td><b>Yards Per Reception</b></td><td style="text-align:right; font-weight:700;">${ypr}</td><td style="text-align:center; color:var(--muted);">${npc.receptions ? (npc.receivingYards / npc.receptions).toFixed(1) : '0.0'}</td><td></td></tr>
       `;
-    }
+    };
+    
+    const buildDefenseStats = (stats, games, npc) => {
+      if(pos !== 'LB' && pos !== 'CB' && pos !== 'S' && pos !== 'DL') return '';
+      return `
+        ${statRow('Tackles', stats.tackles, npc.tackles, v => v.toString(), true)}
+        ${statRow('Sacks', stats.sacks, npc.sacks, v => v.toString(), true)}
+        ${statRow('Interceptions', stats.defInterceptions, npc.defInterceptions, v => v.toString(), true)}
+        ${statRow('Forced Fumbles', stats.forcedFumbles, npc.forcedFumbles, v => v.toString(), true)}
+        ${statRow('Fumble Recoveries', stats.fumbleRecoveries, npc.fumbleRecoveries || npc.fumbleRecoveries, v => v.toString(), true)}
+        ${statRow('Defensive TDs', stats.defTDs, npc.defTDs, v => v.toString(), true)}
+      `;
+    };
+    
+    // Get stats for current view
+    const getStatsForPeriod = (period) => {
+      if(period === 'game') return latestGame || {};
+      if(period === 'season') return seasonStats || {};
+      return gs; // career
+    };
+    
+    const getGamesForPeriod = (period) => {
+      if(period === 'game') return 1;
+      if(period === 'season') return seasonGames;
+      return careerGames;
+    };
+    
+    // Build content for each period
+    const buildPeriodContent = (period) => {
+      const stats = getStatsForPeriod(period);
+      const games = getGamesForPeriod(period);
+      const periodLabel = period === 'game' ? 'Last Game' : period === 'season' ? `Season ${s.career.year}` : 'Career';
+      
+      let categories = [];
+      if(pos === 'QB') {
+        categories = [
+          { id: 'passing', name: 'Passing', content: buildPassingStats(stats, games, npc) },
+          { id: 'rushing', name: 'Rushing', content: buildRushingStats(stats, games, npc) }
+        ];
+      } else if(pos === 'RB') {
+        categories = [
+          { id: 'rushing', name: 'Rushing', content: buildRushingStats(stats, games, npc) },
+          { id: 'receiving', name: 'Receiving', content: buildReceivingStats(stats, games, npc) }
+        ];
+      } else if(pos === 'WR' || pos === 'TE') {
+        categories = [
+          { id: 'receiving', name: 'Receiving', content: buildReceivingStats(stats, games, npc) },
+          { id: 'rushing', name: 'Rushing', content: buildRushingStats(stats, games, npc) }
+        ];
+      } else {
+        categories = [
+          { id: 'defense', name: 'Defense', content: buildDefenseStats(stats, games, npc) }
+        ];
+      }
+      
+      const categoryTabs = categories.map((cat, idx) => 
+        `<button class="stats-category-tab ${idx === 0 ? 'active' : ''}" data-cat="${cat.id}" data-period="${period}">${cat.name}</button>`
+      ).join('');
+      
+      const categoryContents = categories.map((cat, idx) => 
+        `<div class="stats-content ${idx === 0 ? 'active' : ''}" data-cat="${cat.id}" data-period="${period}">
+          <table class="table">
+            <thead><tr><th>Stat</th><th style="text-align:right;">You</th><th style="text-align:center;">NPC Avg</th><th style="text-align:center;">Diff</th></tr></thead>
+            <tbody>${cat.content || '<tr><td colspan="4" class="muted">No stats available</td></tr>'}</tbody>
+          </table>
+        </div>`
+      ).join('');
+      
+      return `
+        <div class="muted" style="margin-bottom:8px; font-size:13px;">${periodLabel} • ${games} game${games !== 1 ? 's' : ''}</div>
+        <div class="stats-category-tabs">${categoryTabs}</div>
+        ${categoryContents}
+      `;
+    };
+    
+    const bodyHTML = `
+      <div class="stats-tabs">
+        <button class="stats-tab ${latestGame ? '' : 'disabled'}" data-period="game" ${!latestGame ? 'disabled' : ''}>Last Game</button>
+        <button class="stats-tab ${seasonStats ? 'active' : ''}" data-period="season" ${!seasonStats ? 'disabled' : ''}>Season ${s.career.year}</button>
+        <button class="stats-tab ${!seasonStats ? 'active' : ''}" data-period="career">Career</button>
+      </div>
+      <div id="stats-period-content">
+        ${buildPeriodContent(seasonStats ? 'season' : 'career')}
+      </div>
+    `;
     
     openModal({
       title: 'Game Statistics',
-      bodyHTML: `
-        <div class="muted" style="margin-bottom:12px; font-size:13px;">
-          Career statistics for ${s.player.name} (${pos})
-        </div>
-        
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Stat</th>
-              <th style="text-align:right;">Total</th>
-              <th style="text-align:center;">Per Game</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>${statRows}</tbody>
-        </table>
-      `,
+      bodyHTML: bodyHTML,
       footHTML: `<button class="btn" id="closeStats">Close</button>`,
       onClose: () => {}
+    });
+    
+    // Tab switching
+    $$('.stats-tab').forEach(tab => {
+      tab.onclick = () => {
+        if(tab.disabled) return;
+        const period = tab.getAttribute('data-period');
+        $$('.stats-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        $('#stats-period-content').innerHTML = buildPeriodContent(period);
+        // Re-attach category tab handlers
+        $$('.stats-category-tab').forEach(catTab => {
+          catTab.onclick = () => {
+            const cat = catTab.getAttribute('data-cat');
+            const p = catTab.getAttribute('data-period');
+            $$(`.stats-category-tab[data-period="${p}"]`).forEach(t => t.classList.remove('active'));
+            $$(`.stats-content[data-period="${p}"]`).forEach(c => c.classList.remove('active'));
+            catTab.classList.add('active');
+            $(`.stats-content[data-cat="${cat}"][data-period="${p}"]`).classList.add('active');
+          };
+        });
+      };
+    });
+    
+    $$('.stats-category-tab').forEach(catTab => {
+      catTab.onclick = () => {
+        const cat = catTab.getAttribute('data-cat');
+        const p = catTab.getAttribute('data-period');
+        $$(`.stats-category-tab[data-period="${p}"]`).forEach(t => t.classList.remove('active'));
+        $$(`.stats-content[data-period="${p}"]`).forEach(c => c.classList.remove('active'));
+        catTab.classList.add('active');
+        $(`.stats-content[data-cat="${cat}"][data-period="${p}"]`).classList.add('active');
+      };
     });
     
     $('#closeStats').onclick = () => $('#modal').close();
@@ -1296,7 +1489,7 @@ function startCareerFromCreator(){
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'gridiron-save-v131.json';
+      a.download = 'gridiron-save-v132.json';
       document.body.appendChild(a);
       a.click();
       a.remove();
