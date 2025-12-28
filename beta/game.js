@@ -1,4 +1,4 @@
-/* Gridiron Career Sim — v1.2.7 */
+/* Gridiron Career Sim — v1.3.0 */
 (() => {
   'use strict';
 
@@ -12,9 +12,9 @@
   }
 
 
-  const VERSION = 'v1.2.7';
+  const VERSION = 'v1.3.0';
 
-  const LS_KEY = 'gcs_save_v127';
+  const LS_KEY = 'gcs_save_v130';
 
   const MAX_ENERGY = 100;
   const WEEK_HOURS = 25;
@@ -917,6 +917,120 @@ function startCareerFromCreator(){
     });
   }
 
+  function openStats(s){
+    const stats = derivedStats(s);
+    const ovr = calcOVR(stats);
+    
+    // Average stats for comparison (typical high school player averages)
+    const avgStats = {
+      throwPower: 50,
+      accuracy: 55,
+      speed: 65,
+      strength: 60,
+      stamina: 65
+    };
+    const avgOVR = 60;
+    
+    // Calculate percentile (0-100)
+    const percentile = (playerStat, avgStat) => {
+      const diff = playerStat - avgStat;
+      // Assuming stats range from 40-99, calculate percentile
+      const range = 59; // 99 - 40
+      const basePercentile = 50; // average is 50th percentile
+      const percentileAdjust = (diff / range) * 50; // scale to +/- 50 percentile points
+      return clamp(rint(basePercentile + percentileAdjust), 0, 100);
+    };
+    
+    const keys = [
+      ['throwPower','Throw Power'],
+      ['accuracy','Accuracy'],
+      ['speed','Speed'],
+      ['strength','Strength'],
+      ['stamina','Stamina'],
+    ];
+    
+    const statRows = keys.map(([k, label]) => {
+      const playerVal = stats[k];
+      const avgVal = avgStats[k];
+      const diff = playerVal - avgVal;
+      const pct = percentile(playerVal, avgVal);
+      const diffText = diff > 0 ? `+${diff}` : diff < 0 ? `${diff}` : `±0`;
+      const diffClass = diff > 5 ? 'good' : diff < -5 ? 'bad' : '';
+      const barWidth = clamp((playerVal / 99) * 100, 0, 100);
+      const avgBarWidth = clamp((avgVal / 99) * 100, 0, 100);
+      
+      return `
+        <tr>
+          <td><b>${label}</b></td>
+          <td>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <div style="flex:1; position:relative; height:20px; background:rgba(255,255,255,.1); border-radius:4px; overflow:hidden;">
+                <div style="position:absolute; left:0; top:0; width:${avgBarWidth}%; height:100%; background:rgba(184,212,255,.2); border-right:1px solid rgba(184,212,255,.4);"></div>
+                <div style="position:absolute; left:0; top:0; width:${barWidth}%; height:100%; background:linear-gradient(90deg, rgba(124,92,255,.6), rgba(56,189,248,.6));"></div>
+              </div>
+              <span style="min-width:35px; text-align:right; font-weight:700;">${playerVal}</span>
+            </div>
+          </td>
+          <td style="text-align:center;">
+            <span class="pill2 ${diffClass}" style="min-width:50px; display:inline-block;">${diffText}</span>
+          </td>
+          <td style="text-align:center; color:var(--muted);">
+            ${pct}th
+          </td>
+        </tr>
+      `;
+    }).join('');
+    
+    const ovrDiff = ovr - avgOVR;
+    const ovrPct = percentile(ovr, avgOVR);
+    const ovrDiffText = ovrDiff > 0 ? `+${ovrDiff}` : ovrDiff < 0 ? `${ovrDiff}` : `±0`;
+    const ovrDiffClass = ovrDiff > 5 ? 'good' : ovrDiff < -5 ? 'bad' : '';
+    
+    openModal({
+      title: 'Player Statistics',
+      bodyHTML: `
+        <div style="margin-bottom:16px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+            <div><b>Overall Rating (OVR)</b></div>
+            <div style="display:flex; align-items:center; gap:12px;">
+              <span style="font-size:24px; font-weight:900; color:var(--text-warm);">${ovr}</span>
+              <span class="pill2 ${ovrDiffClass}">${ovrDiffText} vs avg</span>
+              <span style="color:var(--muted);">${ovrPct}th percentile</span>
+            </div>
+          </div>
+          <div style="height:12px; background:rgba(255,255,255,.1); border-radius:6px; overflow:hidden; position:relative;">
+            <div style="position:absolute; left:0; top:0; width:${clamp((avgOVR/99)*100,0,100)}%; height:100%; background:rgba(184,212,255,.2); border-right:1px solid rgba(184,212,255,.4);"></div>
+            <div style="position:absolute; left:0; top:0; width:${clamp((ovr/99)*100,0,100)}%; height:100%; background:linear-gradient(90deg, rgba(124,92,255,.8), rgba(56,189,248,.8));"></div>
+          </div>
+        </div>
+        
+        <div class="muted" style="margin-bottom:12px; font-size:13px;">
+          Comparison to average high school player (${avgOVR} OVR)
+        </div>
+        
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Stat</th>
+              <th>Your Value</th>
+              <th style="text-align:center;">vs Avg</th>
+              <th style="text-align:center;">Percentile</th>
+            </tr>
+          </thead>
+          <tbody>${statRows}</tbody>
+        </table>
+        
+        <div class="tiny muted" style="margin-top:12px;">
+          Percentile shows where you rank among all players (50th = average, 90th = top 10%, etc.)
+        </div>
+      `,
+      footHTML: `<button class="btn" id="closeStats">Close</button>`,
+      onClose: () => {}
+    });
+    
+    $('#closeStats').onclick = () => $('#modal').close();
+  }
+
   function openInventory(s){
     const owned = s.inventory.owned.slice();
     const eq = s.inventory.equipped;
@@ -1084,6 +1198,10 @@ function startCareerFromCreator(){
       const currentState = loadState();
       return currentState.player ? openInventory(currentState) : openCreatePlayer(currentState);
     };
+    $('#btnStats').onclick = () => {
+      const currentState = loadState();
+      return currentState.player ? openStats(currentState) : openCreatePlayer(currentState);
+    };
     $('#btnLog').onclick = () => {
       const currentState = loadState();
       openLogAll(currentState);
@@ -1104,7 +1222,7 @@ function startCareerFromCreator(){
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'gridiron-save-v127.json';
+      a.download = 'gridiron-save-v130.json';
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -1299,6 +1417,7 @@ function startCareerFromCreator(){
     openJobModal,
     openStoreModal,
     openInventoryModal,
+    openStats,
     // Save utilities
     exportSave,
     importSave,
@@ -1314,6 +1433,7 @@ function startCareerFromCreator(){
   function openJobModal(){ openJobs(state); }
   function openStoreModal(){ openStore(state); }
   function openInventoryModal(){ openInventory(state); }
+  function openStatsModal(){ openStats(state); }
 
   $('#ver').textContent = VERSION.replace('v','v');
   document.title = `Gridiron Career Sim ${VERSION}`;
