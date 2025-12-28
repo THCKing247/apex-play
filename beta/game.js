@@ -1,4 +1,4 @@
-/* Gridiron Career Sim — v1.3.3 */
+/* Gridiron Career Sim — v1.3.4 */
 (() => {
   'use strict';
 
@@ -12,9 +12,9 @@
   }
 
 
-  const VERSION = 'v1.3.3';
+  const VERSION = 'v1.3.4';
 
-  const LS_KEY = 'gcs_save_v133';
+  const LS_KEY = 'gcs_save_v134';
 
   const MAX_ENERGY = 100;
   const WEEK_HOURS = 25;
@@ -1169,16 +1169,21 @@ function startCareerFromCreator(){
       `;
       
       const npcRows = npcs.map(npc => {
-        const npcCompPct = npc.stats.attempts > 0 ? ((npc.stats.completions / npc.stats.attempts) * 100).toFixed(1) : '0.0';
+        const passingYards = npc.stats.passingYards || 0;
+        const passingTDs = npc.stats.passingTDs || 0;
+        const completions = npc.stats.completions || 0;
+        const attempts = npc.stats.attempts || 0;
+        const interceptions = npc.stats.interceptions || 0;
+        const npcCompPct = attempts > 0 ? ((completions / attempts) * 100).toFixed(1) : '0.0';
         return `
           <tr>
             <td>${npc.name}</td>
-            <td style="text-align:right;">${npc.stats.passingYards.toFixed(1)}</td>
-            <td style="text-align:right;">${npc.stats.passingTDs.toFixed(1)}</td>
-            <td style="text-align:right;">${npc.stats.completions.toFixed(1)}</td>
-            <td style="text-align:right;">${npc.stats.attempts.toFixed(1)}</td>
+            <td style="text-align:right;">${passingYards.toFixed(1)}</td>
+            <td style="text-align:right;">${passingTDs.toFixed(1)}</td>
+            <td style="text-align:right;">${completions.toFixed(1)}</td>
+            <td style="text-align:right;">${attempts.toFixed(1)}</td>
             <td style="text-align:right;">${npcCompPct}%</td>
-            <td style="text-align:right;">${npc.stats.interceptions.toFixed(1)}</td>
+            <td style="text-align:right;">${interceptions.toFixed(1)}</td>
           </tr>
         `;
       }).join('');
@@ -1202,13 +1207,16 @@ function startCareerFromCreator(){
       `;
       
       const npcRows = npcs.map(npc => {
-        const npcYPC = npc.stats.carries > 0 ? (npc.stats.rushingYards / npc.stats.carries).toFixed(1) : '0.0';
+        const rushingYards = npc.stats.rushingYards || 0;
+        const rushingTDs = npc.stats.rushingTDs || 0;
+        const carries = npc.stats.carries || 0;
+        const npcYPC = carries > 0 ? (rushingYards / carries).toFixed(1) : '0.0';
         return `
           <tr>
             <td>${npc.name}</td>
-            <td style="text-align:right;">${npc.stats.rushingYards.toFixed(1)}</td>
-            <td style="text-align:right;">${npc.stats.rushingTDs.toFixed(1)}</td>
-            <td style="text-align:right;">${npc.stats.carries.toFixed(1)}</td>
+            <td style="text-align:right;">${rushingYards.toFixed(1)}</td>
+            <td style="text-align:right;">${rushingTDs.toFixed(1)}</td>
+            <td style="text-align:right;">${carries.toFixed(1)}</td>
             <td style="text-align:right;">${npcYPC}</td>
           </tr>
         `;
@@ -1233,13 +1241,16 @@ function startCareerFromCreator(){
       `;
       
       const npcRows = npcs.map(npc => {
-        const npcYPR = npc.stats.receptions > 0 ? (npc.stats.receivingYards / npc.stats.receptions).toFixed(1) : '0.0';
+        const receptions = npc.stats.receptions || 0;
+        const receivingYards = npc.stats.receivingYards || 0;
+        const receivingTDs = npc.stats.receivingTDs || 0;
+        const npcYPR = receptions > 0 ? (receivingYards / receptions).toFixed(1) : '0.0';
         return `
           <tr>
             <td>${npc.name}</td>
-            <td style="text-align:right;">${npc.stats.receptions.toFixed(1)}</td>
-            <td style="text-align:right;">${npc.stats.receivingYards.toFixed(1)}</td>
-            <td style="text-align:right;">${npc.stats.receivingTDs.toFixed(1)}</td>
+            <td style="text-align:right;">${receptions.toFixed(1)}</td>
+            <td style="text-align:right;">${receivingYards.toFixed(1)}</td>
+            <td style="text-align:right;">${receivingTDs.toFixed(1)}</td>
             <td style="text-align:right;">${npcYPR}</td>
           </tr>
         `;
@@ -1264,17 +1275,25 @@ function startCareerFromCreator(){
         </tr>
       `;
       
-      const npcRows = npcs.map(npc => `
-        <tr>
-          <td>${npc.name}</td>
-          <td style="text-align:right;">${npc.stats.tackles.toFixed(1)}</td>
-          <td style="text-align:right;">${npc.stats.sacks.toFixed(1)}</td>
-          <td style="text-align:right;">${npc.stats.defInterceptions.toFixed(1)}</td>
-          <td style="text-align:right;">${npc.stats.forcedFumbles.toFixed(1)}</td>
-          <td style="text-align:right;">${npc.stats.fumbleRecoveries.toFixed(1)}</td>
-          <td style="text-align:right;">${npc.stats.defTDs.toFixed(1)}</td>
-        </tr>
-      `).join('');
+      const npcRows = npcs.map(npc => {
+        const tackles = npc.stats.tackles || 0;
+        const sacks = npc.stats.sacks || 0;
+        const defInterceptions = npc.stats.defInterceptions || 0;
+        const forcedFumbles = npc.stats.forcedFumbles || 0;
+        const fumbleRecoveries = npc.stats.fumbleRecoveries || 0;
+        const defTDs = npc.stats.defTDs || 0;
+        return `
+          <tr>
+            <td>${npc.name}</td>
+            <td style="text-align:right;">${tackles.toFixed(1)}</td>
+            <td style="text-align:right;">${sacks.toFixed(1)}</td>
+            <td style="text-align:right;">${defInterceptions.toFixed(1)}</td>
+            <td style="text-align:right;">${forcedFumbles.toFixed(1)}</td>
+            <td style="text-align:right;">${fumbleRecoveries.toFixed(1)}</td>
+            <td style="text-align:right;">${defTDs.toFixed(1)}</td>
+          </tr>
+        `;
+      }).join('');
       
       return playerRow + npcRows;
     };
@@ -1620,7 +1639,7 @@ function startCareerFromCreator(){
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'gridiron-save-v133.json';
+      a.download = 'gridiron-save-v134.json';
       document.body.appendChild(a);
       a.click();
       a.remove();
