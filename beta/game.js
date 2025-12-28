@@ -1,9 +1,9 @@
-/* Gridiron Career Sim — v1.4.2 */
+/* Gridiron Career Sim — v1.4.3 */
 (() => {
   'use strict';
 
-  const VERSION = 'v1.4.2';
-  const LS_KEY = 'gcs_save_v142';
+  const VERSION = 'v1.4.3';
+  const LS_KEY = 'gcs_save_v143';
   const MAX_ENERGY = 100;
   const MAX_HOURS = 25;
 
@@ -228,10 +228,17 @@
         jerseyNumber: "00",
         avatar: {
           skinTone: 3,
+          faceShape: 2,
+          eyeShape: 2,
+          eyeSize: 2,
+          noseType: 2,
+          mouthType: 2,
+          jawType: 2,
           hairStyle: 1,
           hairColor: 2,
           eyeColor: 1,
-          facialHair: 0
+          facialHair: 0,
+          eyebrowType: 2
         }
       };
     }
@@ -239,7 +246,7 @@
   const d = window.__draftPlayer;
   const styles = getStylesForPosition(d.position);
     if(!d.avatar) {
-      d.avatar = { skinTone: 3, hairStyle: 1, hairColor: 2, eyeColor: 1, facialHair: 0 };
+      d.avatar = { skinTone: 3, faceShape: 2, eyeShape: 2, eyeSize: 2, noseType: 2, mouthType: 2, jawType: 2, hairStyle: 1, hairColor: 2, eyeColor: 1, facialHair: 0, eyebrowType: 2 };
     }
 
     const bodyHTML = `
@@ -314,54 +321,6 @@
         </div>
       </div>
 
-          <div id="tab-avatar" class="tab-content" style="display:none;">
-            <div style="display:grid; gap:20px;">
-        <div>
-                <label style="display:block; margin-bottom:10px; font-weight:600; color:var(--text-warm);">Skin Tone</label>
-                <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                  ${[1,2,3,4,5,6].map(i => `
-                    <button class="avatar-option ${d.avatar.skinTone === i ? 'active' : ''}" data-avatar="skinTone" data-value="${i}" style="width:50px; height:50px; border-radius:50%; border:2px solid ${d.avatar.skinTone === i ? 'var(--accent)' : 'rgba(255,255,255,.2)'}; background:${getSkinColor(i)}; cursor:pointer;"></button>
-                  `).join('')}
-                </div>
-        </div>
-        <div>
-                <label style="display:block; margin-bottom:10px; font-weight:600; color:var(--text-warm);">Hair Style</label>
-                <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                  ${[0,1,2,3,4,5].map(i => `
-                    <button class="avatar-option ${d.avatar.hairStyle === i ? 'active' : ''}" data-avatar="hairStyle" data-value="${i}" style="padding:8px 12px; border-radius:8px; border:2px solid ${d.avatar.hairStyle === i ? 'var(--accent)' : 'rgba(255,255,255,.2)'}; background:${d.avatar.hairStyle === i ? 'rgba(124,92,255,.15)' : 'rgba(255,255,255,.05)'}; cursor:pointer; font-size:12px;">${getHairStyleName(i)}</button>
-                  `).join('')}
-                </div>
-              </div>
-              <div>
-                <label style="display:block; margin-bottom:10px; font-weight:600; color:var(--text-warm);">Hair Color</label>
-                <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                  ${[1,2,3,4,5,6].map(i => `
-                    <button class="avatar-option ${d.avatar.hairColor === i ? 'active' : ''}" data-avatar="hairColor" data-value="${i}" style="width:40px; height:40px; border-radius:8px; border:2px solid ${d.avatar.hairColor === i ? 'var(--accent)' : 'rgba(255,255,255,.2)'}; background:${getHairColor(i)}; cursor:pointer;"></button>
-                  `).join('')}
-                </div>
-              </div>
-              <div>
-                <label style="display:block; margin-bottom:10px; font-weight:600; color:var(--text-warm);">Eye Color</label>
-                <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                  ${[1,2,3,4,5].map(i => `
-                    <button class="avatar-option ${d.avatar.eyeColor === i ? 'active' : ''}" data-avatar="eyeColor" data-value="${i}" style="width:40px; height:40px; border-radius:50%; border:2px solid ${d.avatar.eyeColor === i ? 'var(--accent)' : 'rgba(255,255,255,.2)'}; background:${getEyeColor(i)}; cursor:pointer;"></button>
-                  `).join('')}
-                </div>
-              </div>
-              <div>
-                <label style="display:block; margin-bottom:10px; font-weight:600; color:var(--text-warm);">Facial Hair</label>
-                <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                  ${[0,1,2,3,4].map(i => `
-                    <button class="avatar-option ${d.avatar.facialHair === i ? 'active' : ''}" data-avatar="facialHair" data-value="${i}" style="padding:8px 12px; border-radius:8px; border:2px solid ${d.avatar.facialHair === i ? 'var(--accent)' : 'rgba(255,255,255,.2)'}; background:${d.avatar.facialHair === i ? 'rgba(124,92,255,.15)' : 'rgba(255,255,255,.05)'}; cursor:pointer; font-size:12px;">${getFacialHairName(i)}</button>
-                  `).join('')}
-                </div>
-              </div>
-              <div style="margin-top:8px;">
-                <button class="btn small" onclick="randomizeAvatar()" style="width:100%;">🎲 Randomize Avatar</button>
-          </div>
-        </div>
-      </div>
-
           <div id="tab-style" class="tab-content" style="display:none;">
             <div>
               <label style="display:block; margin-bottom:12px; font-weight:600; color:var(--text-warm);">Choose Your Play Style</label>
@@ -388,8 +347,8 @@
 
         <div style="background:rgba(255,255,255,.05); border-radius:12px; padding:20px; border:1px solid rgba(255,255,255,.1);">
           <div style="text-align:center; margin-bottom:16px; font-weight:600; color:var(--text-warm);">Player Preview</div>
-          <div id="avatar-preview" style="width:200px; height:200px; margin:0 auto; background:rgba(255,255,255,.08); border-radius:12px; display:flex; align-items:center; justify-content:center; border:2px solid rgba(255,255,255,.15);">
-            ${renderAvatarPreview(d.avatar)}
+          <div id="avatar-preview" style="width:240px; height:240px; margin:0 auto; background:rgba(255,255,255,.05); border-radius:12px; display:flex; align-items:center; justify-content:center; border:2px solid rgba(255,255,255,.15); position:relative; overflow:hidden;">
+            ${renderMaddenAvatar(d.avatar)}
           </div>
           <div style="margin-top:16px; padding-top:16px; border-top:1px solid rgba(255,255,255,.1);">
             <div style="font-size:12px; color:var(--muted); margin-bottom:4px;">Name</div>
@@ -445,28 +404,13 @@
       }
     };
     
-    // Avatar option handlers - use event delegation on modal body
-    $('#modalBody').addEventListener('click', (e) => {
-      const btn = e.target.closest('.avatar-option[data-avatar]');
-      if(!btn) return;
-      const type = btn.getAttribute('data-avatar');
-      const value = parseInt(btn.getAttribute('data-value'));
-      if(window.__draftPlayer && window.__draftPlayer.avatar) {
-        window.__draftPlayer.avatar[type] = value;
-        updateAvatarPreview();
-        // Update active states for all buttons of this type
-        $$(`.avatar-option[data-avatar="${type}"]`).forEach(b => {
-          b.classList.remove('active');
-          b.style.borderColor = 'rgba(255,255,255,.2)';
-          if(b.getAttribute('data-avatar') === 'hairStyle' || b.getAttribute('data-avatar') === 'facialHair') {
-            b.style.background = 'rgba(255,255,255,.05)';
-          }
-        });
-        btn.classList.add('active');
-        btn.style.borderColor = 'var(--accent)';
-        if(type === 'hairStyle' || type === 'facialHair') {
-          btn.style.background = 'rgba(124,92,255,.15)';
-        }
+    // Update preview initials when name changes
+    $('#cp_name').addEventListener('input', (e) => {
+      const name = e.target.value.trim();
+      const initials = name.split(' ').map(n => n[0]).join('').toUpperCase() || '?';
+      const previewCircle = $('#avatar-preview') || $('#modalBody').querySelector('[style*="border-radius:50%"]');
+      if(previewCircle && previewCircle.textContent) {
+        previewCircle.textContent = initials;
       }
     });
     
@@ -517,6 +461,186 @@
   function getFacialHairName(i) {
     const names = ['None', 'Stubble', 'Goatee', 'Beard', 'Mustache'];
     return names[i] || 'None';
+  }
+
+  function renderMaddenAvatar(avatar) {
+    if(!avatar) avatar = { skinTone: 3, faceShape: 2, eyeShape: 2, eyeSize: 2, noseType: 2, mouthType: 2, jawType: 2, hairStyle: 1, hairColor: 2, eyeColor: 1, facialHair: 0, eyebrowType: 2 };
+    const skin = getSkinColor(avatar.skinTone);
+    const hairColor = getHairColor(avatar.hairColor);
+    const eyeColor = getEyeColor(avatar.eyeColor);
+    
+    const darkenColor = (color, amount) => {
+      const num = parseInt(color.replace("#", ""), 16);
+      const r = Math.max(0, ((num >> 16) & 0xFF) - amount);
+      const g = Math.max(0, ((num >> 8) & 0xFF) - amount);
+      const b = Math.max(0, (num & 0xFF) - amount);
+      return `rgb(${r},${g},${b})`;
+    };
+    const skinDark = darkenColor(skin, 30);
+    const skinLight = skin;
+    
+    // Face shape modifiers
+    const faceShapes = {
+      1: { rx: 20, ry: 24 }, // Round
+      2: { rx: 18, ry: 22 }, // Oval
+      3: { rx: 19, ry: 21 }, // Square
+      4: { rx: 17, ry: 23 }, // Heart
+      5: { rx: 16, ry: 25 }  // Long
+    };
+    const faceShape = faceShapes[avatar.faceShape] || faceShapes[2];
+    
+    // Eye shapes
+    const eyeShapes = {
+      1: { rx: 4.5, ry: 2.5 }, // Almond
+      2: { rx: 5, ry: 3 },     // Round
+      3: { rx: 5.5, ry: 2 },  // Narrow
+      4: { rx: 6, ry: 3 }      // Wide
+    };
+    const eyeShape = eyeShapes[avatar.eyeShape] || eyeShapes[2];
+    
+    // Nose types
+    const nosePaths = {
+      1: { path: 'M 50 48 L 48 54 L 50 55 L 52 54 Z', width: 2 }, // Straight
+      2: { path: 'M 50 48 L 47 54 L 50 55 L 53 54 Z', width: 3 }, // Wide
+      3: { path: 'M 50 48 L 49 54 L 50 55 L 51 54 Z', width: 1.5 }, // Narrow
+      4: { path: 'M 50 48 Q 50 52, 50 54 L 49 55 L 51 55 Z', width: 2 } // Button
+    };
+    const noseType = nosePaths[avatar.noseType] || nosePaths[1];
+    
+    // Mouth types
+    const mouthPaths = {
+      1: { width: 3, curve: 0.5 }, // Thin
+      2: { width: 4, curve: 1 },   // Medium
+      3: { width: 5, curve: 1.5 }, // Full
+      4: { width: 6, curve: 1 }    // Wide
+    };
+    const mouthType = mouthPaths[avatar.mouthType] || mouthPaths[2];
+    
+    // Jaw types
+    const jawShapes = {
+      1: { rx: 12, ry: 5 }, // Round
+      2: { rx: 14, ry: 4 },  // Square
+      3: { rx: 10, ry: 6 },  // Pointed
+      4: { rx: 16, ry: 4 }   // Wide
+    };
+    const jawShape = jawShapes[avatar.jawType] || jawShapes[2];
+    
+    // Hair styles
+    const hairStyles = {
+      0: '', // Bald
+      1: `<path d="M 22 28 Q 22 18, 50 18 Q 78 18, 78 28 Q 78 22, 50 22 Q 22 22, 22 28" fill="${hairColor}"/>
+          <ellipse cx="50" cy="20" rx="28" ry="9" fill="${hairColor}" opacity="0.95"/>`, // Buzz
+      2: `<path d="M 20 26 Q 20 14, 50 14 Q 80 14, 80 26 Q 80 18, 50 18 Q 20 18, 20 26" fill="${hairColor}"/>
+          <ellipse cx="50" cy="16" rx="30" ry="11" fill="${hairColor}" opacity="0.95"/>`, // Short
+      3: `<path d="M 18 24 Q 18 12, 50 12 Q 82 12, 82 24 Q 82 16, 50 16 Q 18 16, 18 24" fill="${hairColor}"/>
+          <ellipse cx="50" cy="14" rx="32" ry="12" fill="${hairColor}" opacity="0.95"/>
+          <path d="M 25 20 Q 50 17, 75 20" fill="${hairColor}" stroke="${darkenColor(hairColor, 20)}" stroke-width="1.5"/>`, // Medium
+      4: `<path d="M 16 22 Q 16 10, 50 10 Q 84 10, 84 22 Q 84 14, 50 14 Q 16 14, 16 22" fill="${hairColor}"/>
+          <ellipse cx="50" cy="12" rx="34" ry="13" fill="${hairColor}" opacity="0.95"/>
+          <path d="M 22 18 Q 50 15, 78 18" fill="${hairColor}" stroke="${darkenColor(hairColor, 20)}" stroke-width="2"/>
+          <path d="M 24 20 Q 50 17, 76 20" fill="${hairColor}" stroke="${darkenColor(hairColor, 20)}" stroke-width="1.5"/>`, // Long
+      5: `<path d="M 20 26 Q 20 14, 50 14 Q 80 14, 80 26 Q 80 18, 50 18 Q 20 18, 20 26" fill="${hairColor}"/>
+          <ellipse cx="50" cy="16" rx="30" ry="11" fill="${hairColor}" opacity="0.95"/>
+          <path d="M 28 22 Q 50 19, 72 22 Q 70 26, 50 24 Q 30 26, 28 22" fill="${hairColor}" opacity="0.8"/>
+          <path d="M 32 24 Q 50 21, 68 24" fill="${hairColor}" stroke="${darkenColor(hairColor, 15)}" stroke-width="1.5"/>`, // Curly
+      6: `<path d="M 22 28 Q 22 18, 50 18 Q 78 18, 78 28 Q 78 22, 50 22 Q 22 22, 22 28" fill="${hairColor}"/>
+          <ellipse cx="50" cy="20" rx="28" ry="9" fill="${hairColor}" opacity="0.95"/>
+          <path d="M 30 26 Q 50 23, 70 26" fill="${hairColor}" stroke="${darkenColor(hairColor, 15)}" stroke-width="1.5"/>
+          <rect x="20" y="28" width="60" height="10" fill="${hairColor}" opacity="0.7"/>`, // Fade
+      7: `<path d="M 18 24 Q 18 12, 50 12 Q 82 12, 82 24 Q 82 16, 50 16 Q 18 16, 18 24" fill="${hairColor}"/>
+          <ellipse cx="50" cy="14" rx="32" ry="14" fill="${hairColor}" opacity="0.95"/>
+          <ellipse cx="50" cy="16" rx="30" ry="12" fill="${darkenColor(hairColor, 15)}" opacity="0.6"/>
+          <path d="M 25 20 Q 50 17, 75 20" fill="${hairColor}" stroke="${darkenColor(hairColor, 20)}" stroke-width="2"/>` // Afro
+    };
+    
+    // Eyebrow types
+    const eyebrowWidths = { 1: 1, 2: 1.5, 3: 2, 4: 2.5 };
+    const eyebrowWidth = eyebrowWidths[avatar.eyebrowType] || 1.5;
+    
+    // Facial hair
+    const facialHairs = {
+      0: '',
+      1: `<path d="M 36 60 Q 50 62, 64 60 Q 62 68, 50 68 Q 38 68, 36 60" fill="${hairColor}" opacity="0.5"/>
+          <ellipse cx="50" cy="64" rx="14" ry="4" fill="${hairColor}" opacity="0.4"/>`, // Stubble
+      2: `<path d="M 40 58 Q 50 60, 60 58 Q 58 66, 50 66 Q 42 66, 40 58" fill="${hairColor}" opacity="0.7"/>
+          <path d="M 40 58 Q 50 60, 60 58" fill="${hairColor}" stroke="${darkenColor(hairColor, 20)}" stroke-width="1.5" opacity="0.6"/>
+          <ellipse cx="50" cy="62" rx="10" ry="3" fill="${hairColor}" opacity="0.5"/>`, // Goatee
+      3: `<path d="M 33 58 Q 50 60, 67 58 Q 65 72, 50 72 Q 35 72, 33 58" fill="${hairColor}" opacity="0.8"/>
+          <path d="M 33 58 Q 50 60, 67 58" fill="${hairColor}" stroke="${darkenColor(hairColor, 20)}" stroke-width="2" opacity="0.7"/>
+          <ellipse cx="50" cy="65" rx="17" ry="6" fill="${hairColor}" opacity="0.6"/>
+          <path d="M 36 60 Q 50 62, 64 60" fill="${hairColor}" stroke="${darkenColor(hairColor, 20)}" stroke-width="1.5" opacity="0.5"/>`, // Beard
+      4: `<path d="M 40 58 Q 50 60, 60 58 Q 58 64, 50 64 Q 42 64, 40 58" fill="${hairColor}" opacity="0.7"/>
+          <path d="M 40 58 Q 50 60, 60 58" fill="${hairColor}" stroke="${darkenColor(hairColor, 20)}" stroke-width="2.5" opacity="0.6"/>
+          <ellipse cx="50" cy="61" rx="10" ry="2" fill="${hairColor}" opacity="0.5"/>`, // Mustache
+      5: `<path d="M 30 58 Q 50 60, 70 58 Q 68 74, 50 74 Q 32 74, 30 58" fill="${hairColor}" opacity="0.85"/>
+          <path d="M 30 58 Q 50 60, 70 58" fill="${hairColor}" stroke="${darkenColor(hairColor, 20)}" stroke-width="2.5" opacity="0.75"/>
+          <ellipse cx="50" cy="66" rx="20" ry="7" fill="${hairColor}" opacity="0.65"/>
+          <path d="M 34 60 Q 50 62, 66 60" fill="${hairColor}" stroke="${darkenColor(hairColor, 20)}" stroke-width="2" opacity="0.6"/>
+          <path d="M 38 62 Q 50 64, 62 62" fill="${hairColor}" stroke="${darkenColor(hairColor, 20)}" stroke-width="1.5" opacity="0.5"/>` // Full Beard
+    };
+    
+    return `
+      <svg width="240" height="240" viewBox="0 0 100 100" style="overflow:visible;">
+        <defs>
+          <linearGradient id="skinGrad${avatar.skinTone}" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:${skinLight};stop-opacity:1" />
+            <stop offset="100%" style="stop-color:${skinDark};stop-opacity:1" />
+          </linearGradient>
+          <radialGradient id="skinRadial${avatar.skinTone}" cx="50%" cy="30%">
+            <stop offset="0%" style="stop-color:${skinLight};stop-opacity:1" />
+            <stop offset="100%" style="stop-color:${skinDark};stop-opacity:1" />
+          </radialGradient>
+        </defs>
+        
+        <!-- Head shape -->
+        <ellipse cx="50" cy="48" rx="${faceShape.rx}" ry="${faceShape.ry}" fill="url(#skinRadial${avatar.skinTone})" stroke="${skinDark}" stroke-width="0.5" opacity="0.2"/>
+        <ellipse cx="50" cy="48" rx="${faceShape.rx}" ry="${faceShape.ry}" fill="${skinLight}"/>
+        
+        <!-- Neck -->
+        <ellipse cx="50" cy="74" rx="${jawShape.rx * 0.5}" ry="${jawShape.ry * 1.5}" fill="url(#skinGrad${avatar.skinTone})"/>
+        
+        <!-- Hair (behind head) -->
+        ${hairStyles[avatar.hairStyle] || ''}
+        
+        <!-- Forehead shading -->
+        <ellipse cx="50" cy="36" rx="${faceShape.rx * 0.9}" ry="${faceShape.ry * 0.4}" fill="${skinDark}" opacity="0.12"/>
+        
+        <!-- Eyebrows -->
+        <path d="M ${38 - eyebrowWidth} 40 Q 43 38, ${48 - eyebrowWidth} 40" fill="${hairColor}" stroke="${darkenColor(hairColor, 25)}" stroke-width="${eyebrowWidth}" stroke-linecap="round" opacity="0.85"/>
+        <path d="M ${52 + eyebrowWidth} 40 Q 57 38, ${62 + eyebrowWidth} 40" fill="${hairColor}" stroke="${darkenColor(hairColor, 25)}" stroke-width="${eyebrowWidth}" stroke-linecap="round" opacity="0.85"/>
+        
+        <!-- Eyes -->
+        <ellipse cx="43" cy="45" rx="${eyeShape.rx}" ry="${eyeShape.ry}" fill="white" opacity="0.95"/>
+        <ellipse cx="57" cy="45" rx="${eyeShape.rx}" ry="${eyeShape.ry}" fill="white" opacity="0.95"/>
+        <ellipse cx="43" cy="45" rx="${eyeShape.rx * 0.6}" ry="${eyeShape.ry * 0.8}" fill="${eyeColor}"/>
+        <ellipse cx="57" cy="45" rx="${eyeShape.rx * 0.6}" ry="${eyeShape.ry * 0.8}" fill="${eyeColor}"/>
+        <circle cx="43.5" cy="44.5" r="${eyeShape.rx * 0.25}" fill="rgba(0,0,0,0.7)"/>
+        <circle cx="57.5" cy="44.5" r="${eyeShape.rx * 0.25}" fill="rgba(0,0,0,0.7)"/>
+        <ellipse cx="43" cy="44" rx="${eyeShape.rx * 0.3}" ry="${eyeShape.ry * 0.3}" fill="white" opacity="0.9"/>
+        <ellipse cx="57" cy="44" rx="${eyeShape.rx * 0.3}" ry="${eyeShape.ry * 0.3}" fill="white" opacity="0.9"/>
+        
+        <!-- Nose -->
+        <path d="${noseType.path}" fill="${skinDark}" opacity="0.25"/>
+        <path d="M ${50 - noseType.width} 52 Q 50 53, ${50 + noseType.width} 52" fill="none" stroke="${skinDark}" stroke-width="1" opacity="0.35"/>
+        <ellipse cx="${50 - noseType.width}" cy="52" rx="1.2" ry="1.8" fill="${skinDark}" opacity="0.2"/>
+        <ellipse cx="${50 + noseType.width}" cy="52" rx="1.2" ry="1.8" fill="${skinDark}" opacity="0.2"/>
+        
+        <!-- Cheeks -->
+        <ellipse cx="36" cy="52" rx="4" ry="5" fill="${skinDark}" opacity="0.08"/>
+        <ellipse cx="64" cy="52" rx="4" ry="5" fill="${skinDark}" opacity="0.08"/>
+        
+        <!-- Mouth -->
+        <ellipse cx="50" cy="58" rx="${mouthType.width}" ry="${mouthType.curve}" fill="rgba(200,100,100,0.7)"/>
+        <path d="M ${50 - mouthType.width} 58 Q 50 ${58 + mouthType.curve}, ${50 + mouthType.width} 58" fill="none" stroke="rgba(150,80,80,0.9)" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M ${50 - mouthType.width} 58 Q 50 ${58 + mouthType.curve * 0.5}, ${50 + mouthType.width} 58" fill="none" stroke="rgba(0,0,0,0.25)" stroke-width="1" stroke-linecap="round"/>
+        
+        <!-- Jaw/Chin -->
+        <ellipse cx="50" cy="68" rx="${jawShape.rx}" ry="${jawShape.ry}" fill="${skinDark}" opacity="0.08"/>
+        
+        <!-- Facial Hair -->
+        ${facialHairs[avatar.facialHair] || ''}
+      </svg>
+    `;
   }
 
   function renderAvatarPreview(avatar) {
@@ -649,23 +773,34 @@
     `;
   }
 
-  function updateAvatarPreview() {
+  function updateMaddenAvatarPreview() {
     if(window.__draftPlayer && window.__draftPlayer.avatar) {
       const preview = $('#avatar-preview');
       if(preview) {
-        preview.innerHTML = renderAvatarPreview(window.__draftPlayer.avatar);
+        preview.innerHTML = renderMaddenAvatar(window.__draftPlayer.avatar);
       }
     }
+  }
+
+  function updateAvatarPreview() {
+    updateMaddenAvatarPreview();
   }
 
   function randomizeAvatar() {
     if(!window.__draftPlayer) return;
     if(!window.__draftPlayer.avatar) window.__draftPlayer.avatar = {};
     window.__draftPlayer.avatar.skinTone = rint(1, 6);
-    window.__draftPlayer.avatar.hairStyle = rint(0, 5);
+    window.__draftPlayer.avatar.faceShape = rint(1, 5);
+    window.__draftPlayer.avatar.eyeShape = rint(1, 4);
+    window.__draftPlayer.avatar.eyeSize = rint(1, 3);
+    window.__draftPlayer.avatar.noseType = rint(1, 4);
+    window.__draftPlayer.avatar.mouthType = rint(1, 4);
+    window.__draftPlayer.avatar.jawType = rint(1, 4);
+    window.__draftPlayer.avatar.hairStyle = rint(0, 7);
     window.__draftPlayer.avatar.hairColor = rint(1, 6);
     window.__draftPlayer.avatar.eyeColor = rint(1, 5);
-    window.__draftPlayer.avatar.facialHair = rint(0, 4);
+    window.__draftPlayer.avatar.facialHair = rint(0, 5);
+    window.__draftPlayer.avatar.eyebrowType = rint(1, 4);
     openCreatePlayer(load());
   }
 
@@ -2323,7 +2458,7 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'gridiron-save-v142.json';
+      a.download = 'gridiron-save-v143.json';
       document.body.appendChild(a);
       a.click();
       a.remove();
