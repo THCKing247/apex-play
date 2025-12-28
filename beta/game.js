@@ -304,7 +304,7 @@ function getStylesForPosition(pos){
   }
 
   function handlePositionChange(newPos){
-    if(!window.__draftPlayer) window.__draftPlayer = { name: "", position: "QB", highSchool: "", style: "Pocket" };
+    if(!window.__draftPlayer) window.__draftPlayer = { name: "", position: "QB", highSchool: "", style: "Pocket", height: "", weight: "", hometown: "", jerseyNumber: "" };
     window.__draftPlayer.position = newPos;
     const styles = getStylesForPosition(newPos);
     if(styles && styles.length > 0){
@@ -314,7 +314,7 @@ function getStylesForPosition(pos){
   }
 
   function handleStyleChange(newStyle){
-    if(!window.__draftPlayer) window.__draftPlayer = { name: "", position: "QB", highSchool: "", style: "Pocket" };
+    if(!window.__draftPlayer) window.__draftPlayer = { name: "", position: "QB", highSchool: "", style: "Pocket", height: "", weight: "", hometown: "", jerseyNumber: "" };
     window.__draftPlayer.style = newStyle;
     // Update visual selection
     document.querySelectorAll('.radioCard').forEach(card => {
@@ -334,7 +334,11 @@ function getStylesForPosition(pos){
     name: "",
     position: "QB",
     highSchool: "",
-    style: "Pocket"
+    style: "Pocket",
+    height: "",
+    weight: "",
+    hometown: "",
+    jerseyNumber: ""
   };
   const d = window.__draftPlayer;
 
@@ -400,6 +404,37 @@ function getStylesForPosition(pos){
         </div>
       </div>
 
+      <div class="field two">
+        <div>
+          <label>Height</label>
+          <div class="row">
+            <input id="cp_height" type="text" value="${escapeHtml(d.height || "")}" placeholder="e.g., 6'2&quot;" oninput="window.__draftPlayer.height=this.value">
+            <button class="btn ghost" type="button" onclick="randomizeHeight()">Random</button>
+          </div>
+        </div>
+        <div>
+          <label>Weight</label>
+          <div class="row">
+            <input id="cp_weight" type="text" value="${escapeHtml(d.weight || "")}" placeholder="e.g., 215 lbs" oninput="window.__draftPlayer.weight=this.value">
+            <button class="btn ghost" type="button" onclick="randomizeWeight()">Random</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="field two">
+        <div>
+          <label>Hometown</label>
+          <div class="row">
+            <input id="cp_hometown" type="text" value="${escapeHtml(d.hometown || "")}" placeholder="e.g., Miami, FL" oninput="window.__draftPlayer.hometown=this.value">
+            <button class="btn ghost" type="button" onclick="randomizeHometown()">Random</button>
+          </div>
+        </div>
+        <div>
+          <label>Jersey Number</label>
+          <input id="cp_jersey" type="number" min="1" max="99" value="${escapeHtml(d.jerseyNumber || "")}" placeholder="e.g., 7" oninput="window.__draftPlayer.jerseyNumber=this.value">
+        </div>
+      </div>
+
       <div class="field">
         <label>Play Style</label>
         <div class="radioGrid">
@@ -421,7 +456,7 @@ function getStylesForPosition(pos){
     try {
       const first = ["Kenny","Jayden","Marcus","Darius","Eli","Noah","Ty","Chris","Jordan","Malik","Cameron","Drew","Logan","Zeke","Mason"];
       const last  = ["King","Johnson","Carter","Harris","Walker","Reed","Bennett","Collins","Moore","Brooks","Sanders","Foster","Allen","Graham","Turner"];
-      if(!window.__draftPlayer) window.__draftPlayer = { name: "", position: "QB", highSchool: "", style: "Pocket" };
+      if(!window.__draftPlayer) window.__draftPlayer = { name: "", position: "QB", highSchool: "", style: "Pocket", height: "", weight: "", hometown: "", jerseyNumber: "" };
       window.__draftPlayer.name = `${pick(first)} ${pick(last)}`;
       const el = document.getElementById("cp_name");
       if(el) {
@@ -437,7 +472,7 @@ function getStylesForPosition(pos){
     try {
       const cities = ["Lake Wales","Tampa","Orlando","Miami","Jacksonville","Sarasota","Lakeland","Gainesville","Tallahassee","Pensacola"];
       const mascots = ["High","Prep","Central","North","South","East","West","Academy"];
-      if(!window.__draftPlayer) window.__draftPlayer = { name: "", position: "QB", highSchool: "", style: "Pocket" };
+      if(!window.__draftPlayer) window.__draftPlayer = { name: "", position: "QB", highSchool: "", style: "Pocket", height: "", weight: "", hometown: "", jerseyNumber: "" };
       window.__draftPlayer.highSchool = `${pick(cities)} ${pick(mascots)} HS`;
       const el = document.getElementById("cp_school");
       if(el) {
@@ -450,9 +485,61 @@ function getStylesForPosition(pos){
     }
   }
 
+  function randomizeHeight(){
+    try {
+      const feet = [5, 6];
+      const inches = Array.from({length: 12}, (_, i) => i);
+      const f = pick(feet);
+      const i = pick(inches);
+      if(!window.__draftPlayer) window.__draftPlayer = { name: "", position: "QB", highSchool: "", style: "Pocket", height: "", weight: "", hometown: "", jerseyNumber: "" };
+      window.__draftPlayer.height = `${f}'${i}"`;
+      const el = document.getElementById("cp_height");
+      if(el) {
+        el.value = window.__draftPlayer.height;
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    } catch(e) {
+      console.error('randomizeHeight error:', e);
+    }
+  }
+
+  function randomizeWeight(){
+    try {
+      const weights = [180, 185, 190, 195, 200, 205, 210, 215, 220, 225, 230, 235, 240, 245, 250, 255, 260, 265, 270, 275, 280];
+      if(!window.__draftPlayer) window.__draftPlayer = { name: "", position: "QB", highSchool: "", style: "Pocket", height: "", weight: "", hometown: "", jerseyNumber: "" };
+      window.__draftPlayer.weight = `${pick(weights)} lbs`;
+      const el = document.getElementById("cp_weight");
+      if(el) {
+        el.value = window.__draftPlayer.weight;
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    } catch(e) {
+      console.error('randomizeWeight error:', e);
+    }
+  }
+
+  function randomizeHometown(){
+    try {
+      const cities = ["Miami", "Tampa", "Orlando", "Jacksonville", "Tallahassee", "Gainesville", "Fort Lauderdale", "Pensacola", "Sarasota", "Lakeland", "West Palm Beach", "Clearwater", "St. Petersburg", "Hialeah", "Port St. Lucie"];
+      const states = ["FL", "GA", "AL", "SC", "NC", "TN"];
+      if(!window.__draftPlayer) window.__draftPlayer = { name: "", position: "QB", highSchool: "", style: "Pocket", height: "", weight: "", hometown: "", jerseyNumber: "" };
+      window.__draftPlayer.hometown = `${pick(cities)}, ${pick(states)}`;
+      const el = document.getElementById("cp_hometown");
+      if(el) {
+        el.value = window.__draftPlayer.hometown;
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    } catch(e) {
+      console.error('randomizeHometown error:', e);
+    }
+  }
+
   // Expose randomizer functions immediately after definition
   window.randomizeName = randomizeName;
   window.randomizeSchool = randomizeSchool;
+  window.randomizeHeight = randomizeHeight;
+  window.randomizeWeight = randomizeWeight;
+  window.randomizeHometown = randomizeHometown;
 function startCareerFromCreator(){
   const d = window.__draftPlayer || {};
   const name = (d.name||"").trim();
@@ -468,6 +555,10 @@ function startCareerFromCreator(){
   st.player.position = pos;
   st.player.archetype = style;
   st.player.highSchool = hs;
+  st.player.height = (d.height || "").trim() || "6'0\"";
+  st.player.weight = (d.weight || "").trim() || "200 lbs";
+  st.player.hometown = (d.hometown || "").trim() || "Unknown";
+  st.player.jerseyNumber = (d.jerseyNumber || "").trim() || "00";
 
   // Career reset
   st.career = { year:1, week:1, maxWeeks:12, recordW:0, recordL:0, inPost:false, postWeek:0, jobId:'none' };
@@ -1065,7 +1156,16 @@ function startCareerFromCreator(){
     $('#careerTitle').textContent = `${s.player.name} — High School Year ${s.career.year}`;
     const styleList = getStylesForPosition(s.player.position);
     const styleName = styleList.find(x=>x.id===s.player.archetype)?.name || s.player.archetype;
-    $('#careerSub').textContent = `${s.player.highSchool} • ${s.player.position} (${styleName})`;
+    const playerInfo = [
+      s.player.highSchool,
+      s.player.position,
+      styleName,
+      s.player.jerseyNumber ? `#${s.player.jerseyNumber}` : '',
+      s.player.height || '',
+      s.player.weight || '',
+      s.player.hometown || ''
+    ].filter(Boolean).join(' • ');
+    $('#careerSub').textContent = playerInfo;
     $('#seasonTag').textContent = `Week ${s.career.week}/${s.career.maxWeeks}`;
     $('#gameWeekTag').textContent = s.career.inPost ? `Postseason G${s.career.postWeek}/3` : 'Regular Season';
 
@@ -1191,6 +1291,9 @@ function startCareerFromCreator(){
     // Randomizers
     randomizeName,
     randomizeSchool,
+    randomizeHeight,
+    randomizeWeight,
+    randomizeHometown,
     // Modals
     openSkillsModal,
     openJobModal,
