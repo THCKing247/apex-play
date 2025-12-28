@@ -1,4 +1,4 @@
-/* Gridiron Career Sim — v1.3.1 */
+/* Gridiron Career Sim — v1.3.2 */
 :root{
   --bg0:#060918;
   --bg1:#0a1030;
@@ -407,5 +407,17 @@ label.file input{
   font-weight:500;
 }
 .chip.good{ border-color: rgba(74,222,128,.40); background: rgba(74,222,128,.15); color: #86efac; }
-.chip.bad{ border-color: rgba(255,107,107,.40); background: rgba(255,107,107,.15); color: #fca5a5; }
+
+/* Stats tabs */
+.stats-tabs{ display:flex; gap:8px; margin-bottom:16px; border-bottom:1px solid rgba(255,255,255,.12); }
+.stats-tab{ padding:10px 16px; background:transparent; border:none; border-bottom:2px solid transparent; color:var(--muted); cursor:pointer; font-weight:600; transition:all .15s ease; }
+.stats-tab:hover:not(:disabled){ color:var(--text-warm); }
+.stats-tab.active{ color:var(--text-warm); border-bottom-color:var(--accent); }
+.stats-tab:disabled{ opacity:0.4; cursor:not-allowed; }
+.stats-content{ display:none; }
+.stats-content.active{ display:block; }
+.stats-category-tabs{ display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap; }
+.stats-category-tab{ padding:6px 12px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12); border-radius:8px; color:var(--muted); cursor:pointer; font-size:13px; font-weight:500; transition:all .15s ease; }
+.stats-category-tab:hover{ background:rgba(255,255,255,.08); color:var(--text-warm); }
+.stats-category-tab.active{ background:rgba(124,92,255,.15); border-color:rgba(124,92,255,.40); color:var(--text-warm); }
 
