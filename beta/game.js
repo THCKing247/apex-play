@@ -1,4 +1,4 @@
-/* Gridiron Career Sim — v1.3.0 */
+/* Gridiron Career Sim — v1.3.1 */
 (() => {
   'use strict';
 
@@ -12,9 +12,9 @@
   }
 
 
-  const VERSION = 'v1.3.0';
+  const VERSION = 'v1.3.1';
 
-  const LS_KEY = 'gcs_save_v130';
+  const LS_KEY = 'gcs_save_v131';
 
   const MAX_ENERGY = 100;
   const WEEK_HOURS = 25;
@@ -181,6 +181,28 @@ function getStylesForPosition(pos){
         inPost: false,
         postWeek: 0, // 1..3 when in postseason
         jobId: 'none',
+      },
+      gameStats: {
+        gamesPlayed: 0,
+        // Offensive stats
+        passingYards: 0,
+        passingTDs: 0,
+        interceptions: 0,
+        completions: 0,
+        attempts: 0,
+        rushingYards: 0,
+        rushingTDs: 0,
+        carries: 0,
+        receptions: 0,
+        receivingYards: 0,
+        receivingTDs: 0,
+        // Defensive stats
+        tackles: 0,
+        sacks: 0,
+        defInterceptions: 0,
+        forcedFumbles: 0,
+        fumbleRecoveries: 0,
+        defTDs: 0,
       },
       inventory: {
         owned: [], // array of item ids (including duplicates for consumables)
@@ -570,6 +592,7 @@ function startCareerFromCreator(){
   st.hours = 25;
   st.prep = 0;
   st.inventory = st.inventory || { owned:[], equipped:{ shoes:null, gloves:null, accessory:null, training:null, recovery:null } };
+  st.gameStats = defaultState().gameStats;
   st.statsBase = {
     throwPower: st.player.throwPower,
     accuracy: st.player.accuracy,
@@ -684,6 +707,82 @@ function startCareerFromCreator(){
     let ptsAg  = clamp(rint((opp - ovr)*0.5 + 21 + (Math.random()*10 - 5)), 3, 52);
     if(didWin && ptsFor <= ptsAg) ptsFor = ptsAg + rint(3 + Math.random()*10);
     if(!didWin && ptsFor >= ptsAg) ptsAg = ptsFor + rint(3 + Math.random()*10);
+
+    // Generate game stats based on position and performance
+    const pos = s.player.position;
+    const perfFactor = energyFactor * (1 + prepBonus * 0.3);
+    const gs = s.gameStats || { gamesPlayed: 0, passingYards: 0, passingTDs: 0, interceptions: 0, completions: 0, attempts: 0, rushingYards: 0, rushingTDs: 0, carries: 0, receptions: 0, receivingYards: 0, receivingTDs: 0, tackles: 0, sacks: 0, defInterceptions: 0, forcedFumbles: 0, fumbleRecoveries: 0, defTDs: 0 };
+    
+    gs.gamesPlayed += 1;
+    
+    if(pos === 'QB'){
+      const att = rint(20 + stats.throwPower * 0.3 + Math.random() * 15);
+      const compRate = clamp(stats.accuracy / 100 + (perfFactor - 1) * 0.1, 0.45, 0.85);
+      const comp = rint(att * compRate);
+      const yards = rint(comp * (8 + stats.throwPower * 0.15 + Math.random() * 8));
+      const tds = rint(comp * 0.12 + Math.random() * 2);
+      const ints = rint((att - comp) * 0.08 + Math.random() * 1.5);
+      const rushYds = rint(stats.speed * 0.5 + Math.random() * 30);
+      const rushTDs = Math.random() < 0.15 ? 1 : 0;
+      
+      gs.attempts += att;
+      gs.completions += comp;
+      gs.passingYards += yards;
+      gs.passingTDs += tds;
+      gs.interceptions += ints;
+      gs.carries += rint(3 + Math.random() * 5);
+      gs.rushingYards += rushYds;
+      gs.rushingTDs += rushTDs;
+    } else if(pos === 'RB'){
+      const carries = rint(15 + stats.stamina * 0.2 + Math.random() * 10);
+      const ypc = 3 + stats.speed * 0.08 + stats.strength * 0.05 + (perfFactor - 1) * 2;
+      const yards = rint(carries * ypc + Math.random() * 50);
+      const tds = rint(carries * 0.08 + Math.random() * 1.5);
+      const rec = rint(2 + stats.accuracy * 0.05 + Math.random() * 4);
+      const recYds = rint(rec * (5 + stats.speed * 0.1 + Math.random() * 5));
+      const recTDs = Math.random() < 0.1 ? 1 : 0;
+      
+      gs.carries += carries;
+      gs.rushingYards += yards;
+      gs.rushingTDs += tds;
+      gs.receptions += rec;
+      gs.receivingYards += recYds;
+      gs.receivingTDs += recTDs;
+    } else if(pos === 'WR' || pos === 'TE'){
+      const targets = rint(6 + stats.accuracy * 0.15 + Math.random() * 6);
+      const catchRate = clamp(stats.accuracy / 100 + (perfFactor - 1) * 0.15, 0.5, 0.9);
+      const rec = rint(targets * catchRate);
+      const ypr = 8 + stats.speed * 0.2 + Math.random() * 8;
+      const yards = rint(rec * ypr);
+      const tds = rint(rec * 0.15 + Math.random() * 1.5);
+      const rushYds = pos === 'WR' ? rint(Math.random() * 20) : 0;
+      
+      gs.receptions += rec;
+      gs.receivingYards += yards;
+      gs.receivingTDs += tds;
+      if(rushYds > 0) {
+        gs.carries += rint(1 + Math.random() * 2);
+        gs.rushingYards += rushYds;
+      }
+    } else {
+      // Defense positions (LB, CB, S, DL)
+      const baseTackles = pos === 'DL' ? 4 : pos === 'LB' ? 8 : 3;
+      const tackles = rint(baseTackles + stats.strength * 0.1 + stats.stamina * 0.1 + Math.random() * 4);
+      const sacks = pos === 'DL' || pos === 'LB' ? (Math.random() < 0.4 ? rint(1 + Math.random() * 1.5) : 0) : 0;
+      const ints = (pos === 'CB' || pos === 'S') ? (Math.random() < 0.25 ? 1 : 0) : 0;
+      const ff = Math.random() < 0.15 ? 1 : 0;
+      const fr = Math.random() < 0.2 ? 1 : 0;
+      const defTD = (ints > 0 || fr > 0) && Math.random() < 0.3 ? 1 : 0;
+      
+      gs.tackles += tackles;
+      gs.sacks += sacks;
+      gs.defInterceptions += ints;
+      gs.forcedFumbles += ff;
+      gs.fumbleRecoveries += fr;
+      gs.defTDs += defTD;
+    }
+    
+    s.gameStats = gs;
 
     // XP: base on closeness and performance
     const margin = Math.abs(ptsFor - ptsAg);
@@ -918,111 +1017,86 @@ function startCareerFromCreator(){
   }
 
   function openStats(s){
-    const stats = derivedStats(s);
-    const ovr = calcOVR(stats);
+    const gs = s.gameStats || { gamesPlayed: 0, passingYards: 0, passingTDs: 0, interceptions: 0, completions: 0, attempts: 0, rushingYards: 0, rushingTDs: 0, carries: 0, receptions: 0, receivingYards: 0, receivingTDs: 0, tackles: 0, sacks: 0, defInterceptions: 0, forcedFumbles: 0, fumbleRecoveries: 0, defTDs: 0 };
+    const pos = s.player.position;
+    const games = gs.gamesPlayed || 1;
     
-    // Average stats for comparison (typical high school player averages)
-    const avgStats = {
-      throwPower: 50,
-      accuracy: 55,
-      speed: 65,
-      strength: 60,
-      stamina: 65
-    };
-    const avgOVR = 60;
+    let statRows = '';
     
-    // Calculate percentile (0-100)
-    const percentile = (playerStat, avgStat) => {
-      const diff = playerStat - avgStat;
-      // Assuming stats range from 40-99, calculate percentile
-      const range = 59; // 99 - 40
-      const basePercentile = 50; // average is 50th percentile
-      const percentileAdjust = (diff / range) * 50; // scale to +/- 50 percentile points
-      return clamp(rint(basePercentile + percentileAdjust), 0, 100);
-    };
-    
-    const keys = [
-      ['throwPower','Throw Power'],
-      ['accuracy','Accuracy'],
-      ['speed','Speed'],
-      ['strength','Strength'],
-      ['stamina','Stamina'],
-    ];
-    
-    const statRows = keys.map(([k, label]) => {
-      const playerVal = stats[k];
-      const avgVal = avgStats[k];
-      const diff = playerVal - avgVal;
-      const pct = percentile(playerVal, avgVal);
-      const diffText = diff > 0 ? `+${diff}` : diff < 0 ? `${diff}` : `±0`;
-      const diffClass = diff > 5 ? 'good' : diff < -5 ? 'bad' : '';
-      const barWidth = clamp((playerVal / 99) * 100, 0, 100);
-      const avgBarWidth = clamp((avgVal / 99) * 100, 0, 100);
+    if(pos === 'QB'){
+      const compPct = gs.attempts > 0 ? ((gs.completions / gs.attempts) * 100).toFixed(1) : '0.0';
+      const passYdsPerGame = (gs.passingYards / games).toFixed(1);
+      const rushYdsPerGame = (gs.rushingYards / games).toFixed(1);
       
-      return `
-        <tr>
-          <td><b>${label}</b></td>
-          <td>
-            <div style="display:flex; align-items:center; gap:8px;">
-              <div style="flex:1; position:relative; height:20px; background:rgba(255,255,255,.1); border-radius:4px; overflow:hidden;">
-                <div style="position:absolute; left:0; top:0; width:${avgBarWidth}%; height:100%; background:rgba(184,212,255,.2); border-right:1px solid rgba(184,212,255,.4);"></div>
-                <div style="position:absolute; left:0; top:0; width:${barWidth}%; height:100%; background:linear-gradient(90deg, rgba(124,92,255,.6), rgba(56,189,248,.6));"></div>
-              </div>
-              <span style="min-width:35px; text-align:right; font-weight:700;">${playerVal}</span>
-            </div>
-          </td>
-          <td style="text-align:center;">
-            <span class="pill2 ${diffClass}" style="min-width:50px; display:inline-block;">${diffText}</span>
-          </td>
-          <td style="text-align:center; color:var(--muted);">
-            ${pct}th
-          </td>
-        </tr>
+      statRows = `
+        <tr><td><b>Games Played</b></td><td style="text-align:right; font-weight:700;">${gs.gamesPlayed}</td><td colspan="2"></td></tr>
+        <tr><td><b>Passing Yards</b></td><td style="text-align:right; font-weight:700;">${gs.passingYards.toLocaleString()}</td><td style="text-align:center; color:var(--muted);">${passYdsPerGame}/game</td><td></td></tr>
+        <tr><td><b>Passing TDs</b></td><td style="text-align:right; font-weight:700;">${gs.passingTDs}</td><td style="text-align:center; color:var(--muted);">${(gs.passingTDs/games).toFixed(1)}/game</td><td></td></tr>
+        <tr><td><b>Completions</b></td><td style="text-align:right; font-weight:700;">${gs.completions}</td><td style="text-align:center; color:var(--muted);">${compPct}%</td><td></td></tr>
+        <tr><td><b>Attempts</b></td><td style="text-align:right; font-weight:700;">${gs.attempts}</td><td style="text-align:center; color:var(--muted);">${(gs.attempts/games).toFixed(1)}/game</td><td></td></tr>
+        <tr><td><b>Interceptions</b></td><td style="text-align:right; font-weight:700;">${gs.interceptions}</td><td style="text-align:center; color:var(--muted);">${(gs.interceptions/games).toFixed(1)}/game</td><td></td></tr>
+        <tr><td><b>Rushing Yards</b></td><td style="text-align:right; font-weight:700;">${gs.rushingYards.toLocaleString()}</td><td style="text-align:center; color:var(--muted);">${rushYdsPerGame}/game</td><td></td></tr>
+        <tr><td><b>Rushing TDs</b></td><td style="text-align:right; font-weight:700;">${gs.rushingTDs}</td><td style="text-align:center; color:var(--muted);">${(gs.rushingTDs/games).toFixed(1)}/game</td><td></td></tr>
       `;
-    }).join('');
-    
-    const ovrDiff = ovr - avgOVR;
-    const ovrPct = percentile(ovr, avgOVR);
-    const ovrDiffText = ovrDiff > 0 ? `+${ovrDiff}` : ovrDiff < 0 ? `${ovrDiff}` : `±0`;
-    const ovrDiffClass = ovrDiff > 5 ? 'good' : ovrDiff < -5 ? 'bad' : '';
+    } else if(pos === 'RB'){
+      const ypc = gs.carries > 0 ? (gs.rushingYards / gs.carries).toFixed(1) : '0.0';
+      const rushYdsPerGame = (gs.rushingYards / games).toFixed(1);
+      const recYdsPerGame = (gs.receivingYards / games).toFixed(1);
+      
+      statRows = `
+        <tr><td><b>Games Played</b></td><td style="text-align:right; font-weight:700;">${gs.gamesPlayed}</td><td colspan="2"></td></tr>
+        <tr><td><b>Rushing Yards</b></td><td style="text-align:right; font-weight:700;">${gs.rushingYards.toLocaleString()}</td><td style="text-align:center; color:var(--muted);">${rushYdsPerGame}/game</td><td></td></tr>
+        <tr><td><b>Rushing TDs</b></td><td style="text-align:right; font-weight:700;">${gs.rushingTDs}</td><td style="text-align:center; color:var(--muted);">${(gs.rushingTDs/games).toFixed(1)}/game</td><td></td></tr>
+        <tr><td><b>Carries</b></td><td style="text-align:right; font-weight:700;">${gs.carries}</td><td style="text-align:center; color:var(--muted);">${ypc} YPC</td><td></td></tr>
+        <tr><td><b>Receptions</b></td><td style="text-align:right; font-weight:700;">${gs.receptions}</td><td style="text-align:center; color:var(--muted);">${(gs.receptions/games).toFixed(1)}/game</td><td></td></tr>
+        <tr><td><b>Receiving Yards</b></td><td style="text-align:right; font-weight:700;">${gs.receivingYards.toLocaleString()}</td><td style="text-align:center; color:var(--muted);">${recYdsPerGame}/game</td><td></td></tr>
+        <tr><td><b>Receiving TDs</b></td><td style="text-align:right; font-weight:700;">${gs.receivingTDs}</td><td style="text-align:center; color:var(--muted);">${(gs.receivingTDs/games).toFixed(1)}/game</td><td></td></tr>
+      `;
+    } else if(pos === 'WR' || pos === 'TE'){
+      const ypr = gs.receptions > 0 ? (gs.receivingYards / gs.receptions).toFixed(1) : '0.0';
+      const recYdsPerGame = (gs.receivingYards / games).toFixed(1);
+      
+      statRows = `
+        <tr><td><b>Games Played</b></td><td style="text-align:right; font-weight:700;">${gs.gamesPlayed}</td><td colspan="2"></td></tr>
+        <tr><td><b>Receptions</b></td><td style="text-align:right; font-weight:700;">${gs.receptions}</td><td style="text-align:center; color:var(--muted);">${(gs.receptions/games).toFixed(1)}/game</td><td></td></tr>
+        <tr><td><b>Receiving Yards</b></td><td style="text-align:right; font-weight:700;">${gs.receivingYards.toLocaleString()}</td><td style="text-align:center; color:var(--muted);">${recYdsPerGame}/game</td><td></td></tr>
+        <tr><td><b>Receiving TDs</b></td><td style="text-align:right; font-weight:700;">${gs.receivingTDs}</td><td style="text-align:center; color:var(--muted);">${(gs.receivingTDs/games).toFixed(1)}/game</td><td></td></tr>
+        <tr><td><b>Yards Per Reception</b></td><td style="text-align:right; font-weight:700;">${ypr}</td><td colspan="2"></td></tr>
+        ${gs.rushingYards > 0 ? `<tr><td><b>Rushing Yards</b></td><td style="text-align:right; font-weight:700;">${gs.rushingYards.toLocaleString()}</td><td style="text-align:center; color:var(--muted);">${(gs.rushingYards/games).toFixed(1)}/game</td><td></td></tr>` : ''}
+      `;
+    } else {
+      // Defense
+      const tacklesPerGame = (gs.tackles / games).toFixed(1);
+      
+      statRows = `
+        <tr><td><b>Games Played</b></td><td style="text-align:right; font-weight:700;">${gs.gamesPlayed}</td><td colspan="2"></td></tr>
+        <tr><td><b>Tackles</b></td><td style="text-align:right; font-weight:700;">${gs.tackles}</td><td style="text-align:center; color:var(--muted);">${tacklesPerGame}/game</td><td></td></tr>
+        <tr><td><b>Sacks</b></td><td style="text-align:right; font-weight:700;">${gs.sacks}</td><td style="text-align:center; color:var(--muted);">${(gs.sacks/games).toFixed(1)}/game</td><td></td></tr>
+        <tr><td><b>Interceptions</b></td><td style="text-align:right; font-weight:700;">${gs.defInterceptions}</td><td style="text-align:center; color:var(--muted);">${(gs.defInterceptions/games).toFixed(1)}/game</td><td></td></tr>
+        <tr><td><b>Forced Fumbles</b></td><td style="text-align:right; font-weight:700;">${gs.forcedFumbles}</td><td style="text-align:center; color:var(--muted);">${(gs.forcedFumbles/games).toFixed(1)}/game</td><td></td></tr>
+        <tr><td><b>Fumble Recoveries</b></td><td style="text-align:right; font-weight:700;">${gs.fumbleRecoveries}</td><td style="text-align:center; color:var(--muted);">${(gs.fumbleRecoveries/games).toFixed(1)}/game</td><td></td></tr>
+        <tr><td><b>Defensive TDs</b></td><td style="text-align:right; font-weight:700;">${gs.defTDs}</td><td style="text-align:center; color:var(--muted);">${(gs.defTDs/games).toFixed(1)}/game</td><td></td></tr>
+      `;
+    }
     
     openModal({
-      title: 'Player Statistics',
+      title: 'Game Statistics',
       bodyHTML: `
-        <div style="margin-bottom:16px;">
-          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
-            <div><b>Overall Rating (OVR)</b></div>
-            <div style="display:flex; align-items:center; gap:12px;">
-              <span style="font-size:24px; font-weight:900; color:var(--text-warm);">${ovr}</span>
-              <span class="pill2 ${ovrDiffClass}">${ovrDiffText} vs avg</span>
-              <span style="color:var(--muted);">${ovrPct}th percentile</span>
-            </div>
-          </div>
-          <div style="height:12px; background:rgba(255,255,255,.1); border-radius:6px; overflow:hidden; position:relative;">
-            <div style="position:absolute; left:0; top:0; width:${clamp((avgOVR/99)*100,0,100)}%; height:100%; background:rgba(184,212,255,.2); border-right:1px solid rgba(184,212,255,.4);"></div>
-            <div style="position:absolute; left:0; top:0; width:${clamp((ovr/99)*100,0,100)}%; height:100%; background:linear-gradient(90deg, rgba(124,92,255,.8), rgba(56,189,248,.8));"></div>
-          </div>
-        </div>
-        
         <div class="muted" style="margin-bottom:12px; font-size:13px;">
-          Comparison to average high school player (${avgOVR} OVR)
+          Career statistics for ${s.player.name} (${pos})
         </div>
         
         <table class="table">
           <thead>
             <tr>
               <th>Stat</th>
-              <th>Your Value</th>
-              <th style="text-align:center;">vs Avg</th>
-              <th style="text-align:center;">Percentile</th>
+              <th style="text-align:right;">Total</th>
+              <th style="text-align:center;">Per Game</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>${statRows}</tbody>
         </table>
-        
-        <div class="tiny muted" style="margin-top:12px;">
-          Percentile shows where you rank among all players (50th = average, 90th = top 10%, etc.)
-        </div>
       `,
       footHTML: `<button class="btn" id="closeStats">Close</button>`,
       onClose: () => {}
@@ -1222,7 +1296,7 @@ function startCareerFromCreator(){
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'gridiron-save-v130.json';
+      a.download = 'gridiron-save-v131.json';
       document.body.appendChild(a);
       a.click();
       a.remove();
