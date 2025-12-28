@@ -1,4 +1,4 @@
-/* Gridiron Career Sim — v1.3.9 */
+/* Gridiron Career Sim — v1.4.0 */
 :root{
   --bg0:#060918;
   --bg1:#0a1030;
@@ -420,4 +420,11 @@ label.file input{
 .stats-category-tab{ padding:6px 12px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12); border-radius:8px; color:var(--muted); cursor:pointer; font-size:13px; font-weight:500; transition:all .15s ease; }
 .stats-category-tab:hover{ background:rgba(255,255,255,.08); color:var(--text-warm); }
 .stats-category-tab.active{ background:rgba(124,92,255,.15); border-color:rgba(124,92,255,.40); color:var(--text-warm); }
+
+/* Tab content */
+.tab-content{ display:none; }
+.tab-content.active{ display:block; }
+
+/* Avatar options */
+.avatar-option.active{ transform:scale(1.1); }
 
