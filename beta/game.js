@@ -1,177 +1,124 @@
-/* Gridiron Career Sim — v1.3.8 */
+/* Gridiron Career Sim — v1.3.9 */
 (() => {
   'use strict';
 
-  function escapeHtml(str){
-    return String(str ?? '')
-      .replace(/&/g,'&amp;')
-      .replace(/</g,'&lt;')
-      .replace(/>/g,'&gt;')
-      .replace(/"/g,'&quot;')
-      .replace(/'/g,'&#39;');
-  }
-
-
-  const VERSION = 'v1.3.8';
-
-  const LS_KEY = 'gcs_save_v138';
-
+  const VERSION = 'v1.3.9';
+  const LS_KEY = 'gcs_save_v139';
   const MAX_ENERGY = 100;
-  const WEEK_HOURS = 25;
+  const MAX_HOURS = 25;
 
-  const XP_BASE = 300;
+  const POSITIONS = ['QB', 'RB', 'WR', 'TE', 'LB', 'CB', 'S', 'DL'];
 
-  const POSITIONS = ['QB','RB','WR','TE','LB','CB','S','DL'];
   const STYLES_BY_POS = {
   QB: [
-    { id:"Pocket",      name:"Pocket",      desc:"Safer, accurate passer / steady performer.", mods:{ throwPower:+1, accuracy:+2, speed:-1, stamina:+0, strength:+0 } },
-    { id:"Scrambler",   name:"Scrambler",   desc:"More speed and improvisation.",               mods:{ throwPower:+0, accuracy:+0, speed:+3, stamina:+1, strength:+0 } },
-    { id:"Gunslinger",  name:"Gunslinger",  desc:"Bigger plays, a bit riskier.",               mods:{ throwPower:+3, accuracy:-1, speed:+0, stamina:+0, strength:+0 } },
-    { id:"Balanced",    name:"Balanced",    desc:"Even distribution.",                         mods:{ throwPower:+1, accuracy:+1, speed:+1, stamina:+1, strength:+0 } },
+      { id:"Gunslinger", name:"Gunslinger", desc:"High risk, high reward passing.", mods:{ throwPower:+3, accuracy:-1, speed:+0, stamina:+0, strength:+0 } },
+      { id:"Pocket", name:"Pocket Passer", desc:"Safe, accurate throws from the pocket.", mods:{ throwPower:+0, accuracy:+3, speed:-1, stamina:+0, strength:+0 } },
+      { id:"Dual", name:"Dual Threat", desc:"Balanced passing and rushing ability.", mods:{ throwPower:+1, accuracy:+1, speed:+2, stamina:+1, strength:+0 } }
   ],
   RB: [
-    { id:"Power Back",  name:"Power Back",  desc:"Runs through contact.",                      mods:{ speed:+0, stamina:+2, strength:+3, throwPower:+0, accuracy:+0 } },
-    { id:"Elusive",     name:"Elusive",     desc:"Quick cuts and jukes.",                      mods:{ speed:+3, stamina:+1, strength:+0, throwPower:+0, accuracy:+0 } },
-    { id:"Receiving",   name:"Receiving",   desc:"Great hands & routes out of the backfield.", mods:{ speed:+1, stamina:+1, strength:+0, throwPower:+0, accuracy:+2 } },
-    { id:"Balanced",    name:"Balanced",    desc:"A bit of everything.",                       mods:{ speed:+2, stamina:+1, strength:+1, throwPower:+0, accuracy:+0 } },
+      { id:"Power", name:"Power Back", desc:"Bruising runner with strength.", mods:{ throwPower:+0, accuracy:+0, speed:+0, stamina:+2, strength:+3 } },
+      { id:"Speed", name:"Speed Back", desc:"Elusive runner with breakaway speed.", mods:{ throwPower:+0, accuracy:+0, speed:+3, stamina:+1, strength:+0 } },
+      { id:"Receiving", name:"Receiving Back", desc:"Versatile runner and receiver.", mods:{ throwPower:+0, accuracy:+2, speed:+1, stamina:+1, strength:+0 } }
   ],
   WR: [
-    { id:"Route Runner",name:"Route Runner",desc:"Crisp routes and reliable hands.",           mods:{ speed:+2, stamina:+1, strength:+0, throwPower:+0, accuracy:+2 } },
-    { id:"Deep Threat", name:"Deep Threat", desc:"Burns defenders over the top.",              mods:{ speed:+4, stamina:+0, strength:+0, throwPower:+0, accuracy:+0 } },
-    { id:"Slot",        name:"Slot",        desc:"Quick separation underneath.",               mods:{ speed:+3, stamina:+1, strength:-1, throwPower:+0, accuracy:+1 } },
-    { id:"YAC",         name:"YAC",         desc:"Turns short catches into big gains.",        mods:{ speed:+2, stamina:+2, strength:+0, throwPower:+0, accuracy:+0 } },
+      { id:"Deep", name:"Deep Threat", desc:"Speedster for long passes.", mods:{ throwPower:+0, accuracy:+2, speed:+3, stamina:+0, strength:+0 } },
+      { id:"Possession", name:"Possession Receiver", desc:"Reliable hands and route running.", mods:{ throwPower:+0, accuracy:+3, speed:+0, stamina:+1, strength:+0 } },
+      { id:"Slot", name:"Slot Receiver", desc:"Quick and agile in the middle.", mods:{ throwPower:+0, accuracy:+2, speed:+2, stamina:+0, strength:+0 } }
   ],
   TE: [
-    { id:"Blocking",    name:"Blocking",    desc:"Extra strength at the line.",                mods:{ speed:-1, stamina:+1, strength:+4, throwPower:+0, accuracy:+0 } },
-    { id:"Receiving",   name:"Receiving",   desc:"Mismatch in the middle.",                    mods:{ speed:+1, stamina:+2, strength:+1, throwPower:+0, accuracy:+2 } },
-    { id:"Red Zone",    name:"Red Zone",    desc:"Big body, tough catches.",                   mods:{ speed:+0, stamina:+1, strength:+3, throwPower:+0, accuracy:+1 } },
-    { id:"Balanced",    name:"Balanced",    desc:"Reliable all-around tight end.",            mods:{ speed:+1, stamina:+1, strength:+2, throwPower:+0, accuracy:+1 } },
+      { id:"Blocking", name:"Blocking Tight End", desc:"Strong blocker with receiving skills.", mods:{ throwPower:+0, accuracy:+1, speed:+0, stamina:+1, strength:+3 } },
+      { id:"Receiving", name:"Receiving Tight End", desc:"Athletic pass catcher.", mods:{ throwPower:+0, accuracy:+2, speed:+1, stamina:+1, strength:+1 } }
   ],
   LB: [
-    { id:"Run Stopper", name:"Run Stopper", desc:"Fills gaps and hits hard.",                  mods:{ speed:+0, stamina:+2, strength:+4, throwPower:+0, accuracy:+0 } },
-    { id:"Coverage",    name:"Coverage",    desc:"Better in space and zones.",                 mods:{ speed:+2, stamina:+2, strength:+0, throwPower:+0, accuracy:+2 } },
-    { id:"Blitzer",     name:"Blitzer",     desc:"Gets after the QB.",                         mods:{ speed:+1, stamina:+1, strength:+3, throwPower:+0, accuracy:+0 } },
-    { id:"Balanced",    name:"Balanced",    desc:"Solid at everything.",                       mods:{ speed:+1, stamina:+2, strength:+2, throwPower:+0, accuracy:+1 } },
+      { id:"Coverage", name:"Coverage Linebacker", desc:"Strong in pass coverage.", mods:{ throwPower:+0, accuracy:+0, speed:+2, stamina:+2, strength:+1 } },
+      { id:"Blitz", name:"Blitzing Linebacker", desc:"Aggressive pass rusher.", mods:{ throwPower:+0, accuracy:+0, speed:+1, stamina:+1, strength:+3 } },
+      { id:"Versatile", name:"Versatile", desc:"Balanced pass rush and run defense.", mods:{ throwPower:+0, accuracy:+0, speed:+0, stamina:+2, strength:+3 } }
   ],
   CB: [
-    { id:"Man Cover",   name:"Man Cover",   desc:"Sticks tight in man coverage.",              mods:{ speed:+3, stamina:+1, strength:-1, throwPower:+0, accuracy:+2 } },
-    { id:"Zone Cover",  name:"Zone Cover",  desc:"Reads routes and breaks on the ball.",       mods:{ speed:+2, stamina:+2, strength:-1, throwPower:+0, accuracy:+2 } },
-    { id:"Ball Hawk",   name:"Ball Hawk",   desc:"Hunts interceptions.",                       mods:{ speed:+2, stamina:+1, strength:-1, throwPower:+0, accuracy:+3 } },
-    { id:"Balanced",    name:"Balanced",    desc:"Reliable all-around corner.",               mods:{ speed:+2, stamina:+1, strength:+0, throwPower:+0, accuracy:+1 } },
-  ],
-  S: [
-    { id:"Free Safety", name:"Free Safety", desc:"Deep coverage and ball skills.",            mods:{ speed:+2, stamina:+2, strength:-1, throwPower:+0, accuracy:+3 } },
-    { id:"Strong Safety",name:"Strong Safety",desc:"Hard hitter, supports the run.",          mods:{ speed:+1, stamina:+2, strength:+2, throwPower:+0, accuracy:+1 } },
-    { id:"Ball Hawk",   name:"Ball Hawk",   desc:"Hunts interceptions.",                       mods:{ speed:+2, stamina:+1, strength:-1, throwPower:+0, accuracy:+3 } },
-    { id:"Balanced",    name:"Balanced",    desc:"Reliable all-around safety.",               mods:{ speed:+2, stamina:+2, strength:+0, throwPower:+0, accuracy:+2 } },
-  ],
-  DL: [
-    { id:"Pass Rusher", name:"Pass Rusher", desc:"Gets after the quarterback.",               mods:{ speed:+1, stamina:+1, strength:+3, throwPower:+0, accuracy:+0 } },
-    { id:"Run Stopper", name:"Run Stopper", desc:"Plugs gaps and stops the run.",             mods:{ speed:-1, stamina:+2, strength:+4, throwPower:+0, accuracy:+0 } },
-    { id:"Versatile",   name:"Versatile",   desc:"Balanced pass rush and run defense.",        mods:{ speed:+0, stamina:+2, strength:+3, throwPower:+0, accuracy:+0 } },
-    { id:"Balanced",    name:"Balanced",    desc:"Reliable all-around defensive lineman.",    mods:{ speed:+0, stamina:+1, strength:+2, throwPower:+0, accuracy:+0 } },
-  ]
-};
-
-function getStylesForPosition(pos){
-  return STYLES_BY_POS[pos] || STYLES_BY_POS.QB;
-}
+      { id:"Man", name:"Man Coverage", desc:"Lockdown one-on-one defender.", mods:{ throwPower:+0, accuracy:+0, speed:+3, stamina:+1, strength:+0 } },
+      { id:"Zone", name:"Zone Coverage", desc:"Smart zone defender.", mods:{ throwPower:+0, accuracy:+0, speed:+1, stamina:+2, strength:+0 } }
+    ],
+    S: [
+      { id:"Free", name:"Free Safety", desc:"Ball-hawking deep defender.", mods:{ throwPower:+0, accuracy:+0, speed:+2, stamina:+2, strength:+0 } },
+      { id:"Strong", name:"Strong Safety", desc:"Hard-hitting run supporter.", mods:{ throwPower:+0, accuracy:+0, speed:+1, stamina:+1, strength:+2 } }
+    ],
+    DL: [
+      { id:"Pass", name:"Pass Rusher", desc:"Elite pass rushing ability.", mods:{ throwPower:+0, accuracy:+0, speed:+1, stamina:+1, strength:+3 } },
+      { id:"Run", name:"Run Stopper", desc:"Dominant against the run.", mods:{ throwPower:+0, accuracy:+0, speed:+0, stamina:+1, strength:+3 } }
+    ]
+  };
 
   const JOBS = [
-    { id:'none', name:'No Job', hours:0, pay:0, desc:'Focus entirely on football.' },
-    { id:'dogwalker', name:'Dog Walker', hours:4, pay:90, desc:'Walk neighborhood dogs after school.' },
-    { id:'grocery', name:'Grocery Clerk', hours:6, pay:120, desc:'Stock shelves and bag groceries.' },
-    { id:'tutor', name:'Math Tutor', hours:7, pay:200, desc:'Help classmates with math homework.' },
-    { id:'lifeguard', name:'Lifeguard', hours:8, pay:180, desc:'Keep the pool safe on weekends.' },
+    { id:'none', name:'No Job', hours:0, pay:0 },
+    { id:'fastfood', name:'Fast Food', hours:8, pay:80 },
+    { id:'retail', name:'Retail', hours:10, pay:120 },
+    { id:'tutor', name:'Tutor', hours:6, pay:150 },
+    { id:'lifeguard', name:'Lifeguard', hours:12, pay:180 }
   ];
 
-  // Equipment: can be equipped (one per slot)
-  // Consumable: can be used from inventory (applies immediate effect, then removed)
   const STORE_ITEMS = [
-    { id:'protein_snack', name:'Protein Snack', type:'consumable', price:25, effects:{ energy:+20 }, desc:'+20 energy.' },
-    { id:'energy_drink', name:'Energy Drink', type:'consumable', price:40, effects:{ energy:+35 }, desc:'+35 energy.' },
-    { id:'meal_prep', name:'Meal Prep Kit', type:'consumable', price:60, effects:{ energy:+55 }, desc:'+55 energy.' },
-    { id:'planner', name:'Study Planner', type:'consumable', price:35, effects:{ hours:+3 }, desc:'+3 weekly hours (this week only).' },
-
-    { id:'cleats', name:'Speed Cleats', type:'equipment', slot:'shoes', price:175, effects:{ speed:+2 }, desc:'+2 Speed (equipped).' },
-    { id:'gloves', name:'Grip Gloves', type:'equipment', slot:'gloves', price:165, effects:{ accuracy:+2 }, desc:'+2 Accuracy (equipped).' },
-    { id:'arm_sleeve', name:'QB Arm Sleeve', type:'equipment', slot:'accessory', price:210, effects:{ throwPower:+2 }, desc:'+2 Throw Power (equipped).' },
-    { id:'wristband', name:'Playcall Wristband', type:'equipment', slot:'accessory', price:190, effects:{ accuracy:+1, stamina:+1 }, desc:'+1 Accuracy, +1 Stamina (equipped).' },
-    { id:'weight_vest', name:'Training Weight Vest', type:'equipment', slot:'training', price:240, effects:{ strength:+2, stamina:+1 }, desc:'+2 Strength, +1 Stamina (equipped).' },
-    { id:'compression', name:'Recovery Compression', type:'equipment', slot:'recovery', price:220, effects:{ stamina:+2 }, desc:'+2 Stamina (equipped).' },
+    { id:'cleats', name:'Elite Cleats', price:150, desc:'+2 Speed', slot:'feet', mods:{ speed:+2 } },
+    { id:'gloves', name:'Receiver Gloves', price:120, desc:'+2 Accuracy', slot:'hands', mods:{ accuracy:+2 } },
+    { id:'weights', name:'Weight Set', price:200, desc:'+2 Strength', slot:'home', mods:{ strength:+2 } },
+    { id:'protein', name:'Protein Shakes', price:80, desc:'+2 Stamina', slot:'home', mods:{ stamina:+2 } },
+    { id:'film', name:'Game Film', price:100, desc:'+2 Throw Power', slot:'home', mods:{ throwPower:+2 } }
   ];
 
-  const $ = (sel, root=document) => root.querySelector(sel);
-  const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
-
-  function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
-  function rint(n){ return Math.round(n); }
-  function fmtMoney(n){ return '$' + n.toLocaleString(); }
-  function pick(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
-  function toast(msg){ alert(msg); }
-  function loadState(){ return load(); }
-  function saveState(s){ save(s); }
-
-  function basePlayerFromArchetype(position, styleId){
-  const pos = (position || "QB").toUpperCase();
-
-  const baseByPos = {
-    QB: { throwPower:70, accuracy:70, speed:60, stamina:65, strength:60 },
-    RB: { throwPower:40, accuracy:55, speed:70, stamina:70, strength:65 },
-    WR: { throwPower:40, accuracy:65, speed:72, stamina:68, strength:55 },
-    TE: { throwPower:40, accuracy:60, speed:62, stamina:70, strength:72 },
-    LB: { throwPower:40, accuracy:55, speed:62, stamina:72, strength:75 },
-    CB: { throwPower:40, accuracy:65, speed:74, stamina:66, strength:52 },
-    S:  { throwPower:40, accuracy:65, speed:72, stamina:70, strength:58 },
-    DL: { throwPower:40, accuracy:50, speed:58, stamina:70, strength:78 },
-  };
-
-  const base = { ...(baseByPos[pos] || baseByPos.QB) };
-
-  // Apply style mods (small boosts)
-  const style = (getStylesForPosition(pos) || []).find(x => x.id === styleId) || getStylesForPosition(pos)[0];
-  const mods = style?.mods || {};
-  for(const k of ["throwPower","accuracy","speed","stamina","strength"]){
-    base[k] = clamp((base[k]||60) + (mods[k]||0), 40, 99);
+  // Helper functions
+  function rint(n, max) {
+    if(max !== undefined) return Math.floor(Math.random() * (max - n + 1)) + n;
+    return Math.floor(Math.random() * n);
   }
 
-  return {
-    name: "Player",
-    position: pos,
-    archetype: style?.id || styleId || "Balanced",
-    highSchool: "High School",
-    throwPower: base.throwPower,
-    accuracy: base.accuracy,
-    speed: base.speed,
-    stamina: base.stamina,
-    strength: base.strength,
-  };
-}
-
-
-  function calcOVR(stats){
-    const keys = ['throwPower','accuracy','speed','strength','stamina'];
-    const avg = keys.reduce((a,k)=>a+stats[k],0)/keys.length;
-    return clamp(rint(avg), 50, 99);
+  function clamp(n, min, max) {
+    return Math.min(Math.max(n, min), max);
   }
 
-  function xpNeeded(level){
-    return rint(XP_BASE * Math.pow(1.12, level-1));
+  function pick(arr) {
+    return arr[rint(arr.length)];
   }
 
+  function $(sel) {
+    return document.querySelector(sel);
+  }
+
+  function $$(sel) {
+    return Array.from(document.querySelectorAll(sel));
+  }
+
+  function fmtMoney(n) {
+    return '$' + n.toLocaleString();
+  }
+
+  function openModal(title, bodyHTML, footHTML) {
+    $('#modalTitle').textContent = title;
+    $('#modalBody').innerHTML = bodyHTML || '';
+    $('#modalFoot').innerHTML = footHTML || '';
+    $('#modal').showModal();
+  }
+
+  function closeModal() {
+    $('#modal').close();
+  }
+
+  function setModal(title, bodyHTML, footHTML) {
+    $('#modalTitle').textContent = title;
+    $('#modalBody').innerHTML = bodyHTML || '';
+    $('#modalFoot').innerHTML = footHTML || '';
+  }
+
+  // State management
   function defaultState(){
     return {
       version: VERSION,
-      createdAt: Date.now(),
-      player: null, // set after creation
-      statsBase: null,
+      player: null,
+      money: 500,
       level: 1,
       xp: 0,
       skillPoints: 0,
-      money: 250,
-      energy: 100,
-      hours: WEEK_HOURS,
-      prep: 0, // study prep this week
+      energy: MAX_ENERGY,
+      hours: MAX_HOURS,
+      prep: 0,
       career: {
         year: 1,
         week: 1,
@@ -179,12 +126,16 @@ function getStylesForPosition(pos){
         recordW: 0,
         recordL: 0,
         inPost: false,
-        postWeek: 0, // 1..3 when in postseason
-        jobId: 'none',
+        postWeek: 0,
+        jobId: 'none'
       },
+      inventory: {
+        owned: [],
+        equipped: {}
+      },
+      log: [],
       gameStats: {
         gamesPlayed: 0,
-        // Career totals
         passingYards: 0,
         passingTDs: 0,
         interceptions: 0,
@@ -203,502 +154,392 @@ function getStylesForPosition(pos){
         fumbleRecoveries: 0,
         defTDs: 0,
         fumbles: 0,
-        // Per-game tracking
         gameLog: [],
-        // Per-season tracking
-        seasonStats: {},
-      },
-      inventory: {
-        owned: [], // array of item ids (including duplicates for consumables)
-        equipped: { shoes:null, gloves:null, accessory:null, training:null, recovery:null }
-      },
-      log: []
+        seasonStats: {}
+      }
     };
   }
 
   function load(){
-    try{
+    try {
       const raw = localStorage.getItem(LS_KEY);
       if(!raw) return defaultState();
       const s = JSON.parse(raw);
-      // migrate minimal
       if(!s.version) s.version = VERSION;
       if(!s.inventory) s.inventory = defaultState().inventory;
       if(!s.career) s.career = defaultState().career;
-      if(!s.log) s.log = [];
       if(!s.gameStats) s.gameStats = defaultState().gameStats;
-      if(s.gameStats && !s.gameStats.gameLog) s.gameStats.gameLog = [];
-      if(s.gameStats && !s.gameStats.seasonStats) s.gameStats.seasonStats = {};
+      if(!s.gameStats.fumbles) s.gameStats.fumbles = 0;
+      if(!s.gameStats.gameLog) s.gameStats.gameLog = [];
+      if(!s.gameStats.seasonStats) s.gameStats.seasonStats = {};
       return s;
-    }catch(e){
-      console.warn('load failed', e);
+    } catch(e) {
       return defaultState();
     }
   }
+
   function save(s){
+    s.version = VERSION;
     localStorage.setItem(LS_KEY, JSON.stringify(s));
   }
 
-  function logPush(s, title, msg){
-    s.log.unshift({
-      t: Date.now(),
-      title,
-      msg
-    });
-    s.log = s.log.slice(0, 200);
+  function logPush(s, type, msg){
+    if(!s.log) s.log = [];
+    s.log.push({ type, msg, week: s.career.week, year: s.career.year });
+    if(s.log.length > 50) s.log.shift();
   }
 
-  function openModal({title, bodyHTML, footHTML, onClose}){
-    const dlg = $('#modal');
-    $('#modalTitle').textContent = title || 'Modal';
-    $('#modalBody').innerHTML = bodyHTML || '';
-    $('#modalFoot').innerHTML = footHTML || '';
-    const close = () => {
-      if(dlg.open) dlg.close();
-      if(typeof onClose === 'function') onClose();
+  // Player creation
+  function basePlayerFromArchetype(pos, styleId){
+    const base = {
+      QB: { throwPower: 60, accuracy: 60, speed: 50, stamina: 60, strength: 50 },
+      RB: { throwPower: 30, accuracy: 50, speed: 65, stamina: 65, strength: 60 },
+      WR: { throwPower: 30, accuracy: 65, speed: 70, stamina: 55, strength: 45 },
+      TE: { throwPower: 35, accuracy: 60, speed: 55, stamina: 60, strength: 65 },
+      LB: { throwPower: 30, accuracy: 40, speed: 60, stamina: 65, strength: 70 },
+      CB: { throwPower: 30, accuracy: 45, speed: 75, stamina: 60, strength: 50 },
+      S: { throwPower: 30, accuracy: 50, speed: 70, stamina: 65, strength: 55 },
+      DL: { throwPower: 25, accuracy: 35, speed: 55, stamina: 60, strength: 75 }
     };
-    $('#modalClose').onclick = close;
-    dlg.oncancel = (e) => { e.preventDefault(); close(); };
-    dlg.showModal();
-    // click outside to close
-    dlg.addEventListener('click', (ev) => {
-      const r = dlg.getBoundingClientRect();
-      const inBox = (ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom);
-      // dialog's rect is the whole element; need inner
-      const inner = $('.modal-inner', dlg);
-      if(inner && !inner.contains(ev.target)) close();
-    }, { once:true });
-  }
-
-  // Backwards-compatible helper used by earlier UI code.
-  // Some flows (e.g., character creator) call setModal(title, bodyHTML, footHTML).
-  function setModal(title, bodyHTML, footHTML, onClose){
-    openModal({
-      title: title || 'Modal',
-      bodyHTML: bodyHTML || '',
-      footHTML: footHTML || '',
-      onClose
-    });
-  }
-
-  // Some UI buttons/flows call closeModal() directly (inline onclick handlers).
-  // A previous refactor removed this helper which caused "closeModal is not defined".
-  function closeModal(){
-    const dlg = $('#modal');
-    if(dlg && dlg.open){
-      try { dlg.close(); } catch(e) { /* ignore */ }
+    const style = STYLES_BY_POS[pos].find(s => s.id === styleId);
+    const stats = { ...base[pos] };
+    if(style) {
+      Object.keys(style.mods).forEach(k => {
+        stats[k] = clamp(stats[k] + style.mods[k], 0, 99);
+      });
     }
-  }
-
-  function derivedStats(s){
-    if(!s.statsBase) return {};
-    const base = {...s.statsBase};
-    // apply equipped bonuses
-    const eq = s.inventory?.equipped || {};
-    for(const slot of Object.keys(eq)){
-      const id = eq[slot];
-      if(!id) continue;
-      const item = STORE_ITEMS.find(it=>it.id===id);
-      if(!item) continue;
-      if(item.effects){
-        for(const [k,v] of Object.entries(item.effects)){
-          if(typeof base[k] === 'number') base[k] += v;
-        }
-      }
-    }
-    for(const k of Object.keys(base)) base[k] = clamp(base[k], 40, 99);
-    return base;
-  }
-
-  function canAfford(s, price){ return s.money >= price; }
-
-  function addOwned(s, itemId){
-    s.inventory.owned.push(itemId);
-  }
-
-  function removeOneOwned(s, itemId){
-    const idx = s.inventory.owned.indexOf(itemId);
-    if(idx>=0) s.inventory.owned.splice(idx,1);
-  }
-
-  function useConsumable(s, itemId){
-    const item = STORE_ITEMS.find(it=>it.id===itemId);
-    if(!item || item.type!=='consumable') return;
-    if(!s.inventory.owned.includes(itemId)) return;
-    const eff = item.effects || {};
-    if(typeof eff.energy === 'number') s.energy = clamp(s.energy + eff.energy, 0, MAX_ENERGY);
-    if(typeof eff.hours === 'number') s.hours = clamp(s.hours + eff.hours, 0, WEEK_HOURS);
-    removeOneOwned(s, itemId);
-    logPush(s, 'Used Item', `Used ${item.name}.`);
-  }
-
-  function handlePositionChange(newPos){
-    if(!window.__draftPlayer) window.__draftPlayer = { name: "", position: "QB", highSchool: "", style: "Pocket", height: "", weight: "", hometown: "", jerseyNumber: "" };
-    window.__draftPlayer.position = newPos;
-    const styles = getStylesForPosition(newPos);
-    if(styles && styles.length > 0){
-      window.__draftPlayer.style = styles[0].id;
-    }
-    openCreatePlayer(loadState());
-  }
-
-  function handleStyleChange(newStyle){
-    if(!window.__draftPlayer) window.__draftPlayer = { name: "", position: "QB", highSchool: "", style: "Pocket", height: "", weight: "", hometown: "", jerseyNumber: "" };
-    window.__draftPlayer.style = newStyle;
-    // Update visual selection
-    document.querySelectorAll('.radioCard').forEach(card => {
-      card.classList.remove('selected');
-      const input = card.querySelector('input[type="radio"]');
-      if(input && input.value === newStyle){
-        card.classList.add('selected');
-        input.checked = true;
-      }
-    });
+    return stats;
   }
 
   function openCreatePlayer(s){
-  // Persist draft across re-renders while the modal is open
-  const st = s || loadState();
-  window.__draftPlayer = window.__draftPlayer || {
-    name: "",
-    position: "QB",
-    highSchool: "",
-    style: "Pocket",
-    height: "",
-    weight: "",
-    hometown: "",
-    jerseyNumber: ""
-  };
+    const firstNames = ["Alex", "Blake", "Cameron", "Drew", "Ethan", "Finn", "Grant", "Hayden", "Isaiah", "Jake", "Kai", "Logan", "Mason", "Noah", "Owen", "Parker", "Quinn", "Riley", "Sam", "Tyler"];
+    const lastNames = ["Anderson", "Brooks", "Carter", "Davis", "Evans", "Foster", "Gray", "Harris", "Jackson", "Kelly", "Lewis", "Martinez", "Nelson", "Parker", "Reed", "Smith", "Taylor", "Walker", "White", "Young"];
+    const schools = ["Lincoln High", "Roosevelt High", "Washington High", "Jefferson High", "Madison High", "Adams High", "Jackson High", "Monroe High", "Harrison High", "Van Buren High"];
+
+    if(!window.__draftPlayer) {
+      window.__draftPlayer = {
+        name: `${pick(firstNames)} ${pick(lastNames)}`,
+        position: 'QB',
+        style: 'Gunslinger',
+        highSchool: pick(schools),
+        height: "6'0\"",
+        weight: "200 lbs",
+        hometown: "Unknown",
+        jerseyNumber: "00"
+      };
+    }
+
   const d = window.__draftPlayer;
-
-  const positions = Object.keys(STYLES_BY_POS);
-  // include older positions list if present
-  const allPos = Array.from(new Set([...(Array.isArray(POSITIONS)?POSITIONS:[]), ...positions]));
-  const posOptions = allPos.map(p => `<option value="${escapeHtml(p)}" ${d.position===p?"selected":""}>${escapeHtml(p)}</option>`).join("");
-
   const styles = getStylesForPosition(d.position);
-  if(!styles.some(x=>x.id===d.style)) d.style = styles[0].id;
 
-  const styleCards = styles.map(sty => {
-    const sel = d.style===sty.id;
-    const mods = sty.mods || {};
-    const modLine = (k,label)=> (mods[k]||0)!==0 ? `<span class="chip ${mods[k]>0?"good":"bad"}">${label} ${mods[k]>0?"+":""}${mods[k]}</span>` : "";
-    return `
-      <label class="radioCard ${sel?"selected":""}">
-        <input type="radio" name="pstyle" value="${escapeHtml(sty.id)}" ${sel?"checked":""}
-          onchange="handleStyleChange(this.value)">
-        <div class="radioCardMain">
-          <div class="radioCardTop">
-            <div class="radioTitle">${escapeHtml(sty.name)}</div>
-            <div class="radioDot" aria-hidden="true"></div>
+    const bodyHTML = `
+      <div class="muted small">Enter your player details to start a 4-year high school career (12 regular season games + up to 3 postseason games).</div>
+      <div style="margin-top:16px;">
+        <label style="display:block; margin-bottom:6px; font-weight:600;">Name</label>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="cp_name" value="${d.name}" style="flex:1;" />
+          <button class="btn small" onclick="randomizeName()">Random</button>
           </div>
-          <div class="radioDesc">${escapeHtml(sty.desc||"")}</div>
-          <div class="radioMods">
-            ${modLine("throwPower","Throw")}
-            ${modLine("accuracy","Acc")}
-            ${modLine("speed","Spd")}
-            ${modLine("stamina","Stam")}
-            ${modLine("strength","Str")}
           </div>
+      <div style="margin-top:12px;">
+        <label style="display:block; margin-bottom:6px; font-weight:600;">High School</label>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="cp_school" value="${d.highSchool}" style="flex:1;" />
+          <button class="btn small" onclick="randomizeSchool()">Random</button>
         </div>
-      </label>
-    `;
-  }).join("");
-
-  const body = `
-    <div class="muted small">Enter your player details to start a 4-year high school career (12 regular season games + up to 3 postseason games).</div>
-
-    <div class="form">
-      <div class="field">
-        <label>Player Name</label>
-        <div class="row">
-          <input id="cp_name" value="${escapeHtml(d.name)}" placeholder="e.g., Kenny King" oninput="window.__draftPlayer.name=this.value">
-          <button class="btn ghost" type="button" onclick="randomizeName()">Random</button>
         </div>
-      </div>
-
-      <div class="field two">
-        <div>
-          <label>Position</label>
-          <select id="cp_pos" onchange="handlePositionChange(this.value)">
-            ${posOptions}
+      <div style="margin-top:12px;">
+        <label style="display:block; margin-bottom:6px; font-weight:600;">Position</label>
+        <div class="select-wrapper">
+          <select id="cp_pos" style="width:100%;">
+            ${POSITIONS.map(p => `<option value="${p}" ${p === d.position ? 'selected' : ''}>${p}</option>`).join('')}
           </select>
         </div>
-        <div>
-          <label>High School</label>
-          <div class="row">
-            <input id="cp_school" value="${escapeHtml(d.highSchool)}" placeholder="e.g., Lake Wales HS" oninput="window.__draftPlayer.highSchool=this.value">
-            <button class="btn ghost" type="button" onclick="randomizeSchool()">Random</button>
           </div>
+      <div style="margin-top:12px;">
+        <label style="display:block; margin-bottom:6px; font-weight:600;">Height</label>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="cp_height" value="${d.height}" placeholder="6'0\"" style="flex:1;" />
+          <button class="btn small" onclick="randomizeHeight()">Random</button>
         </div>
       </div>
-
-      <div class="field two">
-        <div>
-          <label>Height</label>
-          <div class="row">
-            <input id="cp_height" type="text" value="${escapeHtml(d.height || "")}" placeholder="e.g., 6'2&quot;" oninput="window.__draftPlayer.height=this.value">
-            <button class="btn ghost" type="button" onclick="randomizeHeight()">Random</button>
-          </div>
-        </div>
-        <div>
-          <label>Weight</label>
-          <div class="row">
-            <input id="cp_weight" type="text" value="${escapeHtml(d.weight || "")}" placeholder="e.g., 215 lbs" oninput="window.__draftPlayer.weight=this.value">
-            <button class="btn ghost" type="button" onclick="randomizeWeight()">Random</button>
-          </div>
+      <div style="margin-top:12px;">
+        <label style="display:block; margin-bottom:6px; font-weight:600;">Weight</label>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="cp_weight" value="${d.weight}" placeholder="200 lbs" style="flex:1;" />
+          <button class="btn small" onclick="randomizeWeight()">Random</button>
         </div>
       </div>
-
-      <div class="field two">
-        <div>
-          <label>Hometown</label>
-          <div class="row">
-            <input id="cp_hometown" type="text" value="${escapeHtml(d.hometown || "")}" placeholder="e.g., Miami, FL" oninput="window.__draftPlayer.hometown=this.value">
-            <button class="btn ghost" type="button" onclick="randomizeHometown()">Random</button>
-          </div>
-        </div>
-        <div>
-          <label>Jersey Number</label>
-          <input id="cp_jersey" type="number" min="1" max="99" value="${escapeHtml(d.jerseyNumber || "")}" placeholder="e.g., 7" oninput="window.__draftPlayer.jerseyNumber=this.value">
+      <div style="margin-top:12px;">
+        <label style="display:block; margin-bottom:6px; font-weight:600;">Hometown</label>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="cp_hometown" value="${d.hometown}" placeholder="City, State" style="flex:1;" />
+          <button class="btn small" onclick="randomizeHometown()">Random</button>
         </div>
       </div>
-
-      <div class="field">
-        <label>Play Style</label>
-        <div class="radioGrid">
-          ${styleCards}
+      <div style="margin-top:12px;">
+        <label style="display:block; margin-bottom:6px; font-weight:600;">Jersey Number</label>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="cp_jersey" value="${d.jerseyNumber}" placeholder="00" style="flex:1;" />
+          <button class="btn small" onclick="randomizeJersey()">Random</button>
         </div>
       </div>
-
-      <div class="muted tiny">Tip: You can change jobs later. Your style adds small starting stat bonuses.</div>
+      <div style="margin-top:16px;">
+        <label style="display:block; margin-bottom:8px; font-weight:600;">Play Style</label>
+        <div class="radioCards">
+          ${styles.map((st, idx) => `
+            <label class="radioCard ${st.id === d.style ? 'active' : ''}">
+              <input type="radio" name="pstyle" value="${st.id}" ${st.id === d.style ? 'checked' : ''} />
+              <div class="radioDesc">
+                <div class="r-title">${st.name}</div>
+                <div class="muted small">${st.desc}</div>
+                <div class="radioMods">
+                  ${Object.keys(st.mods).map(k => {
+                    const v = st.mods[k];
+                    return `<span class="chip ${v > 0 ? 'good' : ''}">${k}: ${v > 0 ? '+' : ''}${v}</span>`;
+                  }).join('')}
+                </div>
+              </div>
+            </label>
+          `).join('')}
+        </div>
     </div>
   `;
 
-  setModal('Create Your Player', body, `
-    <button class="btn" onclick="closeModal()">Cancel</button>
-    <button class="btn primary" onclick="startCareerFromCreator()">Start Career</button>
-  `);
-}
+    const footHTML = `
+      <button class="btn primary" id="btnCreatePlayer">Start Career</button>
+    `;
 
-  function randomizeName(){
-    try {
-      const first = ["Kenny","Jayden","Marcus","Darius","Eli","Noah","Ty","Chris","Jordan","Malik","Cameron","Drew","Logan","Zeke","Mason"];
-      const last  = ["King","Johnson","Carter","Harris","Walker","Reed","Bennett","Collins","Moore","Brooks","Sanders","Foster","Allen","Graham","Turner"];
-      if(!window.__draftPlayer) window.__draftPlayer = { name: "", position: "QB", highSchool: "", style: "Pocket", height: "", weight: "", hometown: "", jerseyNumber: "" };
-      window.__draftPlayer.name = `${pick(first)} ${pick(last)}`;
-      const el = document.getElementById("cp_name");
-      if(el) {
-        el.value = window.__draftPlayer.name;
-        // Trigger input event to ensure the value is properly set
-        el.dispatchEvent(new Event('input', { bubbles: true }));
-      }
-    } catch(e) {
-      console.error('randomizeName error:', e);
-    }
-  }
-  function randomizeSchool(){
-    try {
-      const cities = ["Lake Wales","Tampa","Orlando","Miami","Jacksonville","Sarasota","Lakeland","Gainesville","Tallahassee","Pensacola"];
-      const mascots = ["High","Prep","Central","North","South","East","West","Academy"];
-      if(!window.__draftPlayer) window.__draftPlayer = { name: "", position: "QB", highSchool: "", style: "Pocket", height: "", weight: "", hometown: "", jerseyNumber: "" };
-      window.__draftPlayer.highSchool = `${pick(cities)} ${pick(mascots)} HS`;
-      const el = document.getElementById("cp_school");
-      if(el) {
-        el.value = window.__draftPlayer.highSchool;
-        // Trigger input event to ensure the value is properly set
-        el.dispatchEvent(new Event('input', { bubbles: true }));
-      }
-    } catch(e) {
-      console.error('randomizeSchool error:', e);
-    }
-  }
+    openModal('Create Your Player', bodyHTML, footHTML);
 
-  function randomizeHeight(){
-    try {
-      const feet = [5, 6];
-      const inches = Array.from({length: 12}, (_, i) => i);
-      const f = pick(feet);
-      const i = pick(inches);
-      if(!window.__draftPlayer) window.__draftPlayer = { name: "", position: "QB", highSchool: "", style: "Pocket", height: "", weight: "", hometown: "", jerseyNumber: "" };
-      window.__draftPlayer.height = `${f}'${i}"`;
-      const el = document.getElementById("cp_height");
-      if(el) {
-        el.value = window.__draftPlayer.height;
-        el.dispatchEvent(new Event('input', { bubbles: true }));
-      }
-    } catch(e) {
-      console.error('randomizeHeight error:', e);
-    }
-  }
+    $('#cp_name').oninput = (e) => { if(window.__draftPlayer) window.__draftPlayer.name = e.target.value; };
+    $('#cp_school').oninput = (e) => { if(window.__draftPlayer) window.__draftPlayer.highSchool = e.target.value; };
+    $('#cp_pos').onchange = (e) => { handlePositionChange(e.target.value); };
+    $('#cp_height').oninput = (e) => { if(window.__draftPlayer) window.__draftPlayer.height = e.target.value; };
+    $('#cp_weight').oninput = (e) => { if(window.__draftPlayer) window.__draftPlayer.weight = e.target.value; };
+    $('#cp_hometown').oninput = (e) => { if(window.__draftPlayer) window.__draftPlayer.hometown = e.target.value; };
+    $('#cp_jersey').oninput = (e) => { if(window.__draftPlayer) window.__draftPlayer.jerseyNumber = e.target.value; };
+    
+    $$('input[name="pstyle"]').forEach(r => {
+      r.onchange = (e) => { handleStyleChange(e.target.value); };
+    });
 
-  function randomizeWeight(){
-    try {
-      const weights = [180, 185, 190, 195, 200, 205, 210, 215, 220, 225, 230, 235, 240, 245, 250, 255, 260, 265, 270, 275, 280];
-      if(!window.__draftPlayer) window.__draftPlayer = { name: "", position: "QB", highSchool: "", style: "Pocket", height: "", weight: "", hometown: "", jerseyNumber: "" };
-      window.__draftPlayer.weight = `${pick(weights)} lbs`;
-      const el = document.getElementById("cp_weight");
-      if(el) {
-        el.value = window.__draftPlayer.weight;
-        el.dispatchEvent(new Event('input', { bubbles: true }));
-      }
-    } catch(e) {
-      console.error('randomizeWeight error:', e);
-    }
-  }
+    $('#btnCreatePlayer').onclick = () => {
+      const name = $('#cp_name').value.trim();
+      const pos = $('#cp_pos').value;
+      const style = $$('input[name="pstyle"]:checked')[0]?.value || styles[0].id;
+      const hs = $('#cp_school').value.trim();
+      const height = $('#cp_height').value.trim();
+      const weight = $('#cp_weight').value.trim();
+      const hometown = $('#cp_hometown').value.trim();
+      const jerseyNumber = $('#cp_jersey').value.trim();
 
-  function randomizeHometown(){
-    try {
-      const cities = ["Miami", "Tampa", "Orlando", "Jacksonville", "Tallahassee", "Gainesville", "Fort Lauderdale", "Pensacola", "Sarasota", "Lakeland", "West Palm Beach", "Clearwater", "St. Petersburg", "Hialeah", "Port St. Lucie"];
-      const states = ["FL", "GA", "AL", "SC", "NC", "TN"];
-      if(!window.__draftPlayer) window.__draftPlayer = { name: "", position: "QB", highSchool: "", style: "Pocket", height: "", weight: "", hometown: "", jerseyNumber: "" };
-      window.__draftPlayer.hometown = `${pick(cities)}, ${pick(states)}`;
-      const el = document.getElementById("cp_hometown");
-      if(el) {
-        el.value = window.__draftPlayer.hometown;
-        el.dispatchEvent(new Event('input', { bubbles: true }));
-      }
-    } catch(e) {
-      console.error('randomizeHometown error:', e);
-    }
-  }
-
-  // Expose randomizer functions immediately after definition
-  window.randomizeName = randomizeName;
-  window.randomizeSchool = randomizeSchool;
-  window.randomizeHeight = randomizeHeight;
-  window.randomizeWeight = randomizeWeight;
-  window.randomizeHometown = randomizeHometown;
-function startCareerFromCreator(){
-  const d = window.__draftPlayer || {};
-  const name = (d.name||"").trim();
-  const hs = (d.highSchool||"").trim();
-  if(!name){ toast("Please enter a player name."); return; }
-  if(!hs){ toast("Please enter a high school name."); return; }
-  const pos = d.position || "QB";
-  const style = d.style || getStylesForPosition(pos)[0].id;
-
-  const st = loadState();
-  st.player = basePlayerFromArchetype(pos, style);
-  st.player.name = name;
-  st.player.position = pos;
-  st.player.archetype = style;
-  st.player.highSchool = hs;
-  st.player.height = (d.height || "").trim() || "6'0\"";
-  st.player.weight = (d.weight || "").trim() || "200 lbs";
-  st.player.hometown = (d.hometown || "").trim() || "Unknown";
-  st.player.jerseyNumber = (d.jerseyNumber || "").trim() || "00";
-
-  // Career reset
-  st.career = { year:1, week:1, maxWeeks:12, recordW:0, recordL:0, inPost:false, postWeek:0, jobId:'none' };
-  st.money = 250;
-  st.xp = 0;
-  st.level = 1;
-  st.skillPoints = 0;
-  st.energy = 100;
-  st.hours = 25;
-  st.prep = 0;
-  st.inventory = st.inventory || { owned:[], equipped:{ shoes:null, gloves:null, accessory:null, training:null, recovery:null } };
-  st.gameStats = defaultState().gameStats;
-  st.statsBase = {
-    throwPower: st.player.throwPower,
-    accuracy: st.player.accuracy,
-    speed: st.player.speed,
-    stamina: st.player.stamina,
-    strength: st.player.strength
-  };
-
-  st.log = [];
-  logPush(st, "Career Started", `${name} begins at ${hs} as a ${pos} (${style}).`);
-  saveState(st);
-  closeModal();
-  render(st);
-}
-
-
-  function doAction(s, kind, hours){
-    hours = Number(hours)||1;
-    if(!s.player) return;
-    if(s.hours < hours){
-      logPush(s, 'Not enough hours', `You only have ${s.hours} hour(s) left this week.`);
+      if(!name || !hs) {
+        alert('Please fill in name and high school.');
       return;
     }
-    const costs = {
-      train: { e:-12, xp:+28, prep:0 },
-      rest:  { e:+18, xp:+6,  prep:0 },
-      study: { e:-8,  xp:+18, prep:+10 },
+
+      startCareerFromCreator({ name, pos, style, hs, height, weight, hometown, jerseyNumber });
     };
-    const c = costs[kind];
-    if(!c) return;
-
-    const totalE = c.e * hours;
-    if(totalE < 0 && s.energy < Math.abs(totalE)){
-      logPush(s, 'Too tired', `You need more energy for that. Try resting or buying energy items.`);
-      return;
-    }
-
-    s.hours = clamp(s.hours - hours, 0, WEEK_HOURS);
-    s.energy = clamp(s.energy + totalE, 0, MAX_ENERGY);
-    const gainedXP = rint(c.xp * hours);
-    s.xp += gainedXP;
-    if(c.prep) s.prep += rint(c.prep * hours);
-
-    logPush(s, kind==='train'?'Training':'Action', `${kind==='train'?'Trained':kind==='rest'?'Rested':'Studied'} ${hours}h. ${totalE>=0?'+':''}${totalE} energy, +${gainedXP} XP${c.prep?`, +${rint(c.prep*hours)} prep`:''}.`);
-    handleLevelUp(s);
-    save(s);
-    render(s);
   }
 
-  function handleLevelUp(s){
-    let needed = xpNeeded(s.level);
-    while(s.xp >= needed){
-      s.xp -= needed;
-      s.level += 1;
-      s.skillPoints += 3;
-      // tiny base growth per level
-      for(const k of Object.keys(s.statsBase)){
-        s.statsBase[k] = clamp(s.statsBase[k] + 1, 40, 99);
+  function getStylesForPosition(pos) {
+    return STYLES_BY_POS[pos] || [];
+  }
+
+  function handlePositionChange(newPos) {
+    if(!window.__draftPlayer) return;
+    window.__draftPlayer.position = newPos;
+    const styles = getStylesForPosition(newPos);
+    window.__draftPlayer.style = styles[0].id;
+    openCreatePlayer(loadState());
+  }
+
+  function handleStyleChange(newStyle) {
+    if(!window.__draftPlayer) return;
+    window.__draftPlayer.style = newStyle;
+    $$('.radioCard').forEach(card => {
+      card.classList.remove('active');
+      if(card.querySelector('input').value === newStyle) {
+        card.classList.add('active');
+        card.querySelector('input').checked = true;
       }
-      logPush(s, 'Level Up', `You reached Level ${s.level}! +3 skill points.`);
-      needed = xpNeeded(s.level);
+    });
+  }
+
+  function randomizeName() {
+    if(!window.__draftPlayer) return;
+    const firstNames = ["Alex", "Blake", "Cameron", "Drew", "Ethan", "Finn", "Grant", "Hayden", "Isaiah", "Jake", "Kai", "Logan", "Mason", "Noah", "Owen", "Parker", "Quinn", "Riley", "Sam", "Tyler"];
+    const lastNames = ["Anderson", "Brooks", "Carter", "Davis", "Evans", "Foster", "Gray", "Harris", "Jackson", "Kelly", "Lewis", "Martinez", "Nelson", "Parker", "Reed", "Smith", "Taylor", "Walker", "White", "Young"];
+    window.__draftPlayer.name = `${pick(firstNames)} ${pick(lastNames)}`;
+    const el = $('#cp_name');
+    if(el) {
+      el.value = window.__draftPlayer.name;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
     }
   }
 
-  function weeklyJobApply(s){
-    const job = JOBS.find(j=>j.id===s.career.jobId) || JOBS[0];
-    if(job.id === 'none') return;
-    // If you have hours, deduct; otherwise, still pay but lose energy a bit (overworked)
-    s.money += job.pay;
-    const before = s.hours;
-    s.hours = clamp(s.hours - job.hours, 0, WEEK_HOURS);
-    if(before < job.hours){
-      s.energy = clamp(s.energy - 10, 0, MAX_ENERGY);
-      logPush(s, 'Payday', `Job: ${job.name}. Earned ${fmtMoney(job.pay)}. You were short on hours and got overworked (-10 energy).`);
-    } else {
-      logPush(s, 'Payday', `Job: ${job.name}. Earned ${fmtMoney(job.pay)}. Job hours auto-used: ${job.hours}h.`);
+  function randomizeSchool() {
+    if(!window.__draftPlayer) return;
+    const schools = ["Lincoln High", "Roosevelt High", "Washington High", "Jefferson High", "Madison High", "Adams High", "Jackson High", "Monroe High", "Harrison High", "Van Buren High"];
+    window.__draftPlayer.highSchool = pick(schools);
+    const el = $('#cp_school');
+    if(el) {
+      el.value = window.__draftPlayer.highSchool;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
     }
+  }
+
+  function randomizeHeight() {
+    if(!window.__draftPlayer) return;
+    const feet = rint(5, 7);
+    const inches = rint(0, 11);
+    window.__draftPlayer.height = `${feet}'${inches}"`;
+    const el = $('#cp_height');
+    if(el) {
+      el.value = window.__draftPlayer.height;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  }
+
+  function randomizeWeight() {
+    if(!window.__draftPlayer) return;
+    const weight = rint(170, 280);
+    window.__draftPlayer.weight = `${weight} lbs`;
+    const el = $('#cp_weight');
+    if(el) {
+      el.value = window.__draftPlayer.weight;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  }
+
+  function randomizeHometown() {
+    if(!window.__draftPlayer) return;
+    const cities = ["Miami", "Los Angeles", "Chicago", "Houston", "Phoenix", "Philadelphia", "San Antonio", "San Diego", "Dallas", "San Jose", "Austin", "Jacksonville", "Fort Worth", "Columbus", "Charlotte", "San Francisco", "Indianapolis", "Seattle", "Denver", "Boston"];
+    const states = ["FL", "CA", "TX", "NY", "IL", "PA", "OH", "GA", "NC", "MI"];
+    window.__draftPlayer.hometown = `${pick(cities)}, ${pick(states)}`;
+    const el = $('#cp_hometown');
+    if(el) {
+      el.value = window.__draftPlayer.hometown;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  }
+
+  function randomizeJersey() {
+    if(!window.__draftPlayer) return;
+    window.__draftPlayer.jerseyNumber = String(rint(1, 99)).padStart(2, '0');
+    const el = $('#cp_jersey');
+    if(el) {
+      el.value = window.__draftPlayer.jerseyNumber;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  }
+
+  function startCareerFromCreator(d){
+    const st = loadState();
+    const baseStats = basePlayerFromArchetype(d.pos, d.style);
+    
+    st.player = {
+      name: d.name,
+      position: d.pos,
+      archetype: d.style,
+      highSchool: d.hs,
+      height: d.height || "6'0\"",
+      weight: d.weight || "200 lbs",
+      hometown: d.hometown || "Unknown",
+      jerseyNumber: d.jerseyNumber || "00",
+      ...baseStats
+    };
+    
+    st.statsBase = {
+      throwPower: st.player.throwPower,
+      accuracy: st.player.accuracy,
+      speed: st.player.speed,
+      stamina: st.player.stamina,
+      strength: st.player.strength
+    };
+    
+    st.career = { year:1, week:1, maxWeeks:12, recordW:0, recordL:0, inPost:false, postWeek:0, jobId:'none' };
+    st.gameStats = defaultState().gameStats;
+    save(st);
+    closeModal();
+    render(st);
+  }
+
+  // Game logic
+  function derivedStats(s){
+    if (!s.statsBase) return {};
+    const base = { ...s.statsBase };
+    const inv = s.inventory.equipped || {};
+    Object.keys(inv).forEach(slot => {
+      const item = STORE_ITEMS.find(x => x.id === inv[slot]);
+      if(item && item.mods) {
+        Object.keys(item.mods).forEach(k => {
+          base[k] = clamp((base[k] || 0) + item.mods[k], 0, 99);
+        });
+      }
+    });
+    return base;
+  }
+
+  function calcOVR(stats){
+    if(!stats) return 0;
+    const pos = loadState().player?.position || 'QB';
+    const weights = {
+      QB: { throwPower:0.3, accuracy:0.3, speed:0.15, stamina:0.15, strength:0.1 },
+      RB: { throwPower:0.05, accuracy:0.1, speed:0.3, stamina:0.3, strength:0.25 },
+      WR: { throwPower:0.05, accuracy:0.25, speed:0.35, stamina:0.2, strength:0.15 },
+      TE: { throwPower:0.05, accuracy:0.2, speed:0.2, stamina:0.25, strength:0.3 },
+      LB: { throwPower:0.05, accuracy:0.1, speed:0.25, stamina:0.25, strength:0.35 },
+      CB: { throwPower:0.05, accuracy:0.15, speed:0.4, stamina:0.25, strength:0.15 },
+      S: { throwPower:0.05, accuracy:0.15, speed:0.3, stamina:0.3, strength:0.2 },
+      DL: { throwPower:0.05, accuracy:0.1, speed:0.2, stamina:0.25, strength:0.4 }
+    };
+    const w = weights[pos] || weights.QB;
+    let sum = 0;
+    let total = 0;
+    Object.keys(w).forEach(k => {
+      sum += (stats[k] || 0) * w[k];
+      total += w[k];
+    });
+    return Math.round(sum / total);
+  }
+
+  function xpNeeded(level) {
+    return 100 + (level - 1) * 50;
   }
 
   function startNewWeek(s){
-    // partial energy recharge each week
-    const gain = rint(10 + s.level * 0.5);
-    s.energy = clamp(s.energy + gain, 0, MAX_ENERGY);
-    s.hours = WEEK_HOURS;
-    s.prep = 0;
-    logPush(s, 'New Week', `Energy partially recharged (+${gain}). Weekly hours reset (${WEEK_HOURS}h).`);
+    s.career.week += 1;
+    s.energy = clamp(s.energy + 10, 0, MAX_ENERGY);
+    s.hours = MAX_HOURS;
+    if(s.career.week > s.career.maxWeeks) {
+      s.career.week = 1;
+      s.career.year += 1;
+      if(s.career.year > 4) {
+        logPush(s, 'Graduated', `${s.player.name} graduated from high school!`);
+      }
+    }
     weeklyJobApply(s);
+  }
+
+  function weeklyJobApply(s){
+    const job = JOBS.find(j => j.id === s.career.jobId);
+    if(job && job.hours > 0) {
+      s.hours = clamp(s.hours - job.hours, 0, MAX_HOURS);
+      s.money += job.pay;
+      logPush(s, 'Job', `Earned ${fmtMoney(job.pay)} from ${job.name}.`);
+    }
   }
 
   function simulateGame(s){
     const stats = derivedStats(s);
     const ovr = calcOVR(stats);
-    // Opponent revealed only on game week UI; internally we generate now
     const opp = clamp(rint(ovr + (Math.random()*18 - 9)), 55, 99);
 
-    // performance factors
-    const prepBonus = clamp(s.prep, 0, 60) / 100; // up to +0.6
-    const energyFactor = (0.6 + (s.energy/MAX_ENERGY)*0.4); // 0.6..1.0
-    const base = (ovr - opp) / 28; // -1..1ish
+    const prepBonus = clamp(s.prep, 0, 60) / 100;
+    const energyFactor = (0.6 + (s.energy/MAX_ENERGY)*0.4);
+    const base = (ovr - opp) / 28;
     const style = s.player.archetype;
     let variance = 0.10;
     if(style === 'Gunslinger') variance = 0.16;
@@ -707,7 +548,6 @@ function startCareerFromCreator(){
     const winP = clamp(0.48 + base*0.22 + prepBonus*0.10, 0.12, 0.88);
     const didWin = Math.random() < winP;
 
-    // produce a scoreline
     const offense = (ovr*energyFactor) + (prepBonus*12) + (Math.random()*12 - 6);
     const defense = (opp*0.95) + (Math.random()*10 - 5);
     let ptsFor = clamp(rint(offense - defense + 24), 7, 56);
@@ -715,12 +555,14 @@ function startCareerFromCreator(){
     if(didWin && ptsFor <= ptsAg) ptsFor = ptsAg + rint(3 + Math.random()*10);
     if(!didWin && ptsFor >= ptsAg) ptsAg = ptsFor + rint(3 + Math.random()*10);
 
-    // Generate game stats based on position and performance
     const pos = s.player.position;
     const perfFactor = energyFactor * (1 + prepBonus * 0.3);
-    const gs = s.gameStats || { gamesPlayed: 0, passingYards: 0, passingTDs: 0, interceptions: 0, completions: 0, attempts: 0, rushingYards: 0, rushingTDs: 0, carries: 0, receptions: 0, receivingYards: 0, receivingTDs: 0, tackles: 0, sacks: 0, defInterceptions: 0, forcedFumbles: 0, fumbleRecoveries: 0, defTDs: 0, gameLog: [], seasonStats: {} };
     
-    // Initialize current game stats
+    // Scale stats based on overall rating (better players get better stats)
+    const ovrMultiplier = clamp((ovr - 50) / 50, 0.5, 1.5);
+    
+    const gs = s.gameStats || defaultState().gameStats;
+    
     const gameStats = {
       week: s.career.week,
       year: s.career.year,
@@ -738,21 +580,24 @@ function startCareerFromCreator(){
     gs.gamesPlayed += 1;
     
     if(pos === 'QB'){
-      const att = rint(20 + stats.throwPower * 0.3 + Math.random() * 15);
+      const baseAtt = 15 + stats.throwPower * 0.2 + Math.random() * 10;
+      const att = rint(baseAtt * ovrMultiplier);
       const compRate = clamp(stats.accuracy / 100 + (perfFactor - 1) * 0.1, 0.45, 0.85);
       const comp = rint(att * compRate);
-      const yards = rint(comp * (8 + stats.throwPower * 0.15 + Math.random() * 8));
-      const tds = rint(comp * 0.12 + Math.random() * 2);
+      const baseYards = comp * (7 + stats.throwPower * 0.12 + Math.random() * 6);
+      const yards = rint(baseYards * ovrMultiplier);
+      const baseTDs = comp * 0.1 + Math.random() * 1.5;
+      const tds = rint(baseTDs * ovrMultiplier);
       const ints = rint((att - comp) * 0.08 + Math.random() * 1.5);
-      const rushYds = rint(stats.speed * 0.5 + Math.random() * 30);
-      const rushTDs = Math.random() < 0.15 ? 1 : 0;
+      const rushYds = rint((stats.speed * 0.4 + Math.random() * 20) * ovrMultiplier);
+      const rushTDs = Math.random() < (0.12 * ovrMultiplier) ? 1 : 0;
       
       gameStats.attempts = att;
       gameStats.completions = comp;
       gameStats.passingYards = yards;
       gameStats.passingTDs = tds;
       gameStats.interceptions = ints;
-      gameStats.carries = rint(3 + Math.random() * 5);
+      gameStats.carries = rint((3 + Math.random() * 4) * ovrMultiplier);
       gameStats.rushingYards = rushYds;
       gameStats.rushingTDs = rushTDs;
       const fumbles = Math.random() < 0.12 ? rint(1 + Math.random() * 1.5) : 0;
@@ -768,13 +613,17 @@ function startCareerFromCreator(){
       gs.rushingTDs += rushTDs;
       gs.fumbles += fumbles;
     } else if(pos === 'RB'){
-      const carries = rint(15 + stats.stamina * 0.2 + Math.random() * 10);
+      const baseCarries = 12 + stats.stamina * 0.15 + Math.random() * 8;
+      const carries = rint(baseCarries * ovrMultiplier);
       const ypc = 3 + stats.speed * 0.08 + stats.strength * 0.05 + (perfFactor - 1) * 2;
-      const yards = rint(carries * ypc + Math.random() * 50);
-      const tds = rint(carries * 0.08 + Math.random() * 1.5);
-      const rec = rint(2 + stats.accuracy * 0.05 + Math.random() * 4);
-      const recYds = rint(rec * (5 + stats.speed * 0.1 + Math.random() * 5));
-      const recTDs = Math.random() < 0.1 ? 1 : 0;
+      const baseYards = carries * ypc + Math.random() * 40;
+      const yards = rint(baseYards * ovrMultiplier);
+      const baseTDs = carries * 0.08 + Math.random() * 1.2;
+      const tds = rint(baseTDs * ovrMultiplier);
+      const baseRec = 2 + stats.accuracy * 0.05 + Math.random() * 3;
+      const rec = rint(baseRec * ovrMultiplier);
+      const recYds = rint((rec * (5 + stats.speed * 0.1 + Math.random() * 5)) * ovrMultiplier);
+      const recTDs = Math.random() < (0.1 * ovrMultiplier) ? 1 : 0;
       
       gameStats.carries = carries;
       gameStats.rushingYards = yards;
@@ -793,19 +642,22 @@ function startCareerFromCreator(){
       gs.receivingTDs += recTDs;
       gs.fumbles += fumbles;
     } else if(pos === 'WR' || pos === 'TE'){
-      const targets = rint(6 + stats.accuracy * 0.15 + Math.random() * 6);
+      const baseTargets = 5 + stats.accuracy * 0.12 + Math.random() * 5;
+      const targets = rint(baseTargets * ovrMultiplier);
       const catchRate = clamp(stats.accuracy / 100 + (perfFactor - 1) * 0.15, 0.5, 0.9);
       const rec = rint(targets * catchRate);
       const ypr = 8 + stats.speed * 0.2 + Math.random() * 8;
-      const yards = rint(rec * ypr);
-      const tds = rint(rec * 0.15 + Math.random() * 1.5);
-      const rushYds = pos === 'WR' ? rint(Math.random() * 20) : 0;
+      const baseYards = rec * ypr;
+      const yards = rint(baseYards * ovrMultiplier);
+      const baseTDs = rec * 0.12 + Math.random() * 1.2;
+      const tds = rint(baseTDs * ovrMultiplier);
+      const rushYds = pos === 'WR' ? rint((Math.random() * 15) * ovrMultiplier) : 0;
       
       gameStats.receptions = rec;
       gameStats.receivingYards = yards;
       gameStats.receivingTDs = tds;
       if(rushYds > 0) {
-        gameStats.carries = rint(1 + Math.random() * 2);
+        gameStats.carries = rint((1 + Math.random() * 2) * ovrMultiplier);
         gameStats.rushingYards = rushYds;
       }
       
@@ -819,15 +671,14 @@ function startCareerFromCreator(){
       const fumbles = Math.random() < 0.08 ? rint(1 + Math.random() * 1.5) : 0;
       gameStats.fumbles = fumbles;
       gs.fumbles += fumbles;
-    } else {
-      // Defense positions (LB, CB, S, DL)
-      const baseTackles = pos === 'DL' ? 4 : pos === 'LB' ? 8 : 3;
-      const tackles = rint(baseTackles + stats.strength * 0.1 + stats.stamina * 0.1 + Math.random() * 4);
-      const sacks = pos === 'DL' || pos === 'LB' ? (Math.random() < 0.4 ? rint(1 + Math.random() * 1.5) : 0) : 0;
-      const ints = (pos === 'CB' || pos === 'S') ? (Math.random() < 0.25 ? 1 : 0) : 0;
-      const ff = Math.random() < 0.15 ? 1 : 0;
-      const fr = Math.random() < 0.2 ? 1 : 0;
-      const defTD = (ints > 0 || fr > 0) && Math.random() < 0.3 ? 1 : 0;
+      } else {
+      const baseTackles = pos === 'DL' ? 3 : pos === 'LB' ? 6 : 2;
+      const tackles = rint((baseTackles + stats.strength * 0.08 + stats.stamina * 0.08 + Math.random() * 3) * ovrMultiplier);
+      const sacks = pos === 'DL' || pos === 'LB' ? (Math.random() < (0.35 * ovrMultiplier) ? rint((1 + Math.random() * 1.2) * ovrMultiplier) : 0) : 0;
+      const ints = (pos === 'CB' || pos === 'S') ? (Math.random() < (0.2 * ovrMultiplier) ? 1 : 0) : 0;
+      const ff = Math.random() < (0.12 * ovrMultiplier) ? 1 : 0;
+      const fr = Math.random() < (0.15 * ovrMultiplier) ? 1 : 0;
+      const defTD = (ints > 0 || fr > 0) && Math.random() < (0.25 * ovrMultiplier) ? 1 : 0;
       
       gameStats.tackles = tackles;
       gameStats.sacks = sacks;
@@ -844,11 +695,9 @@ function startCareerFromCreator(){
       gs.defTDs += defTD;
     }
     
-    // Add to game log
     if(!gs.gameLog) gs.gameLog = [];
     gs.gameLog.push(gameStats);
     
-    // Update season stats
     const seasonKey = `Y${s.career.year}`;
     if(!gs.seasonStats) gs.seasonStats = {};
     if(!gs.seasonStats[seasonKey]) {
@@ -871,238 +720,54 @@ function startCareerFromCreator(){
     
     s.gameStats = gs;
 
-    // XP: base on closeness and performance
     const margin = Math.abs(ptsFor - ptsAg);
     const xpGain = clamp(rint(55 + (didWin?30:10) + prepBonus*35 + (energyFactor*20) - margin*0.8 + (Math.random()*10)), 25, 140);
     s.xp += xpGain;
 
-    // energy cost
     const eCost = clamp(rint(22 + (Math.random()*10) - s.level*0.3), 12, 35);
     s.energy = clamp(s.energy - eCost, 0, MAX_ENERGY);
+    s.prep = clamp(s.prep - 15, 0, 60);
 
-    // update record and week progression
-    if(didWin) s.career.recordW += 1; else s.career.recordL += 1;
+    if(didWin) {
+      s.career.recordW += 1;
+      logPush(s, 'Win', `Won ${ptsFor}-${ptsAg} vs OVR ${opp} opponent.`);
+    } else {
+      s.career.recordL += 1;
+      logPush(s, 'Loss', `Lost ${ptsAg}-${ptsFor} vs OVR ${opp} opponent.`);
+    }
 
-    const weekLabel = s.career.inPost ? `Postseason G${s.career.postWeek}/3` : `Week ${s.career.week}/${s.career.maxWeeks}`;
-    logPush(s, 'Game', `${weekLabel} vs Opponent (OVR ${opp}) — ${didWin?'W':'L'} ${ptsFor}-${ptsAg}. (+${xpGain} XP, -${eCost} energy)`);
+    while(s.xp >= xpNeeded(s.level)) {
+      s.xp -= xpNeeded(s.level);
+      s.level += 1;
+      s.skillPoints += 1;
+      logPush(s, 'Level Up', `Reached level ${s.level}!`);
+    }
 
-    handleLevelUp(s);
-
-    // advance schedule within the "Play Game" action
-    if(!s.career.inPost){
-      if(s.career.week < s.career.maxWeeks){
-        s.career.week += 1;
-      } else {
-        // decide postseason
-        const qualifies = s.career.recordW >= 8;
-        if(qualifies){
+    if(s.career.week === s.career.maxWeeks && !s.career.inPost) {
+      const winPct = s.career.recordW / (s.career.recordW + s.career.recordL);
+      if(winPct >= 0.6) {
           s.career.inPost = true;
           s.career.postWeek = 1;
-          logPush(s, 'Playoffs', 'You qualified for the postseason! Up to 3 games.');
-        } else {
-          endOfSeason(s);
-        }
-      }
-    } else {
-      // in postseason
-      if(s.career.postWeek < 3){
-        s.career.postWeek += 1;
-      } else {
-        endOfSeason(s);
+        logPush(s, 'Playoffs', 'Made the playoffs!');
       }
     }
-  }
 
-  function endOfSeason(s){
-    const y = s.career.year;
-    const rec = `${s.career.recordW}-${s.career.recordL}`;
-    logPush(s, 'Season End', `High School Year ${y} complete. Record: ${rec}.`);
-    // reset for next year or end
-    if(y >= 4){
-      promptCommit(s);
-      return;
-    }
-    s.career.year += 1;
-    s.career.week = 1;
-    s.career.maxWeeks = 12;
-    s.career.recordW = 0;
-    s.career.recordL = 0;
+    if(s.career.inPost) {
+      s.career.postWeek += 1;
+      if(s.career.postWeek > 3) {
     s.career.inPost = false;
     s.career.postWeek = 0;
+        startNewWeek(s);
+      }
+    } else {
     startNewWeek(s);
   }
 
-  function promptCommit(s){
-    openModal({
-      title: 'Recruiting — Commit to a College',
-      bodyHTML: `
-        <div class="muted">You finished 4 years of high school. For now, the game ends here — but we can expand to college next.</div>
-        <div class="form">
-          <label class="field">
-            <span>Choose a college to commit to</span>
-            <select id="commit">
-              <option>State University</option>
-              <option>Coastal Tech</option>
-              <option>Midwest A&amp;M</option>
-              <option>North Valley College</option>
-              <option>Sunrise University</option>
-            </select>
-          </label>
-        </div>
-      `,
-      footHTML: `<button class="btn primary" id="btnCommit">Commit</button>`,
-      onClose: () => {}
-    });
-    $('#btnCommit').onclick = () => {
-      const college = $('#commit').value;
-      logPush(s, 'Committed', `${s.player.name} committed to ${college}. (End of demo)`);
       save(s);
-      $('#modal').close();
       render(s);
-    };
   }
 
-  function openSkills(s){
-    const stats = derivedStats(s);
-    const keys = [
-      ['throwPower','Throw Power'],
-      ['accuracy','Accuracy'],
-      ['speed','Speed'],
-      ['strength','Strength'],
-      ['stamina','Stamina'],
-    ];
-
-    const rows = keys.map(([k, label]) => {
-      const base = s.statsBase[k];
-      const shown = stats[k];
-      const bonus = shown - base;
-      return `
-        <tr>
-          <td>${label}</td>
-          <td><span class="pill2">${shown}${bonus?` <span class="muted">(base ${base}${bonus>0?` +${bonus}`:''})</span>`:''}</span></td>
-          <td class="right"><button class="btn small" data-up="${k}" ${s.skillPoints<=0?'disabled':''}>+1</button></td>
-        </tr>
-      `;
-    }).join('');
-
-    openModal({
-      title: 'Spend Skill Points',
-      bodyHTML: `
-        <div class="muted">Skill points available: <b>${s.skillPoints}</b></div>
-        <table class="table">
-          <thead><tr><th>Skill</th><th>Value</th><th class="right">Upgrade</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-        <div class="tiny muted">Upgrades increase your base stats. OVR is calculated from your equipped bonuses + base stats.</div>
-      `,
-      footHTML: `<button class="btn" id="closeSkills">Close</button>`,
-      onClose: () => {}
-    });
-
-    $('#closeSkills').onclick = () => $('#modal').close();
-
-    $$('button[data-up]').forEach(btn => {
-      btn.onclick = () => {
-        const k = btn.getAttribute('data-up');
-        if(s.skillPoints <= 0) return;
-        s.skillPoints -= 1;
-        s.statsBase[k] = clamp(s.statsBase[k] + 1, 40, 99);
-        logPush(s, 'Skill Up', `+1 ${k}.`);
-        save(s);
-        $('#modal').close();
-        render(s);
-      };
-    });
-  }
-
-  function openJobs(s){
-    const current = JOBS.find(j=>j.id===s.career.jobId) || JOBS[0];
-    const rows = JOBS.map(j => `
-      <tr>
-        <td><b>${j.name}</b><div class="tiny muted">${j.desc}</div></td>
-        <td>${j.hours}h</td>
-        <td>${fmtMoney(j.pay)}/wk</td>
-        <td class="right"><button class="btn small" data-job="${j.id}" ${j.id===current.id?'disabled':''}>Select</button></td>
-      </tr>
-    `).join('');
-
-    openModal({
-      title:'Choose a Part-time Job',
-      bodyHTML: `
-        <div class="muted">Your current job is <b>${current.name}</b>. Jobs pay weekly and automatically use hours each week.</div>
-        <table class="table">
-          <thead><tr><th>Job</th><th>Hours</th><th>Pay</th><th></th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-      `,
-      footHTML: `<button class="btn" id="closeJobs">Close</button>`,
-    });
-
-    $('#closeJobs').onclick = () => $('#modal').close();
-    $$('button[data-job]').forEach(btn => {
-      btn.onclick = () => {
-        const id = btn.getAttribute('data-job');
-        s.career.jobId = id;
-        const j = JOBS.find(x=>x.id===id) || JOBS[0];
-        logPush(s, 'Job Updated', `You are now working as: ${j.name} (${j.hours}h/week, ${fmtMoney(j.pay)}/week).`);
-        save(s);
-        $('#modal').close();
-        render(s);
-      };
-    });
-  }
-
-  function openStore(s){
-    const ownedCount = (id) => s.inventory.owned.filter(x=>x===id).length;
-    const eq = s.inventory.equipped;
-
-    const rows = STORE_ITEMS.map(it => {
-      const count = ownedCount(it.id);
-      const ownedText = it.type==='consumable'
-        ? (count>0 ? `<span class="pill2">Owned: ${count}</span>` : `<span class="pill2">Owned: 0</span>`)
-        : (Object.values(eq).includes(it.id) ? `<span class="pill2">Equipped</span>` : (count>0 ? `<span class="pill2">Owned</span>` : `<span class="pill2">—</span>`));
-      const afford = canAfford(s, it.price);
-      return `
-        <tr>
-          <td><b>${it.name}</b><div class="tiny muted">${it.desc}</div></td>
-          <td><span class="pill2">${it.type==='equipment' ? ('Equip • ' + (it.slot||'slot')) : 'Consumable'}</span></td>
-          <td>${fmtMoney(it.price)}</td>
-          <td>${ownedText}</td>
-          <td class="right"><button class="btn small" data-buy="${it.id}" ${afford?'':'disabled'}>Buy</button></td>
-        </tr>
-      `;
-    }).join('');
-
-    openModal({
-      title:'Store',
-      bodyHTML: `
-        <div class="muted">Money: <b>${fmtMoney(s.money)}</b></div>
-        <table class="table">
-          <thead><tr><th>Item</th><th>Type</th><th>Price</th><th>Owned</th><th class="right"></th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-        <div class="tiny muted">Equipment bonuses apply only when equipped. Consumables can be used from Inventory.</div>
-      `,
-      footHTML: `<button class="btn" id="closeStore">Close</button>`,
-    });
-    $('#closeStore').onclick = () => $('#modal').close();
-
-    $$('button[data-buy]').forEach(btn => {
-      btn.onclick = () => {
-        const id = btn.getAttribute('data-buy');
-        const it = STORE_ITEMS.find(x=>x.id===id);
-        if(!it) return;
-        if(!canAfford(s, it.price)) return;
-        s.money -= it.price;
-        addOwned(s, id);
-        logPush(s, 'Purchased', `Bought ${it.name} for ${fmtMoney(it.price)}.`);
-        save(s);
-        $('#modal').close();
-        render(s);
-      };
-    });
-  }
-
+  // Stats and Records systems
   function generateNPCPlayers(position, count = 8){
     const firstNames = ["Alex", "Blake", "Cameron", "Drew", "Ethan", "Finn", "Grant", "Hayden", "Isaiah", "Jake", "Kai", "Logan", "Mason", "Noah", "Owen", "Parker", "Quinn", "Riley", "Sam", "Tyler"];
     const lastNames = ["Anderson", "Brooks", "Carter", "Davis", "Evans", "Foster", "Gray", "Harris", "Jackson", "Kelly", "Lewis", "Martinez", "Nelson", "Parker", "Reed", "Smith", "Taylor", "Walker", "White", "Young"];
@@ -1125,21 +790,26 @@ function startCareerFromCreator(){
       const name = `${pick(firstNames)} ${pick(lastNames)}`;
       const stats = {};
       
-      // Generate stats with variance around base
-      Object.keys(base).forEach(key => {
-        const baseVal = base[key];
-        const variance = baseVal * 0.4; // ±40% variance
-        stats[key] = Math.max(0, baseVal + (Math.random() * variance * 2 - variance));
-      });
-      
-      // Random school year (1-4)
       const year = rint(1, 4);
       const schoolYear = getSchoolYear(year);
+      
+      if(year === 1){
+        Object.keys(base).forEach(key => {
+          stats[key] = 0;
+        });
+      } else {
+        const yearMultiplier = [0, 0.75, 0.9, 1.0][year - 1];
+        Object.keys(base).forEach(key => {
+          const baseVal = base[key];
+          const variance = baseVal * 0.4;
+          const scaledBase = baseVal * yearMultiplier;
+          stats[key] = Math.max(0, scaledBase + (Math.random() * variance * 2 - variance) * yearMultiplier);
+        });
+      }
       
       npcs.push({ name, stats, year, schoolYear });
     }
     
-    // Sort by primary stat for the position
     if(position === 'QB') npcs.sort((a, b) => b.stats.passingYards - a.stats.passingYards);
     else if(position === 'RB') npcs.sort((a, b) => b.stats.rushingYards - a.stats.rushingYards);
     else if(position === 'WR' || position === 'TE') npcs.sort((a, b) => b.stats.receivingYards - a.stats.receivingYards);
@@ -1148,26 +818,24 @@ function startCareerFromCreator(){
     return npcs;
   }
 
+  function getSchoolYear(year){
+    const yearMap = { 1: 'Freshman', 2: 'Sophomore', 3: 'Junior', 4: 'Senior' };
+    return yearMap[year] || `Year ${year}`;
+  }
+
   function openStats(s){
-    const gs = s.gameStats || { gamesPlayed: 0, passingYards: 0, passingTDs: 0, interceptions: 0, completions: 0, attempts: 0, rushingYards: 0, rushingTDs: 0, carries: 0, receptions: 0, receivingYards: 0, receivingTDs: 0, tackles: 0, sacks: 0, defInterceptions: 0, forcedFumbles: 0, fumbleRecoveries: 0, defTDs: 0, fumbles: 0, gameLog: [], seasonStats: {} };
+    const gs = s.gameStats || defaultState().gameStats;
     const pos = s.player.position;
     const playerSchoolYear = getSchoolYear(s.career.year);
     
-    // Get latest game stats
     const latestGame = gs.gameLog && gs.gameLog.length > 0 ? gs.gameLog[gs.gameLog.length - 1] : null;
-    
-    // Get current season stats
     const seasonKey = `Y${s.career.year}`;
     const seasonStats = gs.seasonStats && gs.seasonStats[seasonKey] ? gs.seasonStats[seasonKey] : null;
     const seasonGames = seasonStats ? seasonStats.gamesPlayed || 1 : 1;
-    
-    // Career totals
     const careerGames = gs.gamesPlayed || 1;
     
-    // Generate NPC players for comparison
     const npcPlayers = generateNPCPlayers(pos, 8);
     
-    // Build stat tables by category with NPC player list
     const buildPassingStats = (stats, games, npcs) => {
       if(pos !== 'QB') return '';
       const playerPerGame = games > 0 ? games : 1;
@@ -1192,8 +860,8 @@ function startCareerFromCreator(){
         const attempts = npc.stats.attempts || 0;
         const interceptions = npc.stats.interceptions || 0;
         const npcCompPct = attempts > 0 ? ((completions / attempts) * 100).toFixed(1) : '0.0';
-        return `
-          <tr>
+      return `
+        <tr>
             <td>${npc.name} <span class="muted" style="font-size:11px;">(${npc.schoolYear})</span></td>
             <td style="text-align:right;">${passingYards.toFixed(1)}</td>
             <td style="text-align:right;">${passingTDs.toFixed(1)}</td>
@@ -1201,10 +869,10 @@ function startCareerFromCreator(){
             <td style="text-align:right;">${Math.round(attempts)}</td>
             <td style="text-align:right;">${npcCompPct}%</td>
             <td style="text-align:right;">${interceptions.toFixed(1)}</td>
-          </tr>
-        `;
-      }).join('');
-      
+        </tr>
+      `;
+    }).join('');
+
       return playerRow + npcRows;
     };
     
@@ -1235,7 +903,7 @@ function startCareerFromCreator(){
             <td style="text-align:right;">${rushingTDs.toFixed(1)}</td>
             <td style="text-align:right;">${carries.toFixed(1)}</td>
             <td style="text-align:right;">${npcYPC}</td>
-          </tr>
+      </tr>
         `;
       }).join('');
       
@@ -1262,17 +930,17 @@ function startCareerFromCreator(){
         const receivingYards = npc.stats.receivingYards || 0;
         const receivingTDs = npc.stats.receivingTDs || 0;
         const npcYPR = receptions > 0 ? (receivingYards / receptions).toFixed(1) : '0.0';
-        return `
-          <tr>
+      return `
+        <tr>
             <td>${npc.name} <span class="muted" style="font-size:11px;">(${npc.schoolYear})</span></td>
             <td style="text-align:right;">${receptions.toFixed(1)}</td>
             <td style="text-align:right;">${receivingYards.toFixed(1)}</td>
             <td style="text-align:right;">${receivingTDs.toFixed(1)}</td>
             <td style="text-align:right;">${npcYPR}</td>
-          </tr>
-        `;
-      }).join('');
-      
+        </tr>
+      `;
+    }).join('');
+
       return playerRow + npcRows;
     };
     
@@ -1291,15 +959,15 @@ function startCareerFromCreator(){
       const npcRows = npcs.map(npc => {
         const fumbles = npc.stats.fumbles || 0;
         const interceptions = npc.stats.interceptions || 0;
-        return `
-          <tr>
+      return `
+        <tr>
             <td>${npc.name} <span class="muted" style="font-size:11px;">(${npc.schoolYear})</span></td>
             ${pos === 'QB' ? `<td style="text-align:right;">${interceptions.toFixed(1)}</td>` : ''}
             <td style="text-align:right;">${fumbles.toFixed(1)}</td>
-          </tr>
-        `;
-      }).join('');
-      
+        </tr>
+      `;
+    }).join('');
+
       return playerRow + npcRows;
     };
     
@@ -1326,8 +994,8 @@ function startCareerFromCreator(){
         const forcedFumbles = npc.stats.forcedFumbles || 0;
         const fumbleRecoveries = npc.stats.fumbleRecoveries || 0;
         const defTDs = npc.stats.defTDs || 0;
-        return `
-          <tr>
+      return `
+        <tr>
             <td>${npc.name} <span class="muted" style="font-size:11px;">(${npc.schoolYear})</span></td>
             <td style="text-align:right;">${tackles.toFixed(1)}</td>
             <td style="text-align:right;">${sacks.toFixed(1)}</td>
@@ -1335,18 +1003,17 @@ function startCareerFromCreator(){
             <td style="text-align:right;">${forcedFumbles.toFixed(1)}</td>
             <td style="text-align:right;">${fumbleRecoveries.toFixed(1)}</td>
             <td style="text-align:right;">${defTDs.toFixed(1)}</td>
-          </tr>
-        `;
-      }).join('');
-      
+        </tr>
+      `;
+    }).join('');
+
       return playerRow + npcRows;
     };
     
-    // Get stats for current view
     const getStatsForPeriod = (period) => {
       if(period === 'game') return latestGame || {};
       if(period === 'season') return seasonStats || {};
-      return gs; // career
+      return gs;
     };
     
     const getGamesForPeriod = (period) => {
@@ -1355,7 +1022,6 @@ function startCareerFromCreator(){
       return careerGames;
     };
     
-    // Build content for each period
     const buildPeriodContent = (period) => {
       const stats = getStatsForPeriod(period);
       const games = getGamesForPeriod(period);
@@ -1442,10 +1108,10 @@ function startCareerFromCreator(){
       
       const categoryContents = categories.map((cat, idx) => 
         `<div class="stats-content ${idx === 0 ? 'active' : ''}" data-cat="${cat.id}" data-period="${period}">
-          <table class="table">
+        <table class="table">
             <thead><tr>${cat.headers}</tr></thead>
             <tbody>${cat.content || '<tr><td colspan="10" class="muted">No stats available</td></tr>'}</tbody>
-          </table>
+        </table>
         </div>`
       ).join('');
       
@@ -1458,31 +1124,21 @@ function startCareerFromCreator(){
     
     const bodyHTML = `
       <div class="stats-tabs">
-        <button class="stats-tab ${latestGame ? '' : 'disabled'}" data-period="game" ${!latestGame ? 'disabled' : ''}>Last Game</button>
-        <button class="stats-tab ${seasonStats ? 'active' : ''}" data-period="season" ${!seasonStats ? 'disabled' : ''}>Season ${s.career.year}</button>
-        <button class="stats-tab ${!seasonStats ? 'active' : ''}" data-period="career">Career</button>
+        <button class="stats-tab ${latestGame ? 'active' : ''}" data-period="game" ${!latestGame ? 'disabled' : ''}>Last Game</button>
+        <button class="stats-tab ${seasonStats ? '' : 'active'}" data-period="season" ${!seasonStats ? 'disabled' : ''}>Season ${s.career.year}</button>
+        <button class="stats-tab ${!latestGame && !seasonStats ? '' : ''}" data-period="career">Career</button>
       </div>
-      <div id="stats-period-content">
-        ${buildPeriodContent(seasonStats ? 'season' : 'career')}
-      </div>
+      <div id="stats-period-content">${buildPeriodContent(latestGame ? 'game' : seasonStats ? 'season' : 'career')}</div>
     `;
     
-    openModal({
-      title: 'Game Statistics',
-      bodyHTML: bodyHTML,
-      footHTML: `<button class="btn" id="closeStats">Close</button>`,
-      onClose: () => {}
-    });
+    openModal('Player Statistics', bodyHTML, '<button class="btn" id="closeStats">Close</button>');
     
-    // Tab switching
     $$('.stats-tab').forEach(tab => {
       tab.onclick = () => {
         if(tab.disabled) return;
-        const period = tab.getAttribute('data-period');
         $$('.stats-tab').forEach(t => t.classList.remove('active'));
         tab.classList.add('active');
-        $('#stats-period-content').innerHTML = buildPeriodContent(period);
-        // Re-attach category tab handlers
+        $('#stats-period-content').innerHTML = buildPeriodContent(tab.getAttribute('data-period'));
         $$('.stats-category-tab').forEach(catTab => {
           catTab.onclick = () => {
             const cat = catTab.getAttribute('data-cat');
@@ -1491,8 +1147,8 @@ function startCareerFromCreator(){
             $$(`.stats-content[data-period="${p}"]`).forEach(c => c.classList.remove('active'));
             catTab.classList.add('active');
             $(`.stats-content[data-cat="${cat}"][data-period="${p}"]`).classList.add('active');
-          };
-        });
+      };
+    });
       };
     });
     
@@ -1507,232 +1163,620 @@ function startCareerFromCreator(){
       };
     });
     
-    $('#closeStats').onclick = () => $('#modal').close();
+    $('#closeStats').onclick = () => closeModal();
+  }
+
+  // Records system - NEW
+  function generateRecordPlayers(position, recordType, count = 5){
+    const firstNames = ["Alex", "Blake", "Cameron", "Drew", "Ethan", "Finn", "Grant", "Hayden", "Isaiah", "Jake", "Kai", "Logan", "Mason", "Noah", "Owen", "Parker", "Quinn", "Riley", "Sam", "Tyler"];
+    const lastNames = ["Anderson", "Brooks", "Carter", "Davis", "Evans", "Foster", "Gray", "Harris", "Jackson", "Kelly", "Lewis", "Martinez", "Nelson", "Parker", "Reed", "Smith", "Taylor", "Walker", "White", "Young"];
+    
+    const records = [];
+    const baseStats = {
+      QB: { 
+        singleGame: { passingYards: 450, passingTDs: 6, completions: 35, attempts: 45 },
+        season: { passingYards: 3500, passingTDs: 42, completions: 280, attempts: 400 },
+        career: { passingYards: 12000, passingTDs: 140, completions: 950, attempts: 1400 }
+      },
+      RB: {
+        singleGame: { rushingYards: 350, rushingTDs: 5, carries: 35 },
+        season: { rushingYards: 2500, rushingTDs: 35, carries: 300 },
+        career: { rushingYards: 8000, rushingTDs: 110, carries: 1000 }
+      },
+      WR: {
+        singleGame: { receivingYards: 280, receivingTDs: 4, receptions: 15 },
+        season: { receivingYards: 1800, receivingTDs: 22, receptions: 120 },
+        career: { receivingYards: 5500, receivingTDs: 65, receptions: 380 }
+      },
+      TE: {
+        singleGame: { receivingYards: 200, receivingTDs: 3, receptions: 12 },
+        season: { receivingYards: 1300, receivingTDs: 16, receptions: 85 },
+        career: { receivingYards: 4000, receivingTDs: 48, receptions: 280 }
+      },
+      LB: {
+        singleGame: { tackles: 18, sacks: 4, defInterceptions: 2 },
+        season: { tackles: 180, sacks: 25, defInterceptions: 8 },
+        career: { tackles: 550, sacks: 75, defInterceptions: 22 }
+      },
+      CB: {
+        singleGame: { tackles: 12, defInterceptions: 3, forcedFumbles: 2 },
+        season: { tackles: 95, defInterceptions: 12, forcedFumbles: 6 },
+        career: { tackles: 280, defInterceptions: 35, forcedFumbles: 18 }
+      },
+      S: {
+        singleGame: { tackles: 15, defInterceptions: 3, forcedFumbles: 2 },
+        season: { tackles: 120, defInterceptions: 15, forcedFumbles: 8 },
+        career: { tackles: 350, defInterceptions: 42, forcedFumbles: 22 }
+      },
+      DL: {
+        singleGame: { tackles: 14, sacks: 5, forcedFumbles: 3 },
+        season: { tackles: 110, sacks: 30, forcedFumbles: 12 },
+        career: { tackles: 320, sacks: 85, forcedFumbles: 35 }
+      }
+    };
+    
+    const base = baseStats[position]?.[recordType] || {};
+    
+    for(let i = 0; i < count; i++){
+      const name = `${pick(firstNames)} ${pick(lastNames)}`;
+      const stats = {};
+      let year = 1;
+      let schoolYear = 'Freshman';
+      
+      if(recordType === 'career') {
+        year = rint(2, 4);
+        schoolYear = getSchoolYear(year);
+        const yearsPlayed = year - 1;
+        const ovr = rint(75, 95);
+        const ovrMultiplier = clamp((ovr - 50) / 50, 0.5, 1.5);
+        Object.keys(base).forEach(key => {
+          const baseVal = base[key];
+          const variance = baseVal * 0.15;
+          const scaled = (baseVal * ovrMultiplier * yearsPlayed) / 3;
+          stats[key] = Math.round(scaled + (Math.random() * variance * 2 - variance));
+        });
+      } else if(recordType === 'season') {
+        year = rint(1, 4);
+        schoolYear = getSchoolYear(year);
+        const ovr = rint(70, 95);
+        const ovrMultiplier = clamp((ovr - 50) / 50, 0.5, 1.5);
+        Object.keys(base).forEach(key => {
+          const baseVal = base[key];
+          const variance = baseVal * 0.2;
+          stats[key] = Math.round((baseVal * ovrMultiplier) + (Math.random() * variance * 2 - variance));
+        });
+      } else {
+        year = rint(1, 4);
+        schoolYear = getSchoolYear(year);
+        const ovr = rint(75, 99);
+        const ovrMultiplier = clamp((ovr - 50) / 50, 0.5, 1.5);
+        Object.keys(base).forEach(key => {
+          const baseVal = base[key];
+          const variance = baseVal * 0.25;
+          stats[key] = Math.round((baseVal * ovrMultiplier) + (Math.random() * variance * 2 - variance));
+        });
+      }
+      
+      records.push({ name, stats, year, schoolYear });
+    }
+    
+    if(position === 'QB') records.sort((a, b) => (b.stats.passingYards || 0) - (a.stats.passingYards || 0));
+    else if(position === 'RB') records.sort((a, b) => (b.stats.rushingYards || 0) - (a.stats.rushingYards || 0));
+    else if(position === 'WR' || position === 'TE') records.sort((a, b) => (b.stats.receivingYards || 0) - (a.stats.receivingYards || 0));
+    else records.sort((a, b) => (b.stats.tackles || 0) - (a.stats.tackles || 0));
+    
+    return records;
+  }
+
+  function openRecords(s){
+    const gs = s.gameStats || defaultState().gameStats;
+    const pos = s.player.position;
+    const playerSchoolYear = getSchoolYear(s.career.year);
+    
+    const latestGame = gs.gameLog && gs.gameLog.length > 0 ? gs.gameLog[gs.gameLog.length - 1] : null;
+    const seasonKey = `Y${s.career.year}`;
+    const seasonStats = gs.seasonStats && gs.seasonStats[seasonKey] ? gs.seasonStats[seasonKey] : null;
+    
+    const singleGameRecords = generateRecordPlayers(pos, 'singleGame', 5);
+    const seasonRecords = generateRecordPlayers(pos, 'season', 5);
+    const careerRecords = generateRecordPlayers(pos, 'career', 5);
+    
+    const buildRecordTable = (recordType, playerStats, records) => {
+      if(pos === 'QB') {
+        const headers = '<th>Rank</th><th>Player</th><th style="text-align:right;">Pass Yds</th><th style="text-align:right;">TDs</th><th style="text-align:right;">Comp</th><th style="text-align:right;">Att</th>';
+        let rows = '';
+        if(playerStats && (playerStats.passingYards || playerStats.passingTDs)) {
+          rows += `
+            <tr style="background:rgba(124,92,255,.12); border:1px solid rgba(124,92,255,.30);">
+              <td><b>YOU</b></td>
+              <td><b>${s.player.name}</b> <span class="muted" style="font-size:11px;">(${playerSchoolYear})</span></td>
+              <td style="text-align:right; font-weight:700;">${playerStats.passingYards || 0}</td>
+              <td style="text-align:right; font-weight:700;">${playerStats.passingTDs || 0}</td>
+              <td style="text-align:right; font-weight:700;">${playerStats.completions || 0}</td>
+              <td style="text-align:right; font-weight:700;">${playerStats.attempts || 0}</td>
+            </tr>
+          `;
+        }
+        records.forEach((rec, idx) => {
+          rows += `
+            <tr>
+              <td>#${idx + 1}</td>
+              <td>${rec.name} <span class="muted" style="font-size:11px;">(${rec.schoolYear})</span></td>
+              <td style="text-align:right;">${rec.stats.passingYards || 0}</td>
+              <td style="text-align:right;">${rec.stats.passingTDs || 0}</td>
+              <td style="text-align:right;">${rec.stats.completions || 0}</td>
+              <td style="text-align:right;">${rec.stats.attempts || 0}</td>
+            </tr>
+          `;
+        });
+        return `<table class="table"><thead><tr>${headers}</tr></thead><tbody>${rows || '<tr><td colspan="6" class="muted">No records available</td></tr>'}</tbody></table>`;
+      } else if(pos === 'RB') {
+        const headers = '<th>Rank</th><th>Player</th><th style="text-align:right;">Rush Yds</th><th style="text-align:right;">TDs</th><th style="text-align:right;">Carries</th>';
+        let rows = '';
+        if(playerStats && (playerStats.rushingYards || playerStats.rushingTDs)) {
+          rows += `
+            <tr style="background:rgba(124,92,255,.12); border:1px solid rgba(124,92,255,.30);">
+              <td><b>YOU</b></td>
+              <td><b>${s.player.name}</b> <span class="muted" style="font-size:11px;">(${playerSchoolYear})</span></td>
+              <td style="text-align:right; font-weight:700;">${playerStats.rushingYards || 0}</td>
+              <td style="text-align:right; font-weight:700;">${playerStats.rushingTDs || 0}</td>
+              <td style="text-align:right; font-weight:700;">${playerStats.carries || 0}</td>
+            </tr>
+          `;
+        }
+        records.forEach((rec, idx) => {
+          rows += `
+            <tr>
+              <td>#${idx + 1}</td>
+              <td>${rec.name} <span class="muted" style="font-size:11px;">(${rec.schoolYear})</span></td>
+              <td style="text-align:right;">${rec.stats.rushingYards || 0}</td>
+              <td style="text-align:right;">${rec.stats.rushingTDs || 0}</td>
+              <td style="text-align:right;">${rec.stats.carries || 0}</td>
+            </tr>
+          `;
+        });
+        return `<table class="table"><thead><tr>${headers}</tr></thead><tbody>${rows || '<tr><td colspan="5" class="muted">No records available</td></tr>'}</tbody></table>`;
+      } else if(pos === 'WR' || pos === 'TE') {
+        const headers = '<th>Rank</th><th>Player</th><th style="text-align:right;">Rec Yds</th><th style="text-align:right;">TDs</th><th style="text-align:right;">Rec</th>';
+        let rows = '';
+        if(playerStats && (playerStats.receivingYards || playerStats.receivingTDs)) {
+          rows += `
+            <tr style="background:rgba(124,92,255,.12); border:1px solid rgba(124,92,255,.30);">
+              <td><b>YOU</b></td>
+              <td><b>${s.player.name}</b> <span class="muted" style="font-size:11px;">(${playerSchoolYear})</span></td>
+              <td style="text-align:right; font-weight:700;">${playerStats.receivingYards || 0}</td>
+              <td style="text-align:right; font-weight:700;">${playerStats.receivingTDs || 0}</td>
+              <td style="text-align:right; font-weight:700;">${playerStats.receptions || 0}</td>
+            </tr>
+          `;
+        }
+        records.forEach((rec, idx) => {
+          rows += `
+            <tr>
+              <td>#${idx + 1}</td>
+              <td>${rec.name} <span class="muted" style="font-size:11px;">(${rec.schoolYear})</span></td>
+              <td style="text-align:right;">${rec.stats.receivingYards || 0}</td>
+              <td style="text-align:right;">${rec.stats.receivingTDs || 0}</td>
+              <td style="text-align:right;">${rec.stats.receptions || 0}</td>
+            </tr>
+          `;
+        });
+        return `<table class="table"><thead><tr>${headers}</tr></thead><tbody>${rows || '<tr><td colspan="5" class="muted">No records available</td></tr>'}</tbody></table>`;
+      } else {
+        const headers = '<th>Rank</th><th>Player</th><th style="text-align:right;">Tackles</th><th style="text-align:right;">Sacks</th><th style="text-align:right;">INT</th>';
+        let rows = '';
+        if(playerStats && (playerStats.tackles || playerStats.sacks)) {
+          rows += `
+            <tr style="background:rgba(124,92,255,.12); border:1px solid rgba(124,92,255,.30);">
+              <td><b>YOU</b></td>
+              <td><b>${s.player.name}</b> <span class="muted" style="font-size:11px;">(${playerSchoolYear})</span></td>
+              <td style="text-align:right; font-weight:700;">${playerStats.tackles || 0}</td>
+              <td style="text-align:right; font-weight:700;">${playerStats.sacks || 0}</td>
+              <td style="text-align:right; font-weight:700;">${playerStats.defInterceptions || 0}</td>
+            </tr>
+          `;
+        }
+        records.forEach((rec, idx) => {
+          rows += `
+            <tr>
+              <td>#${idx + 1}</td>
+              <td>${rec.name} <span class="muted" style="font-size:11px;">(${rec.schoolYear})</span></td>
+              <td style="text-align:right;">${rec.stats.tackles || 0}</td>
+              <td style="text-align:right;">${rec.stats.sacks || 0}</td>
+              <td style="text-align:right;">${rec.stats.defInterceptions || 0}</td>
+            </tr>
+          `;
+        });
+        return `<table class="table"><thead><tr>${headers}</tr></thead><tbody>${rows || '<tr><td colspan="5" class="muted">No records available</td></tr>'}</tbody></table>`;
+      }
+    };
+    
+    const bodyHTML = `
+      <div class="stats-tabs">
+        <button class="stats-tab active" data-record="game">Single Game</button>
+        <button class="stats-tab" data-record="season">Season</button>
+        <button class="stats-tab" data-record="career">Career</button>
+      </div>
+      <div id="records-content">
+        ${buildRecordTable('singleGame', latestGame, singleGameRecords)}
+      </div>
+    `;
+    
+    openModal('Record Book', bodyHTML, '<button class="btn" id="closeRecords">Close</button>');
+    
+    $$('.stats-tab').forEach(tab => {
+      tab.onclick = () => {
+        $$('.stats-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        const recordType = tab.getAttribute('data-record');
+        let playerStats = null;
+        if(recordType === 'game') playerStats = latestGame;
+        else if(recordType === 'season') playerStats = seasonStats;
+        else playerStats = gs;
+        
+        let records = [];
+        if(recordType === 'game') records = singleGameRecords;
+        else if(recordType === 'season') records = seasonRecords;
+        else records = careerRecords;
+        
+        $('#records-content').innerHTML = buildRecordTable(recordType, playerStats, records);
+      };
+    });
+    
+    $('#closeRecords').onclick = () => closeModal();
+  }
+
+  // UI Functions
+  function openSkills(s){
+    const stats = derivedStats(s);
+    const bodyHTML = `
+      <div class="muted small">Spend skill points to improve your attributes. Each point increases a stat by 1.</div>
+      <div style="margin-top:16px;">
+        <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:12px;">
+          ${['throwPower', 'accuracy', 'speed', 'stamina', 'strength'].map(k => {
+            const val = stats[k] || 0;
+            const base = s.statsBase?.[k] || 0;
+            const bonus = val - base;
+            return `
+              <div style="padding:12px; background:rgba(255,255,255,.05); border-radius:8px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                  <div>
+                    <div style="font-weight:600; text-transform:capitalize;">${k.replace(/([A-Z])/g, ' $1').trim()}</div>
+                    <div class="muted small">Base: ${base} ${bonus > 0 ? `+${bonus}` : ''}</div>
+                  </div>
+                  <div style="font-size:20px; font-weight:700;">${val}</div>
+                </div>
+                <button class="btn small" ${s.skillPoints < 1 ? 'disabled' : ''} data-skill="${k}">+1 (${s.skillPoints} pts)</button>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+    
+    openModal('Skills', bodyHTML, '<button class="btn" id="closeSkills">Close</button>');
+    
+    $$('button[data-skill]').forEach(btn => {
+      btn.onclick = () => {
+        if(s.skillPoints < 1) return;
+        const skill = btn.getAttribute('data-skill');
+        if(!s.statsBase[skill]) s.statsBase[skill] = 0;
+        s.statsBase[skill] = clamp(s.statsBase[skill] + 1, 0, 99);
+        s.skillPoints -= 1;
+        save(s);
+        openSkills(s);
+      };
+    });
+    
+    $('#closeSkills').onclick = () => { closeModal(); render(s); };
+  }
+
+  function openStore(s){
+    const bodyHTML = `
+      <div class="muted small">Purchase items to boost your stats. Items are automatically equipped.</div>
+      <div style="margin-top:16px; display:grid; gap:12px;">
+        ${STORE_ITEMS.map(it => {
+          const owned = (s.inventory.owned || []).filter(id => id === it.id).length;
+          const canAfford = s.money >= it.price;
+          return `
+            <div style="padding:12px; background:rgba(255,255,255,.05); border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <div style="font-weight:600;">${it.name}</div>
+                <div class="muted small">${it.desc}</div>
+                <div class="muted small">Owned: ${owned}</div>
+              </div>
+              <button class="btn ${canAfford ? 'primary' : ''}" ${!canAfford ? 'disabled' : ''} data-buy="${it.id}">${fmtMoney(it.price)}</button>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+    
+    openModal('Store', bodyHTML, '<button class="btn" id="closeStore">Close</button>');
+    
+    $$('button[data-buy]').forEach(btn => {
+      btn.onclick = () => {
+        const id = btn.getAttribute('data-buy');
+        const it = STORE_ITEMS.find(x => x.id === id);
+        if(!it) return;
+        if(s.money < it.price) return;
+        s.money -= it.price;
+        if(!s.inventory.owned) s.inventory.owned = [];
+        s.inventory.owned.push(id);
+        logPush(s, 'Purchased', `Bought ${it.name} for ${fmtMoney(it.price)}.`);
+        save(s);
+        closeModal();
+        render(s);
+      };
+    });
+    
+    $('#closeStore').onclick = () => closeModal();
   }
 
   function openInventory(s){
     const owned = s.inventory.owned.slice();
-    const eq = s.inventory.equipped;
+    const eq = s.inventory.equipped || {};
 
     const counts = owned.reduce((m,id)=>{ m[id]=(m[id]||0)+1; return m; }, {});
     const ownedItems = Object.keys(counts).map(id => {
-      const it = STORE_ITEMS.find(x=>x.id===id);
+      const it = STORE_ITEMS.find(x => x.id === id);
       if(!it) return null;
       return { ...it, count: counts[id] };
     }).filter(Boolean);
 
     const slots = Object.keys(eq).map(slot => {
       const id = eq[slot];
-      const it = id ? STORE_ITEMS.find(x=>x.id===id) : null;
+      const it = id ? STORE_ITEMS.find(x => x.id === id) : null;
       return `
         <tr>
-          <td><b>${slot}</b></td>
-          <td>${it ? it.name : '<span class="muted">None</span>'}</td>
-          <td class="right">${it ? `<button class="btn small" data-unequip="${slot}">Unequip</button>` : ''}</td>
+          <td>${slot}</td>
+          <td>${it ? it.name : 'Empty'}</td>
+          <td><button class="btn small" ${!it ? 'disabled' : ''} data-unequip="${slot}">Unequip</button></td>
         </tr>
       `;
     }).join('');
 
-    const rows = ownedItems.map(it => {
-      const isEq = Object.values(eq).includes(it.id);
-      const actions = it.type==='consumable'
-        ? `<button class="btn small" data-use="${it.id}" ${it.count>0?'':'disabled'}>Use</button>`
-        : `<button class="btn small" data-eq="${it.id}" ${isEq?'disabled':''}>Equip</button>`;
-      return `
-        <tr>
-          <td><b>${it.name}</b><div class="tiny muted">${it.desc}</div></td>
-          <td>${it.type==='consumable' ? `x${it.count}` : (isEq ? 'Equipped' : 'Owned')}</td>
-          <td class="right">${actions}</td>
-        </tr>
-      `;
-    }).join('');
+    const bodyHTML = `
+      <div class="muted small">Equip items to boost your stats. Each slot can hold one item.</div>
+      <div style="margin-top:16px;">
+        <div style="margin-bottom:16px;">
+          <div style="font-weight:600; margin-bottom:8px;">Equipped Items</div>
+          <table class="table">
+            <thead><tr><th>Slot</th><th>Item</th><th>Action</th></tr></thead>
+            <tbody>${slots || '<tr><td colspan="3" class="muted">No items equipped</td></tr>'}</tbody>
+          </table>
+        </div>
+        <div>
+          <div style="font-weight:600; margin-bottom:8px;">Owned Items</div>
+          <div style="display:grid; gap:8px;">
+            ${ownedItems.map(it => {
+              const equipped = Object.values(eq).includes(it.id);
+              return `
+                <div style="padding:12px; background:rgba(255,255,255,.05); border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
+                  <div>
+                    <div style="font-weight:600;">${it.name}</div>
+                    <div class="muted small">${it.desc} • Count: ${it.count}</div>
+                  </div>
+                  <button class="btn small" ${equipped ? 'disabled' : ''} data-equip="${it.id}">Equip</button>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      </div>
+    `;
 
-    openModal({
-      title:'Inventory',
-      bodyHTML: `
-        <div class="muted">Energy: <b>${s.energy}/${MAX_ENERGY}</b> • Hours: <b>${s.hours}/${WEEK_HOURS}</b></div>
+    openModal('Inventory', bodyHTML, '<button class="btn" id="closeInv">Close</button>');
 
-        <div style="margin-top:10px" class="muted"><b>Equipped</b></div>
-        <table class="table">
-          <thead><tr><th>Slot</th><th>Item</th><th class="right"></th></tr></thead>
-          <tbody>${slots}</tbody>
-        </table>
-
-        <div style="margin-top:10px" class="muted"><b>Owned Items</b></div>
-        <table class="table">
-          <thead><tr><th>Item</th><th>Status</th><th class="right">Action</th></tr></thead>
-          <tbody>${rows || `<tr><td colspan="3" class="muted">Your inventory is empty. Buy items in the Store.</td></tr>`}</tbody>
-        </table>
-      `,
-      footHTML: `<button class="btn" id="closeInv">Close</button>`,
-    });
-    $('#closeInv').onclick = () => $('#modal').close();
-
-    $$('button[data-use]').forEach(btn=>{
+    $$('button[data-equip]').forEach(btn => {
       btn.onclick = () => {
-        const id = btn.getAttribute('data-use');
-        useConsumable(s, id);
+        const id = btn.getAttribute('data-equip');
+        const it = STORE_ITEMS.find(x => x.id === id);
+        if(!it || !it.slot) return;
+        if(!s.inventory.equipped) s.inventory.equipped = {};
+        s.inventory.equipped[it.slot] = id;
         save(s);
-        $('#modal').close();
-        render(s);
+        openInventory(s);
       };
     });
 
-    $$('button[data-eq]').forEach(btn=>{
-      btn.onclick = () => {
-        const id = btn.getAttribute('data-eq');
-        const it = STORE_ITEMS.find(x=>x.id===id);
-        if(!it || it.type!=='equipment') return;
-        const slot = it.slot || 'accessory';
-        // ensure owned
-        if(!s.inventory.owned.includes(id)) return;
-        // if already something in slot, unequip
-        s.inventory.equipped[slot] = id;
-        logPush(s, 'Equipped', `Equipped ${it.name} (${slot}).`);
-        save(s);
-        $('#modal').close();
-        render(s);
-      };
-    });
-
-    $$('button[data-unequip]').forEach(btn=>{
+    $$('button[data-unequip]').forEach(btn => {
       btn.onclick = () => {
         const slot = btn.getAttribute('data-unequip');
-        s.inventory.equipped[slot] = null;
-        logPush(s, 'Unequipped', `Unequipped ${slot}.`);
+        if(!s.inventory.equipped) s.inventory.equipped = {};
+        delete s.inventory.equipped[slot];
         save(s);
-        $('#modal').close();
-        render(s);
+        openInventory(s);
       };
     });
+
+    $('#closeInv').onclick = () => { closeModal(); render(s); };
   }
 
   function openLogAll(s){
-    const items = s.log.slice(0, 200).map(it => {
-      const d = new Date(it.t);
-      const stamp = d.toLocaleString();
-      return `<div class="logitem"><div class="logmeta">${stamp} • ${it.title}</div><div class="logmsg">${it.msg}</div></div>`;
-    }).join('');
-    openModal({
-      title:'Full Game Log',
-      bodyHTML: `<div class="log" style="max-height:60vh">${items || '<div class="muted">No log yet.</div>'}</div>`,
-      footHTML: `<button class="btn" id="closeLog">Close</button>`,
-    });
-    $('#closeLog').onclick = () => $('#modal').close();
+    const logs = (s.log || []).slice().reverse();
+    const bodyHTML = `
+      <div style="max-height:400px; overflow-y:auto;">
+        ${logs.length === 0 ? '<div class="muted">No log entries yet.</div>' : logs.map(l => `
+          <div style="padding:8px; margin-bottom:8px; background:rgba(255,255,255,.05); border-radius:6px;">
+            <div style="font-size:12px; color:var(--muted);">Year ${l.year}, Week ${l.week} • ${l.type}</div>
+            <div>${l.msg}</div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+    openModal('Game Log', bodyHTML, '<button class="btn" id="closeLog">Close</button>');
+    $('#closeLog').onclick = () => closeModal();
   }
 
-  function wireUI(s){
-    // action buttons
-    $$('#careerCard button[data-act]').forEach(b => {
-      b.onclick = () => {
-        const currentState = loadState();
-        doAction(currentState, b.dataset.act, b.dataset.h);
+  function renderLog(s){
+    const logs = (s.log || []).slice(-5).reverse();
+    $('#log').innerHTML = logs.length === 0 ? '<div class="muted">No events yet.</div>' : logs.map(l => `
+      <div style="padding:8px; margin-bottom:6px; background:rgba(255,255,255,.05); border-radius:6px; font-size:13px;">
+        <span style="color:var(--muted);">[${l.type}]</span> ${l.msg}
+      </div>
+    `).join('');
+  }
+
+  function openCheatPanel(s){
+    const stats = derivedStats(s);
+    const bodyHTML = `
+      <div class="muted small" style="margin-bottom:16px;">Cheat panel for testing. Changes are saved immediately.</div>
+      <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:16px;">
+        <div>
+          <div style="font-weight:600; margin-bottom:8px;">Resources</div>
+          <div style="display:grid; gap:8px;">
+            <div style="display:flex; gap:8px; align-items:center;">
+              <span style="min-width:80px;">Money:</span>
+              <input type="number" id="cheat_money" value="${s.money}" style="flex:1; padding:6px;" />
+              <button class="btn small" data-cheat="money">Set</button>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <span style="min-width:80px;">XP:</span>
+              <input type="number" id="cheat_xp" value="${s.xp}" style="flex:1; padding:6px;" />
+              <button class="btn small" data-cheat="xp">Set</button>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <span style="min-width:80px;">Skill Pts:</span>
+              <input type="number" id="cheat_sp" value="${s.skillPoints}" style="flex:1; padding:6px;" />
+              <button class="btn small" data-cheat="sp">Set</button>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <span style="min-width:80px;">Level:</span>
+              <input type="number" id="cheat_level" value="${s.level}" min="1" max="99" style="flex:1; padding:6px;" />
+              <button class="btn small" data-cheat="level">Set</button>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <span style="min-width:80px;">Energy:</span>
+              <input type="number" id="cheat_energy" value="${s.energy}" min="0" max="100" style="flex:1; padding:6px;" />
+              <button class="btn small" data-cheat="energy">Set</button>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <span style="min-width:80px;">Hours:</span>
+              <input type="number" id="cheat_hours" value="${s.hours}" min="0" max="25" style="flex:1; padding:6px;" />
+              <button class="btn small" data-cheat="hours">Set</button>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <span style="min-width:80px;">Prep:</span>
+              <input type="number" id="cheat_prep" value="${s.prep}" min="0" max="60" style="flex:1; padding:6px;" />
+              <button class="btn small" data-cheat="prep">Set</button>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div style="font-weight:600; margin-bottom:8px;">Player Stats</div>
+          <div style="display:grid; gap:8px;">
+            ${['throwPower', 'accuracy', 'speed', 'stamina', 'strength'].map(k => {
+              const base = s.statsBase?.[k] || 0;
+              return `
+                <div style="display:flex; gap:8px; align-items:center;">
+                  <span style="min-width:100px; text-transform:capitalize;">${k.replace(/([A-Z])/g, ' $1').trim()}:</span>
+                  <input type="number" id="cheat_${k}" value="${base}" min="0" max="99" style="flex:1; padding:6px;" />
+                  <button class="btn small" data-cheat="${k}">Set</button>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:16px; padding-top:16px; border-top:1px solid rgba(255,255,255,.12);">
+        <div style="font-weight:600; margin-bottom:8px;">Quick Actions</div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="btn small" data-quick="money1000">+$1000</button>
+          <button class="btn small" data-quick="money10000">+$10000</button>
+          <button class="btn small" data-quick="xp1000">+1000 XP</button>
+          <button class="btn small" data-quick="sp10">+10 Skill Pts</button>
+          <button class="btn small" data-quick="maxenergy">Max Energy</button>
+          <button class="btn small" data-quick="maxhours">Max Hours</button>
+          <button class="btn small" data-quick="maxprep">Max Prep</button>
+          <button class="btn small" data-quick="maxstats">Max All Stats</button>
+          <button class="btn small" data-quick="advanceweek">Advance Week</button>
+          <button class="btn small" data-quick="nextyear">Next Year</button>
+        </div>
+      </div>
+    `;
+    
+    openModal('Cheat Panel', bodyHTML, '<button class="btn" id="closeCheat">Close</button>');
+    
+    $$('button[data-cheat]').forEach(btn => {
+      btn.onclick = () => {
+        const cheatType = btn.getAttribute('data-cheat');
+        const input = $(`#cheat_${cheatType}`);
+        if(!input) return;
+        const value = parseInt(input.value) || 0;
+        
+        if(cheatType === 'money') {
+          s.money = Math.max(0, value);
+        } else if(cheatType === 'xp') {
+          s.xp = Math.max(0, value);
+        } else if(cheatType === 'sp') {
+          s.skillPoints = Math.max(0, value);
+        } else if(cheatType === 'level') {
+          s.level = clamp(value, 1, 99);
+        } else if(cheatType === 'energy') {
+          s.energy = clamp(value, 0, MAX_ENERGY);
+        } else if(cheatType === 'hours') {
+          s.hours = clamp(value, 0, MAX_HOURS);
+        } else if(cheatType === 'prep') {
+          s.prep = clamp(value, 0, 60);
+        } else if(['throwPower', 'accuracy', 'speed', 'stamina', 'strength'].includes(cheatType)) {
+          if(!s.statsBase) s.statsBase = {};
+          s.statsBase[cheatType] = clamp(value, 0, 99);
+        }
+        
+        save(s);
+        openCheatPanel(s);
+        render(s);
       };
     });
-    $('#btnAdvance').onclick = () => {
-      const currentState = loadState();
-      if(!currentState.player) return openCreatePlayer(currentState);
-      // advance without playing game: new week
-      startNewWeek(currentState);
-      // advance schedule but keep game for week
-      if(!currentState.career.inPost){
-        if(currentState.career.week < currentState.career.maxWeeks) currentState.career.week += 1;
-        else {
-          // season end check
-          const qualifies = currentState.career.recordW >= 8;
-          if(qualifies){
-            currentState.career.inPost = true; currentState.career.postWeek = 1;
-            logPush(currentState, 'Playoffs', 'You qualified for the postseason! Up to 3 games.');
-          } else endOfSeason(currentState);
+    
+    $$('button[data-quick]').forEach(btn => {
+      btn.onclick = () => {
+        const action = btn.getAttribute('data-quick');
+        
+        if(action === 'money1000') {
+          s.money += 1000;
+        } else if(action === 'money10000') {
+          s.money += 10000;
+        } else if(action === 'xp1000') {
+          s.xp += 1000;
+          while(s.xp >= xpNeeded(s.level)) {
+            s.xp -= xpNeeded(s.level);
+            s.level += 1;
+            s.skillPoints += 1;
+          }
+        } else if(action === 'sp10') {
+          s.skillPoints += 10;
+        } else if(action === 'maxenergy') {
+          s.energy = MAX_ENERGY;
+        } else if(action === 'maxhours') {
+          s.hours = MAX_HOURS;
+        } else if(action === 'maxprep') {
+          s.prep = 60;
+        } else if(action === 'maxstats') {
+          if(!s.statsBase) s.statsBase = {};
+          ['throwPower', 'accuracy', 'speed', 'stamina', 'strength'].forEach(k => {
+            s.statsBase[k] = 99;
+          });
+        } else if(action === 'advanceweek') {
+          startNewWeek(s);
+        } else if(action === 'nextyear') {
+          s.career.year = clamp(s.career.year + 1, 1, 4);
+          s.career.week = 1;
         }
-      } else {
-        if(currentState.career.postWeek < 3) currentState.career.postWeek += 1;
-        else endOfSeason(currentState);
-      }
-      save(currentState);
-      render(currentState);
-    };
-
-    $('#btnPlayGame').onclick = () => {
-      const currentState = loadState();
-      if(!currentState.player) return openCreatePlayer(currentState);
-      simulateGame(currentState);
-      save(currentState);
-      render(currentState);
-    };
-
-    $('#btnSkills').onclick = () => {
-      const currentState = loadState();
-      return currentState.player ? openSkills(currentState) : openCreatePlayer(currentState);
-    };
-    $('#btnJob').onclick = () => {
-      const currentState = loadState();
-      return currentState.player ? openJobs(currentState) : openCreatePlayer(currentState);
-    };
-    $('#btnStore').onclick = () => {
-      const currentState = loadState();
-      return currentState.player ? openStore(currentState) : openCreatePlayer(currentState);
-    };
-    $('#btnInv').onclick = () => {
-      const currentState = loadState();
-      return currentState.player ? openInventory(currentState) : openCreatePlayer(currentState);
-    };
-    $('#btnStats').onclick = () => {
-      const currentState = loadState();
-      return currentState.player ? openStats(currentState) : openCreatePlayer(currentState);
-    };
-    $('#btnLog').onclick = () => {
-      const currentState = loadState();
-      openLogAll(currentState);
-    };
-
-    $('#btnReset').onclick = () => {
-      if(confirm('Reset your save?')){
-        localStorage.removeItem(LS_KEY);
-        const ns = defaultState();
-        save(ns);
-        location.reload();
-      }
-    };
-
-    $('#btnExport').onclick = () => {
-      const currentState = loadState();
-      const blob = new Blob([JSON.stringify(currentState, null, 2)], {type:'application/json'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'gridiron-save-v138.json';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    };
-
-    $('#fileImport').onchange = async (ev) => {
-      const f = ev.target.files && ev.target.files[0];
-      if(!f) return;
-      try{
-        const txt = await f.text();
-        const obj = JSON.parse(txt);
-        localStorage.setItem(LS_KEY, JSON.stringify(obj));
-        location.reload();
-      }catch(e){
-        alert('Import failed: invalid JSON.');
-      }finally{
-        ev.target.value = '';
-      }
-    };
-  }
-
-  function getSchoolYear(year){
-    const yearMap = { 1: 'Freshman', 2: 'Sophomore', 3: 'Junior', 4: 'Senior' };
-    return yearMap[year] || `Year ${year}`;
+        
+        save(s);
+        openCheatPanel(s);
+        render(s);
+      };
+    });
+    
+    $('#closeCheat').onclick = () => { closeModal(); render(s); };
   }
 
   function render(s){
     document.title = `Gridiron Career Sim ${VERSION}`;
 
-    // create if missing
     if(!s.player){
       $('#careerTitle').textContent = 'New Career';
       $('#careerSub').textContent = 'Create your player to begin.';
@@ -1747,7 +1791,6 @@ function startCareerFromCreator(){
       $('#jobName').textContent = 'No Job';
       $('#jobMeta').textContent = 'Auto: 0h/week • $0/week';
       renderLog(s);
-      // prompt create
       openCreatePlayer(s);
       return;
     }
@@ -1783,147 +1826,218 @@ function startCareerFromCreator(){
     $('#jobName').textContent = job.name;
     $('#jobMeta').textContent = `Auto: ${job.hours}h/week • ${fmtMoney(job.pay)}/week`;
 
-    setBars(s.energy/MAX_ENERGY, s.hours/WEEK_HOURS, s.xp/xpNeeded(s.level));
+    const energyP = (s.energy / MAX_ENERGY) * 100;
+    const hoursP = (s.hours / MAX_HOURS) * 100;
+    const xpP = (s.xp / xpNeeded(s.level)) * 100;
+    setBars(energyP, hoursP, xpP);
 
-    // enable/disable play button: if already committed end-of-demo, still allow?
-    $('#btnPlayGame').disabled = false;
+    $('#trainCostE').textContent = `-${Math.round(12 * (1 + s.level * 0.1))}/h`;
+    $('#trainGainX').textContent = `+${Math.round(28 * (1 + s.level * 0.15))}/h`;
+    $('#restGainE').textContent = `+${Math.round(18 * (1 + s.level * 0.05))}/h`;
+    $('#restGainX').textContent = `+${Math.round(6 * (1 + s.level * 0.1))}/h`;
+    $('#studyCostE').textContent = `-${Math.round(8 * (1 + s.level * 0.1))}/h`;
+    $('#studyGainX').textContent = `+${Math.round(18 * (1 + s.level * 0.1))}/h`;
 
     renderLog(s);
   }
 
   function setBars(energyP, hoursP, xpP){
-    $('#energyFill').style.width = `${clamp(energyP*100, 0, 100)}%`;
-    $('#hoursFill').style.width = `${clamp(hoursP*100, 0, 100)}%`;
-    $('#xpFill').style.width = `${clamp(xpP*100, 0, 100)}%`;
-    const energyVal = Math.round(energyP*MAX_ENERGY);
-    const hoursVal = Math.round(hoursP*WEEK_HOURS);
-    $('#energyTxt').textContent = `${energyVal}/${MAX_ENERGY}`;
-    $('#hoursTxt').textContent = `${hoursVal}/${WEEK_HOURS}`;
-    $('#xpTxt').textContent = `${Math.round(clamp(xpP*100,0,100))}%`;
+    $('#energyFill').style.width = `${clamp(energyP, 0, 100)}%`;
+    $('#energyTxt').textContent = `${Math.round(energyP)}/100`;
+    $('#hoursFill').style.width = `${clamp(hoursP, 0, 100)}%`;
+    $('#hoursTxt').textContent = `${Math.round(hoursP)}/25`;
+    $('#xpFill').style.width = `${clamp(xpP, 0, 100)}%`;
+    $('#xpTxt').textContent = `${Math.round(xpP)}%`;
   }
 
-  function renderLog(s){
-    const el = $('#log');
-    const items = s.log.slice(0, 8).map(it => {
-      const d = new Date(it.t);
-      const stamp = d.toLocaleString();
-      return `<div class="logitem"><div class="logmeta">${stamp} • ${it.title}</div><div class="logmsg">${it.msg}</div></div>`;
-    }).join('');
-    el.innerHTML = items || '<div class="muted">No activity yet.</div>';
+  function wireUI(s){
+    $$('#careerCard button[data-act]').forEach(btn => {
+      btn.onclick = () => {
+        const currentState = loadState();
+        const act = btn.getAttribute('data-act');
+        const h = parseInt(btn.getAttribute('data-h'));
+        if(currentState.hours < h) {
+          alert('Not enough hours!');
+          return;
+        }
+        if(act === 'train') {
+          const costE = Math.round(12 * (1 + currentState.level * 0.1)) * h;
+          if(currentState.energy < costE) {
+            alert('Not enough energy!');
+            return;
+          }
+          currentState.energy = clamp(currentState.energy - costE, 0, MAX_ENERGY);
+          currentState.hours = clamp(currentState.hours - h, 0, MAX_HOURS);
+          const gainX = Math.round(28 * (1 + currentState.level * 0.15)) * h;
+          currentState.xp += gainX;
+          logPush(currentState, 'Trained', `Trained for ${h} hour${h > 1 ? 's' : ''}, gained ${gainX} XP.`);
+        } else if(act === 'rest') {
+          currentState.hours = clamp(currentState.hours - h, 0, MAX_HOURS);
+          const gainE = Math.round(18 * (1 + currentState.level * 0.05)) * h;
+          currentState.energy = clamp(currentState.energy + gainE, 0, MAX_ENERGY);
+          const gainX = Math.round(6 * (1 + currentState.level * 0.1)) * h;
+          currentState.xp += gainX;
+          logPush(currentState, 'Rested', `Rested for ${h} hour${h > 1 ? 's' : ''}, recovered energy.`);
+        } else if(act === 'study') {
+          const costE = Math.round(8 * (1 + currentState.level * 0.1)) * h;
+          if(currentState.energy < costE) {
+            alert('Not enough energy!');
+            return;
+          }
+          currentState.energy = clamp(currentState.energy - costE, 0, MAX_ENERGY);
+          currentState.hours = clamp(currentState.hours - h, 0, MAX_HOURS);
+          const gainX = Math.round(18 * (1 + currentState.level * 0.1)) * h;
+          currentState.xp += gainX;
+          currentState.prep = clamp(currentState.prep + h * 5, 0, 60);
+          logPush(currentState, 'Studied', `Studied playbook for ${h} hour${h > 1 ? 's' : ''}, gained ${gainX} XP and prep.`);
+        }
+        while(currentState.xp >= xpNeeded(currentState.level)) {
+          currentState.xp -= xpNeeded(currentState.level);
+          currentState.level += 1;
+          currentState.skillPoints += 1;
+          logPush(currentState, 'Level Up', `Reached level ${currentState.level}!`);
+        }
+        save(currentState);
+        render(currentState);
+      };
+    });
+
+    $('#btnAdvance').onclick = () => {
+      const currentState = loadState();
+      startNewWeek(currentState);
+      save(currentState);
+      render(currentState);
+    };
+
+    $('#btnPlayGame').onclick = () => {
+      const currentState = loadState();
+      simulateGame(currentState);
+    };
+
+    $('#btnSkills').onclick = () => {
+      const currentState = loadState();
+      return currentState.player ? openSkills(currentState) : openCreatePlayer(currentState);
+    };
+
+    $('#btnJob').onclick = () => {
+      const currentState = loadState();
+      const bodyHTML = `
+        <div class="muted small">Choose a job. Hours and pay are automatically applied each week.</div>
+        <div style="margin-top:16px; display:grid; gap:8px;">
+          ${JOBS.map(j => `
+            <label style="padding:12px; background:rgba(255,255,255,.05); border-radius:8px; display:flex; justify-content:space-between; align-items:center; cursor:pointer;">
+              <div>
+                <div style="font-weight:600;">${j.name}</div>
+                <div class="muted small">${j.hours}h/week • ${fmtMoney(j.pay)}/week</div>
+              </div>
+              <input type="radio" name="job" value="${j.id}" ${currentState.career.jobId === j.id ? 'checked' : ''} />
+            </label>
+          `).join('')}
+        </div>
+      `;
+      openModal('Change Job', bodyHTML, '<button class="btn primary" id="saveJob">Save</button>');
+      $('#saveJob').onclick = () => {
+        const selected = $$('input[name="job"]:checked')[0];
+        if(selected) {
+          currentState.career.jobId = selected.value;
+          save(currentState);
+          closeModal();
+          render(currentState);
+        }
+      };
+    };
+
+    $('#btnStore').onclick = () => {
+      const currentState = loadState();
+      return currentState.player ? openStore(currentState) : openCreatePlayer(currentState);
+    };
+
+    $('#btnInv').onclick = () => {
+      const currentState = loadState();
+      return currentState.player ? openInventory(currentState) : openCreatePlayer(currentState);
+    };
+
+    $('#btnStats').onclick = () => {
+      const currentState = loadState();
+      return currentState.player ? openStats(currentState) : openCreatePlayer(currentState);
+    };
+
+    $('#btnRecords').onclick = () => {
+      const currentState = loadState();
+      return currentState.player ? openRecords(currentState) : openCreatePlayer(currentState);
+    };
+
+    $('#btnLog').onclick = () => {
+      const currentState = loadState();
+      openLogAll(currentState);
+    };
+
+    $('#btnCheat').onclick = () => {
+      const currentState = loadState();
+      if(!currentState.player) {
+        alert('Create a player first!');
+        return;
+      }
+      openCheatPanel(currentState);
+    };
+
+    $('#btnReset').onclick = () => {
+      if(confirm('Reset your save?')){
+        localStorage.removeItem(LS_KEY);
+        const ns = defaultState();
+        save(ns);
+        location.reload();
+      }
+    };
+
+    $('#btnExport').onclick = () => {
+      const currentState = loadState();
+      const blob = new Blob([JSON.stringify(currentState, null, 2)], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'gridiron-save-v139.json';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    };
+
+    $('#fileImport').onchange = async (ev) => {
+      const f = ev.target.files && ev.target.files[0];
+      if(!f) return;
+      try{
+        const txt = await f.text();
+        const obj = JSON.parse(txt);
+        localStorage.setItem(LS_KEY, JSON.stringify(obj));
+        location.reload();
+      }catch(e){
+        alert('Import failed: invalid JSON.');
+      }finally{
+        ev.target.value = '';
+      }
+    };
+
+    $('#modalClose').onclick = () => closeModal();
   }
 
-  // Extra CSS for modal form controls (injected once)
-  const extra = document.createElement('style');
-  extra.textContent = `
-    .form{margin-top:12px; display:grid; gap:12px}
-    .field{display:grid; gap:6px}
-    .field > span{font-size:12px; color: #b8d4ff}
-    .field label{font-size:13px; color: #b8d4ff; font-weight:600; margin-bottom:4px}
-    input, select{
-      width:100%;
-      padding:10px 12px;
-      border-radius:12px;
-      border:1px solid rgba(255,255,255,.20);
-      background: rgba(10,14,28,.85);
-      color: #fff8f0;
-      outline:none;
-      font-weight:500;
-      transition: border-color .2s ease, background .2s ease;
-    }
-    select{
-      cursor:pointer;
-      appearance:none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23b8d4ff' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 12px center;
-      padding-right: 36px;
-    }
-    select option{
-      background: #0a0e1c;
-      color: #fff8f0;
-      padding: 8px;
-    }
-    input::placeholder{color: rgba(184,212,255,.50)}
-    input:focus, select:focus{
-      border-color: rgba(124,92,255,.65);
-      background: rgba(10,14,28,.95);
-      box-shadow: 0 0 0 3px rgba(124,92,255,.15);
-    }
-    select:hover{
-      background-color: rgba(10,14,28,.95);
-    }
-    .row{display:grid; grid-template-columns: 1fr 1fr; gap:12px}
-    @media (max-width: 520px){ .row{grid-template-columns:1fr} }
-    .radios{display:grid; gap:10px; margin-top:8px}
-    .radio{
-      display:flex; gap:10px; align-items:flex-start;
-      padding:10px 10px;
-      border-radius:14px;
-      border:1px solid rgba(255,255,255,.18);
-      background: rgba(255,255,255,.06);
-      cursor:pointer;
-      transition: all .15s ease;
-    }
-    .radio:hover{background: rgba(255,255,255,.10); border-color: rgba(124,92,255,.40)}
-    .radio input{margin-top:4px}
-    .r-title{font-weight:900; color: #fff8f0}
-  `;
-  document.head.appendChild(extra);
-
-
-  // expose functions needed by inline onclick handlers (GitHub Pages-safe)
-  // --- Global wrappers/aliases for inline handlers (keeps older HTML strings working) ---
-  function exportSave(){ const b = document.getElementById('btnExport'); if(b) b.click(); }
-  function importSave(){ const f = document.getElementById('importFile'); if(f) f.click(); }
-  function importSaveFromFile(){ importSave(); }
-  function resetAll(){ const b = document.getElementById('btnReset'); if(b) b.click(); }
-  function openSkillsModal(){ return openSkills(); }
-  function openStoreModal(){ return openStore(); }
-  function openInventoryModal(){ return openInventory(); }
-  function openJobModal(){ return openJobs(); }
-
+  // Expose functions to window
   Object.assign(window, {
-    // Career / UI
-    openCreatePlayer,
-    startCareerFromCreator,
-    setModal,
-    closeModal,
-    // Position/Style utilities
     getStylesForPosition,
     handlePositionChange,
     handleStyleChange,
-    // Randomizers
     randomizeName,
     randomizeSchool,
     randomizeHeight,
     randomizeWeight,
     randomizeHometown,
-    // Modals
-    openSkillsModal,
-    openJobModal,
-    openStoreModal,
-    openInventoryModal,
+    randomizeJersey,
     openStats,
-    // Save utilities
-    exportSave,
-    importSave,
-    importSaveFromFile,
-    resetAll,
+    openRecords
   });
 
-
-  // boot
+  // Initialize
   const state = load();
-  // Modal open helpers (kept for older onclick hooks / compatibility)
-  function openSkillsModal(){ openSkills(state); }
-  function openJobModal(){ openJobs(state); }
-  function openStoreModal(){ openStore(state); }
-  function openInventoryModal(){ openInventory(state); }
-  function openStatsModal(){ openStats(state); }
-
-  $('#ver').textContent = VERSION.replace('v','v');
-  document.title = `Gridiron Career Sim ${VERSION}`;
   wireUI(state);
   render(state);
-
 })();
